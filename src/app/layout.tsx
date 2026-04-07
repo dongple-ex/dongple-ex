@@ -10,6 +10,10 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "동플 - 동네 생활에 정보를 더하다",
   description: "시니어와 주니어를 위한 맞춤형 동네 생활 커뮤니티",
+  icons: {
+    icon: '/icon.png',
+    apple: '/apple-icon.png',
+  },
 };
 
 import KakaoScript from "@/components/map/KakaoScript";
