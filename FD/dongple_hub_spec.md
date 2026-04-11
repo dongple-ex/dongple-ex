@@ -1,0 +1,96 @@
+# 동플 허브 기능 개발 지침서
+
+**목표:** 동플 허브는 지역 기반 실시간 상황 공유 플랫폼으로, 실시간 이벤트 스트림, 자동 분류(Classifier), 통계/트렌드(Analytics), 본인인증 기반 가입 + 익명 활동(Anonymity)을 핵심으로 한다.
+
+---
+
+## 1. 요약
+- 가입: 휴대폰 본인인증(1인1계정) + 닉네임 설정
+- 활동: 게시·제보·댓글은 익명(닉네임 또는 완전 익명)
+- 핵심 모듈: Collector, Classifier, Stream Service, Analytics, Auth/Anonymity, Admin
+- 주요 목표: 지역 신뢰성 확보, 제보 활성화, 악성 행위 억제
+
+---
+
+## 2. 시스템 아키텍처 개요
+- Collector: 뉴스 RSS, SNS(X) 검색, 동플 게시물, 사용자 제보, 공공데이터 수집
+- Message Queue: Kafka / RabbitMQ (이벤트 버퍼링, 확장성)
+- Classifier: 텍스트 전처리 → 카테고리 분류 → 위치 태깅 → 중복 병합 → 신뢰도 산정
+- Stream Service: WebSocket/SSE로 실시간 전달; Redis Pub/Sub 캐시
+- Analytics Engine: 집계·트렌드 계산, 캐시(5분 단위)
+- Auth & Anonymity Layer: 본인인증 서비스 연동, 익명화 해시, 운영 식별자 매핑
+- Admin Console: 제재·검증·로그·통계 확인
+- DB: PostgreSQL(주 데이터), ElasticSearch(검색/유사도), Redis(캐시)
+
+---
+
+## 3. 데이터 모델(요약 ERD)
+
+### 핵심 테이블 요약
+
+| 테이블 | 주요 필드 | 설명 |
+|---|---:|---|
+| **users** | id; phone_hash; created_at; status | 본인인증 계정(운영만 식별 가능) |
+| **profiles** | user_id; nickname; region; gps_verified | 닉네임·동네 인증 정보 |
+| **events** | id; title; content; category; source; location_name; lat; lng; created_at; score | 자동 분류된 이벤트(스트림 항목) |
+| **raw_items** | id; source; raw_text; fetched_at; processed_flag | 수집 원문(수집 로그) |
+| **event_links** | event_id; raw_item_id | 원문 ↔ 이벤트 매핑 |
+| **reports** | id; reporter_user_id; target_event_id; reason; created_at; status | 사용자 신고 로그 |
+| **stats_daily** | date; region; category; count | 집계 테이블(배치 업데이트) |
+
+---
+
+## 4. 인증·익명화 모듈 설계
+
+### A. 가입 및 인증 흐름
+1. 휴대폰 본인인증(외부 인증사 연동) → phone_hash 저장(해시화)
+2. 계정 생성 → 닉네임 설정(중복 허용 가능)
+3. 동네 인증: GPS 기반 또는 우편/행정동 선택(선택적)
+4. 가입 완료 후 활동 가능
+
+### B. 익명화 원칙(Anonymity Layer)
+- 운영 식별자(user_id)는 내부 DB에만 존재. 외부/프론트엔드에는 절대 노출 금지.
+- 게시물/제보 저장 시 public_id 생성: `public_id = HMAC(secret_key, user_id + salt + timestamp_bucket)`
+  - public_id는 동일 사용자의 연속 활동을 연결할 수 있으나 실제 user_id 복원 불가(운영자만 매핑 가능).
+- 완전 익명 옵션: 사용자가 “완전 익명” 선택 시 public_id 대신 `anonymous` 태그만 노출. 운영자는 내부 로그로 추적 가능.
+- 로그 보관 정책: 본인인증 관련 민감 데이터는 암호화 저장, 접근 권한 최소화, 법적 요청 시만 복호화 가능.
+
+### C. 위치 인증
+- 가입 시 GPS 허용 권장. GPS 미허용 시 사용자가 직접 행정동 선택.
+- 제보 시 위치 자동 추출(텍스트) + 사용자가 위치 수정 가능.
+- 위치 조작 탐지: 동일 계정의 빈번한 지역 변경 시 경고/검증 요청.
+
+---
+
+## 5. 자동 분류·신뢰도 알고리즘 (Classifier & Scoring)
+
+### A. 처리 파이프라인
+1. 수집(raw_items) → 텍스트 정제(정규화, 불용어 제거)
+2. 언어 처리: 형태소 분석(한국어), 개체명 인식(NER)으로 장소·시간·인물 추출
+3. 카테고리 분류: 하이브리드 모델
+   - 룰 기반 키워드 매칭(긴급 카테고리 우선)
+   - ML 분류기(KoBERT/KoELECTRA)로 문맥 분류
+4. 위치 매핑: 추출된 장소명 → 행정동/좌표 매핑(지오코딩 DB)
+5. 중복 병합: 시간 윈도우(예: 30분), 위치 반경(예: 500m), 텍스트 유사도(ElasticSearch) 기준 병합
+6. 이벤트 생성: events 테이블에 저장
+
+### B. 신뢰도(Score) 산정
+- 기본 가중치: News 0.9; Official Public Data 0.95; SNS 0.7; 동플 게시물 0.6; 사용자 제보 0.5
+- 가중치 조정 요소:
+  - 출처 수(동일 사건을 보고한 출처 수) → +0.05 per unique source (cap 0.2)
+  - 시간 신선도(최근성) → 최근일수록 가중치 증가
+  - 사용자 평판(제보자 과거 신뢰도) → +/− 보정
+  - 중복 병합 횟수(여러 사용자가 독립 제보) → 신뢰도 증가
+- 최종 score는 0.0~1.0 범위로 정규화하여 스트림 우선순위 및 통계 반영에 사용
+
+### C. 허위·악성 탐지 룰
+- 동일 텍스트 반복 제출(스팸) → 자동 플래그
+- 위치와 텍스트 불일치(예: 서울 관련 텍스트에 경기 좌표) → 검증 요청
+- 다수 신고 발생 시 자동 임시 숨김 후 관리자 검토
+
+---
+
+## 6. API 스펙(핵심 요약)
+
+### 엔드포인트 요약 (예시)
+

@@ -7,9 +7,10 @@ import {
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { fetchLiveStatus, postLiveStatus, LiveStatus, subscribeLiveUpdates } from "@/services/statusService";
-import { getAddressFromCoords, getCoordsFromAddress } from "@/services/api";
+import { getAddressFromCoords, getCoordsFromAddress, searchPlaces } from "@/services/api";
 import { Search } from "lucide-react";
 import Script from "next/script";
+import { motion, AnimatePresence } from "framer-motion";
 
 declare global {
   interface Window {
@@ -61,7 +62,12 @@ export default function MapPage() {
     const [replyText, setReplyText] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isResultOpen, setIsResultOpen] = useState(false);
+    const [selectedSearchPlace, setSelectedSearchPlace] = useState<any | null>(null);
+    const tempMarkerRef = useRef<any>(null);
     const [currentAddress, setCurrentAddress] = useState<string>("");
+    const [isMapLoading, setIsMapLoading] = useState(true);
     
     // 카테고리 캐러셀 드래그 상태
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -123,15 +129,81 @@ export default function MapPage() {
     const handleSearch = async () => {
         if (!searchQuery.trim()) return;
         setIsSearching(true);
-        const coords = await getCoordsFromAddress(searchQuery);
-        if (coords && mapRef.current) {
-            const moveLatLng = new window.naver.maps.LatLng(coords.lat, coords.lng);
-            mapRef.current.setCenter(moveLatLng);
-            mapRef.current.setZoom(16);
-        } else {
-            alert("검색 결과가 없습니다.");
+        setIsResultOpen(false);
+        
+        try {
+            const poiResults = await searchPlaces(searchQuery);
+            setSearchResults(poiResults);
+            
+            if (poiResults && poiResults.length > 0) {
+                setIsResultOpen(true);
+            } else {
+                // POI 결과가 없으면 지오코딩 시도
+                const coords = await getCoordsFromAddress(searchQuery);
+                if (coords && mapRef.current) {
+                    const moveLatLng = new window.naver.maps.LatLng(coords.lat, coords.lng);
+                    mapRef.current.setCenter(moveLatLng);
+                    mapRef.current.setZoom(16);
+                } else {
+                    alert("검색 결과가 없습니다.");
+                }
+            }
+        } catch (err) {
+            console.error("검색 중 오류:", err);
+            alert("검색 중 오류가 발생했습니다.");
+        } finally {
+            setIsSearching(false);
         }
-        setIsSearching(false);
+    };
+
+    const handleSelectPlace = async (place: any) => {
+        setIsResultOpen(false);
+        setSelectedSearchPlace(place);
+        
+        // 1. 좌표 변환 (TM128 -> LatLng)
+        // Naver Search API v1 returns mapx, mapy in TM128
+        if (window.naver && window.naver.maps && window.naver.maps.TransCoord) {
+            const tm128 = new window.naver.maps.Point(parseInt(place.mapx), parseInt(place.mapy));
+            const latlng = window.naver.maps.TransCoord.fromTM128ToLatLng(tm128);
+            
+            if (mapRef.current) {
+                mapRef.current.setCenter(latlng);
+                mapRef.current.setZoom(17);
+                
+                // 임시 마커 표시
+                if (tempMarkerRef.current) tempMarkerRef.current.setMap(null);
+                
+                const markerContent = `
+                    <div class="flex flex-col items-center transform -translate-x-1/2 -translate-y-full z-[100]">
+                        <div class="bg-white px-3 py-1.5 rounded-xl shadow-xl border-2 border-[#2E7D32] text-[12px] font-bold text-[#3E2723] mb-1 whitespace-nowrap">
+                            ${place.title.replace(/<[^>]*>?/gm, '')}
+                        </div>
+                        <div class="w-4 h-4 bg-[#2E7D32] rounded-full border-2 border-white shadow-lg animate-bounce"></div>
+                    </div>
+                `;
+                
+                const tempMarker = new window.naver.maps.Marker({
+                    position: latlng,
+                    map: mapRef.current,
+                    icon: {
+                        content: markerContent,
+                        anchor: new window.naver.maps.Point(0, 0),
+                    }
+                });
+                
+                tempMarkerRef.current = tempMarker;
+            }
+        } else {
+            // Fallback: Geocoding
+            const cleanAddress = place.roadAddress || place.address;
+            setCurrentAddress(cleanAddress); // 즉시 주소 반영
+            const coords = await getCoordsFromAddress(cleanAddress);
+            if (coords && mapRef.current) {
+                const latlng = new window.naver.maps.LatLng(coords.lat, coords.lng);
+                mapRef.current.setCenter(latlng);
+                mapRef.current.setZoom(17);
+            }
+        }
     };
 
     // 캐러셀 드래그 핸들러
@@ -155,14 +227,17 @@ export default function MapPage() {
     };
 
     const initMap = () => {
-        if (!window.naver || !window.naver.maps) return;
+        if (!window.naver || !window.naver.maps) {
+            return;
+        }
         
         const container = document.getElementById('map-container');
         if (!container) {
-            // 컨테이너가 아직 없으면 잠시 후 재시도
             setTimeout(initMap, 100);
             return;
         }
+
+        if (mapRef.current) return; // 이미 초기화됨
 
         try {
             const mapOptions = {
@@ -176,12 +251,73 @@ export default function MapPage() {
 
             const map = new window.naver.maps.Map(container, mapOptions);
             mapRef.current = map;
+            
+            // 지도 로드 완료 및 이동 완료 이벤트
+            window.naver.maps.Event.addListener(map, 'idle', async () => {
+                setIsMapLoading(false);
+                
+                // 중심점 주소 가져오기
+                const center = map.getCenter();
+                const addr = await getAddressFromCoords(center.y, center.x);
+                setCurrentAddress(addr);
+            });
+
+            // 지도 드래그 시작 시 작업
+            window.naver.maps.Event.addListener(map, 'dragstart', () => {
+                setSheetHeight(15); // 시트 내리기
+                setIsResultOpen(false); // 검색창 닫기
+            });
+
+            // 지도 클릭 이벤트: 해당 위치로 중심 이동
+            window.naver.maps.Event.addListener(map, 'click', (e: any) => {
+                map.panTo(e.coord);
+                setIsResultOpen(false); // 검색창 닫기
+            });
+
+            setTimeout(() => setIsMapLoading(false), 1500); // 네트워크 지연 대비 백업
+
             renderMarkers();
         } catch (err) {
             console.error("지도 초기화 에러:", err);
             setMapError("지도를 초기화하는 중 오류가 발생했습니다.");
+            setIsMapLoading(false);
         }
     };
+
+    // 스크립트가 이미 로드된 경우를 위한 useEffect 기반 초기화
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.naver && window.naver.maps && !mapRef.current) {
+            initMap();
+        }
+    }, []);
+
+    // 시트 높이에 따른 지도 패딩 조절
+    useEffect(() => {
+        if (mapRef.current && typeof window !== 'undefined') {
+            const pixelPadding = (sheetHeight / 100) * window.innerHeight;
+            mapRef.current.setOptions({
+                padding: { bottom: pixelPadding }
+            });
+            
+            // 패딩 변경 후 중심점 주소 다시 가져오기
+            const center = mapRef.current.getCenter();
+            getAddressFromCoords(center.y, center.x).then(addr => {
+                setCurrentAddress(addr);
+            });
+        }
+    }, [sheetHeight]);
+
+    // 클릭 시 검색 결과 닫기 처리
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest('.group')) { // 검색창 group 클래스 외부 클릭 시
+                setIsResultOpen(false);
+            }
+        };
+        window.addEventListener('click', handleClickOutside);
+        return () => window.removeEventListener('click', handleClickOutside);
+    }, []);
 
     const renderMarkers = () => {
         // 기존 렌더링된 마커 배열 지우기
@@ -331,11 +467,90 @@ export default function MapPage() {
                         size={22} 
                     />
                 </div>
+
+                {/* 검색 결과 리스트 */}
+                <AnimatePresence>
+                    {isResultOpen && searchResults.length > 0 && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="absolute top-[54px] left-0 right-0 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-30 max-h-[300px] overflow-y-auto"
+                        >
+                            <div className="p-2 space-y-1">
+                                {searchResults.map((place, idx) => (
+                                    <div 
+                                        key={idx}
+                                        onClick={() => handleSelectPlace(place)}
+                                        className="p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition-colors border-b border-gray-50 last:border-0 group/item"
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <h5 className="font-bold text-sm text-[#3E2723] group-hover/item:text-[#2E7D32]" dangerouslySetInnerHTML={{ __html: place.title }} />
+                                                <p className="text-[11px] text-gray-400 mt-0.5">{place.roadAddress || place.address}</p>
+                                                <span className="inline-block mt-1 px-1.5 py-0.5 bg-gray-100 text-[9px] text-gray-500 rounded font-medium">{place.category}</span>
+                                            </div>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setNewPlaceName(place.title.replace(/<[^>]*>?/gm, ''));
+                                                    setCreateMode("share");
+                                                    setIsCreateModalOpen(true);
+                                                    setIsResultOpen(false);
+                                                    handleSelectPlace(place);
+                                                }}
+                                                className="ml-2 px-3 py-1.5 bg-[#2E7D32] text-white text-[10px] font-bold rounded-lg hover:bg-[#1B5E20] transition-colors shadow-sm shrink-0"
+                                            >
+                                                등록
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* 네이버 지도 객체가 들어갈 컨테이너 */}
-            <div className="relative flex-1 w-full" style={{ minHeight: 'calc(100vh - 64px - 15vh)' }}>
+            <div className="relative flex-1 w-full" style={{ minHeight: 'calc(100dvh - 64px - 15vh)' }}>
                 <div id="map-container" className="absolute inset-0 w-full h-full outline-none bg-gray-100" />
+                
+                {/* 중앙 고정 핀 (조준점) */}
+                <div 
+                    className={`absolute inset-0 flex items-center justify-center pointer-events-none z-10 ${isDragging ? '' : 'transition-all duration-300'}`}
+                    style={{ paddingBottom: `${sheetHeight}vh` }}
+                >
+                    <div className="relative flex flex-col items-center mb-10">
+                        {/* 주소 배지 */}
+                        {currentAddress && !isMapLoading && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="absolute -top-12 bg-gray-800/90 backdrop-blur-sm text-white text-[10px] px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap flex items-center space-x-1 border border-white/20"
+                            >
+                                <MapPin size={10} className="text-green-400" />
+                                <span>{currentAddress}</span>
+                            </motion.div>
+                        )}
+                        {/* 실제 핀 모양 */}
+                        <div className="relative">
+                            <MapPin size={36} className="text-[#2E7D32] drop-shadow-lg" />
+                            {/* 핀 끝점 표시 */}
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#2E7D32] rounded-full border border-white"></div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 로딩 표시기 */}
+                {isMapLoading && !mapError && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-50/50 backdrop-blur-sm z-10">
+                        <div className="flex flex-col items-center">
+                            <div className="w-10 h-10 border-4 border-[#2E7D32]/20 border-t-[#2E7D32] rounded-full animate-spin mb-3"></div>
+                            <p className="text-xs font-bold text-gray-500">지도를 불러오는 중...</p>
+                        </div>
+                    </div>
+                )}
                 {mapError && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100/80 backdrop-blur-sm z-10 px-6 text-center">
                         <div className="bg-white p-6 rounded-2xl shadow-xl border border-red-100">
@@ -420,6 +635,13 @@ export default function MapPage() {
                                 const isTogglingOff = expandedCardId === card.id;
                                 setExpandedCardId(isTogglingOff ? null : card.id);
                                 if (!isTogglingOff) {
+                                    // 지도 중심 이동 추가
+                                    if (mapRef.current && (card.latitude || card.longitude)) {
+                                        const targetPos = new window.naver.maps.LatLng(card.latitude || 37.3015, card.longitude || 126.9930);
+                                        mapRef.current.panTo(targetPos);
+                                    }
+                                    setIsResultOpen(false); // 검색창 닫기
+                                    
                                     setTimeout(() => {
                                         const cardEl = document.getElementById(`card-${card.id}`);
                                         if (cardEl) {

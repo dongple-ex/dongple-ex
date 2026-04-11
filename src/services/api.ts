@@ -68,6 +68,22 @@ export async function getAddressFromCoords(lat: number, lng: number): Promise<st
 }
 
 /**
+ * 상호/장소 키워드로 검색 (POI Search)
+ * /api/search 프록시를 통해 네이버 지역 검색 API 호출
+ */
+export async function searchPlaces(query: string): Promise<any[]> {
+    try {
+        const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error('Search API failed');
+        const data = await response.json();
+        return data.items || [];
+    } catch (err) {
+        console.error('POI 검색 실패:', err);
+        return [];
+    }
+}
+
+/**
  * 주소를 좌표로 변환 (Geocoding) - 검색 기능용
  */
 export async function getCoordsFromAddress(address: string): Promise<{ lat: number, lng: number } | null> {
