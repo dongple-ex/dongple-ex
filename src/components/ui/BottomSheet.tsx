@@ -8,13 +8,42 @@ import LiveStatusCreateForm from "@/components/forms/LiveStatusCreateForm";
 import { createPost } from "@/services/postService";
 import { useAuthStore } from "@/lib/store/authStore";
 
+import PostDetail from "@/components/news/PostDetail";
+import { createComment } from "@/services/postService";
+
 export default function BottomSheet() {
   const { isBottomSheetOpen, bottomSheetContent, bottomSheetData, closeBottomSheet } = useUIStore();
+  const { userId, publicId, isAnonymous } = useAuthStore();
+  const [commentText, setCommentText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleCreateComment = async () => {
+    if (!commentText.trim() || !bottomSheetData?.id) return;
+    
+    setIsSubmitting(true);
+    try {
+        await createComment({
+            post_id: bottomSheetData.id,
+            content: commentText.trim(),
+            user_id: userId,
+            public_id: publicId,
+            is_anonymous: isAnonymous
+        });
+        setCommentText("");
+        // 댓글 등록 후 강제 리프레시나 상태 업데이트가 필요할 수 있음
+        // PostDetail 내부에서 자동 로드는 아니므로 data 갱신 로직 필요
+    } catch (error) {
+        console.error("Comment failed:", error);
+        alert("댓글 등록에 실패했습니다.");
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
 
   if (!mounted) return null;
 
@@ -32,9 +61,8 @@ export default function BottomSheet() {
             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
           />
 
-          {/* Bottom Sheet wrapper for fixed positioning to prevent document scroll issues */}
+          {/* Bottom Sheet wrapper for fixed positioning */}
           <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center pointer-events-none">
-            {/* The Sheet */}
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
@@ -43,47 +71,55 @@ export default function BottomSheet() {
               className="w-full flex justify-center pointer-events-auto"
             >
               <div
-                className={`w-full flex flex-col bg-white rounded-t-3xl shadow-xl pb-[env(safe-area-inset-bottom)] relative ${
-                  bottomSheetContent === "postDetail" ? "h-[90vh]" : "max-h-[90vh]"
+                className={`w-full flex flex-col bg-white rounded-t-[40px] shadow-2xl pb-[env(safe-area-inset-bottom)] relative ${
+                  bottomSheetContent === "postDetail" ? "h-[85vh]" : "max-h-[90vh]"
                 }`}
-                style={{
-                  touchAction: "none" // Prevent default touch action for better dragging
-                }}
               >
-                {/* Visual drag handle area */}
-                <div className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing w-full rounded-t-3xl bg-white sticky top-0 z-10">
-                  <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+                {/* Visual drag handle */}
+                <div className="flex justify-center pt-4 pb-2 cursor-grab w-full bg-white rounded-t-[40px]">
+                  <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
                 </div>
 
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-[30px] bg-white z-10 shrink-0">
-                  <h3 className="text-lg font-bold text-[#3E2723]">
-                    {bottomSheetContent === "write" ? "동네 소식 글쓰기" : 
-                     bottomSheetContent === "postDetail" ? "동네 소식" : 
-                     bottomSheetContent === "liveCreate" ? (bottomSheetData?.mode === "request" ? "상황 요청하기" : "상황 공유하기") :
-                     bottomSheetContent === "liveReply" ? (bottomSheetData?.mode === "reply" ? "상황 알려주기" : "다른 상황 제보하기") :
-                     bottomSheetContent === "liveDetail" ? bottomSheetData?.detailItem?.place_name :
-                     "바텀 시트"}
+                <div className="flex items-center justify-between px-6 py-2 border-b border-gray-50 sticky top-0 bg-white z-10 shrink-0">
+                  <h3 className="text-lg font-black text-[#3E2723]">
+                    {bottomSheetContent === "write" ? "소식 글쓰기" : 
+                     bottomSheetContent === "postDetail" ? "소식 상세보기" : 
+                     bottomSheetContent === "liveCreate" ? "상황 제보" :
+                     bottomSheetContent === "liveReply" ? "상황 알려주기" :
+                     "상세 정보"}
                   </h3>
-                  <button onClick={closeBottomSheet} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors">
-                    <X size={20} />
+                  <button onClick={closeBottomSheet} className="p-2 text-gray-400 hover:text-gray-600 rounded-full transition-colors">
+                    <X size={24} />
                   </button>
                 </div>
 
                 {/* Dynamic Content */}
-                <div className="overflow-y-auto p-4 flex-1 overscroll-contain pb-8 min-h-0">
+                <div className="overflow-y-auto p-6 flex-1 overscroll-contain pb-32">
                   {bottomSheetContent === "write" && <WriteForm />}
-                  {bottomSheetContent === "postDetail" && <PostDetailView />}
+                  {bottomSheetContent === "postDetail" && <PostDetail post={bottomSheetData} />}
                   {bottomSheetContent === "liveCreate" && <LiveCreateForm />}
                   {bottomSheetContent === "liveReply" && <LiveReplyForm />}
                   {bottomSheetContent === "liveDetail" && <LiveDetailView />}
                 </div>
 
-                {/* Sticky Bottom Actions */}
+                {/* Sticky Bottom Actions for Post Detail */}
                 {bottomSheetContent === "postDetail" && (
-                  <div className="border-t border-gray-100 p-3 px-4 flex space-x-2 bg-white pb-6 shrink-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                      <input type="text" placeholder="따뜻한 댓글을 남겨주세요." className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-[13px] outline-none" />
-                      <button className="bg-[#2E7D32] text-white px-5 py-2.5 rounded-full text-[13px] font-bold">등록</button>
+                  <div className="absolute bottom-0 left-0 right-0 border-t border-gray-100 p-4 px-6 flex items-center space-x-3 bg-white/80 backdrop-blur-xl z-20 pb-8 shadow-[0_-8px_30px_rgba(0,0,0,0.05)]">
+                      <input 
+                        type="text" 
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        placeholder="이웃에게 따뜻한 댓글을 남겨보세요." 
+                        className="flex-1 bg-gray-100 rounded-[20px] px-5 py-3 text-[14px] font-medium outline-none focus:ring-2 focus:ring-secondary/20 transition-all" 
+                      />
+                      <button 
+                        onClick={handleCreateComment}
+                        disabled={isSubmitting || !commentText.trim()}
+                        className="bg-secondary text-white px-6 py-3 rounded-[20px] text-[14px] font-black shadow-lg disabled:opacity-50 transition-all active:scale-95 whitespace-nowrap"
+                      >
+                        {isSubmitting ? "..." : "등록"}
+                      </button>
                   </div>
                 )}
               </div>
@@ -94,6 +130,7 @@ export default function BottomSheet() {
     </AnimatePresence>
   );
 }
+
 
 function WriteForm() {
     const { closeBottomSheet } = useUIStore();

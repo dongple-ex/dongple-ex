@@ -9,6 +9,7 @@ import {
     LayoutGrid, List
 } from "lucide-react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 // V2 전용 컴포넌트 임포트
 import HeroSection from "@/components/dashboard/v2/HeroSection";
@@ -71,17 +72,18 @@ export default function HomeV2() {
                 </div>
                 <div className="grid grid-cols-4 gap-4">
                     {categories.map((cat, i) => (
-                        <motion.button
-                            key={i}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="flex flex-col items-center space-y-2"
-                        >
-                            <div className={`w-14 h-14 ${cat.color} rounded-[20px] flex items-center justify-center shadow-sm border border-white dark:border-white/10`}>
-                                <cat.icon size={26} />
-                            </div>
-                            <span className="text-[11px] font-bold text-foreground/60">{cat.label}</span>
-                        </motion.button>
+                        <Link key={i} href={cat.label === "전체" ? "/news" : `/news?cat=${cat.label}`}>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="flex flex-col items-center space-y-2 w-full"
+                            >
+                                <div className={`w-14 h-14 ${cat.color} rounded-[20px] flex items-center justify-center shadow-sm border border-white dark:border-white/10`}>
+                                    <cat.icon size={26} />
+                                </div>
+                                <span className="text-[11px] font-bold text-foreground/60">{cat.label}</span>
+                            </motion.button>
+                        </Link>
                     ))}
                 </div>
             </section>

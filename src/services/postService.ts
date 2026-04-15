@@ -33,6 +33,24 @@ export async function fetchPosts(limit = 10) {
 }
 
 /**
+ * 카테고리별 동네 소식 조회
+ */
+export async function fetchPostsByCategory(category: string, limit = 10) {
+    const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("category", category)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+    if (error) {
+        console.error(`Error fetching posts for category ${category}:`, error);
+        return [];
+    }
+    return data as Post[];
+}
+
+/**
  * 동네 소식 등록
  */
 export async function createPost(payload: { 
@@ -83,4 +101,65 @@ export function subscribePosts(onUpdate: () => void) {
             table: 'posts'
         }, onUpdate)
         .subscribe();
+}
+
+/**
+ * 좋아요(추천) 증가
+ */
+export async function likePost(postId: string) {
+    const { error } = await supabase.rpc('increment_like_count', {
+        post_id: postId
+    });
+
+    if (error) {
+        // RPC가 없는 경우 대비한 폴백
+        const { error: updateError } = await supabase
+            .from("posts")
+            .update({ likes_count: supabase.rpc('increment', { row_id: postId }) }) // 예시 구문
+            .eq("id", postId);
+        
+        if (updateError) throw updateError;
+    }
+}
+
+/**
+ * 댓글 목록 조회
+ */
+export async function fetchComments(postId: string) {
+    const { data, error } = await supabase
+        .from("post_comments")
+        .select("*")
+        .eq("post_id", postId)
+        .order("created_at", { ascending: true });
+
+    if (error) {
+        console.error("Error fetching comments:", error);
+        return [];
+    }
+    return data;
+}
+
+/**
+ * 댓글 등록
+ */
+export async function createComment(payload: {
+    post_id: string,
+    content: string,
+    user_id?: string | null,
+    public_id?: string | null,
+    is_anonymous?: boolean
+}) {
+    const { data, error } = await supabase
+        .from("post_comments")
+        .insert([payload])
+        .select();
+
+    if (error) throw error;
+
+    // 댓글 수 증가
+    await supabase.rpc('increment_comment_count', {
+        post_id: payload.post_id
+    });
+
+    return data[0];
 }

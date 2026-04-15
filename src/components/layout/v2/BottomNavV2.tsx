@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Home, Search, Plus, Bell, User } from "lucide-react";
+import { Home, Search, Plus, Bell, User, LayoutList } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useUIStore } from "@/lib/store/uiStore";
@@ -14,12 +14,12 @@ export default function BottomNavV2() {
         { icon: Home, label: "홈", path: "/v2" },
         { icon: Search, label: "지도", path: "/map" },
         { icon: Plus, label: "기록", isCenter: true },
-        { icon: Bell, label: "알림", path: "#" },
+        { icon: LayoutList, label: "소식", path: "/news" },
         { icon: User, label: "내 정보", path: "#" },
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-50 px-6 pb-8 pointer-events-none">
+        <div className="fixed bottom-0 left-0 right-0 z-[100] px-6 pb-8 pointer-events-none">
             <div className="bg-nav-bg backdrop-blur-xl rounded-[32px] border border-border shadow-2xl pointer-events-auto h-20 flex items-center justify-between px-4 transition-colors duration-500">
                 {navItems.map((item, i) => {
                     const Icon = item.icon;
