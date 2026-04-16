@@ -14,9 +14,9 @@ export default function NavigationWrapper({ children }: { children: React.ReactN
   const hideHeader = pathname === '/map';
 
   return (
-    <div className="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto min-h-screen bg-white shadow-sm flex flex-col relative">
+    <div className="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto min-h-screen bg-background shadow-sm flex flex-col relative">
       {!hideHeader && <Header />}
-      <main className={`flex-1 overflow-y-auto ${!isV2Path ? 'pb-16' : ''}`}>
+      <main className={`flex-1 overflow-y-auto ${!isV2Path ? 'pb-16' : 'pb-28'}`}>
         {children}
       </main>
       {isV2Path ? <BottomNavV2 /> : <BottomNav />}

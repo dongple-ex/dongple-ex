@@ -126,6 +126,14 @@ export async function likePost(postId: string) {
  * 댓글 목록 조회
  */
 export async function fetchComments(postId: string) {
+    // UUID 유효성 검사 (PostgreSQL uuid 타입 오류 방지)
+    const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(postId);
+    
+    if (!postId || !isValidUuid) {
+        console.warn(`유효하지 않은 postId로 댓글 조회를 시도했습니다: ${postId}`);
+        return [];
+    }
+
     const { data, error } = await supabase
         .from("post_comments")
         .select("*")

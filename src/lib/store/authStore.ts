@@ -31,18 +31,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     toggleAnonymous: () => set((state) => ({ isAnonymous: !state.isAnonymous })),
 
     initAuth: () => {
-        const userId = getPersistentUserId();
-        const publicId = generatePublicId(userId);
+        if (typeof window === 'undefined') return;
         
-        // 로컬 스토리지에서 이전 설정 불러오기
-        const savedProfile = localStorage.getItem('dongple_profile');
-        const savedAnon = localStorage.getItem('dongple_is_anon');
+        const uid = getPersistentUserId();
+        const pid = generatePublicId(uid);
         
         set({ 
-            userId, 
-            publicId,
-            profile: savedProfile ? JSON.parse(savedProfile) : get().profile,
-            isAnonymous: savedAnon ? JSON.parse(savedAnon) : true
+            userId: uid, 
+            publicId: pid,
+            isAnonymous: true
         });
-    },
+    }
 }));
+

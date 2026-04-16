@@ -7,7 +7,11 @@ import {
 import { useState, useRef, useEffect, Suspense } from "react";
 import { fetchLiveStatus, LiveStatus, subscribeLiveUpdates } from "@/services/statusService";
 import { getAddressFromCoords, getCoordsFromAddress, searchPlaces } from "@/services/api";
+import { fetchOfficialEvents } from "@/services/eventService";
+import { TOURAPI_MOCK_DATA, FestivalMockItem } from "@/services/tourapi/mockData";
 import Script from "next/script";
+import { createRoot } from "react-dom/client";
+import PulseMarker from "@/components/map/PulseMarker";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useLocationStore } from "@/lib/store/locationStore";
@@ -217,10 +221,10 @@ function MapContent() {
     };
 
     const renderMarkers = () => {
-        markersRef.current.forEach(m => m.setMap(null));
         markersRef.current = [];
         if (!window.naver?.maps || !mapRef.current) return;
 
+        // 1. 제보 데이터 마커 (기존)
         markers.forEach(m => {
             const isSelected = expandedCardId === m.id;
             const markerContent = `
@@ -246,6 +250,43 @@ function MapContent() {
             });
             markersRef.current.push(marker);
         });
+
+        // 2. 공식 인증(TourAPI) 데이터 마커 (신규)
+        const fetchAndRenderOfficial = async () => {
+            const officialEvents = await fetchOfficialEvents();
+            
+            officialEvents.forEach(festival => {
+                const el = document.createElement('div');
+                const root = createRoot(el);
+                root.render(
+                    <PulseMarker 
+                        title={festival.title} 
+                        category={festival.category_code} 
+                        onClick={() => {
+                            openGlobalBottomSheet("postDetail", {
+                                title: festival.title,
+                                content: `${festival.address}\n일시: ${festival.event_start_date} ~ ${festival.event_end_date}\n${festival.description}`,
+                                is_official: true
+                            });
+                            setSheetHeight(50);
+                            mapRef.current.panTo(new window.naver.maps.LatLng(festival.lat, festival.lng));
+                        }}
+                    />
+                );
+
+                const marker = new window.naver.maps.Marker({
+                    position: new window.naver.maps.LatLng(festival.lat, festival.lng),
+                    map: mapRef.current,
+                    icon: {
+                        content: el,
+                        anchor: new window.naver.maps.Point(0, 0)
+                    }
+                });
+                markersRef.current.push(marker);
+            });
+        };
+
+        fetchAndRenderOfficial();
     };
 
     return (
@@ -259,7 +300,7 @@ function MapContent() {
             <div className="absolute top-6 left-5 right-5 z-50 pointer-events-none">
                 <div className="flex flex-col space-y-3">
                     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center space-x-3 pointer-events-auto">
-                        <button onClick={() => router.back()} className="p-3 bg-white/80 backdrop-blur-xl border border-white/40 rounded-2xl shadow-xl text-foreground/60 hover:text-accent active:scale-95 transition-all">
+                        <button onClick={() => router.back()} className="p-3 bg-nav-bg backdrop-blur-xl border border-border rounded-2xl shadow-xl text-foreground/60 hover:text-accent active:scale-95 transition-all">
                             <ArrowLeft size={24} />
                         </button>
                         <div className="flex-1 relative group">
@@ -268,7 +309,7 @@ function MapContent() {
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onFocus={() => setIsResultOpen(true)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="w-full h-14 pl-12 pr-12 bg-white/80 backdrop-blur-xl border border-white/40 rounded-[24px] text-[15px] font-black text-foreground shadow-2xl transition-all outline-none placeholder:text-foreground/30"
+                                className="w-full h-14 pl-12 pr-12 bg-nav-bg backdrop-blur-xl border border-border rounded-[24px] text-[15px] font-black text-foreground shadow-2xl transition-all outline-none placeholder:text-foreground/30"
                             />
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/30" size={20} />
                             {searchQuery && (
@@ -279,7 +320,7 @@ function MapContent() {
                 </div>
                 <AnimatePresence>
                     {isResultOpen && searchResults.length > 0 && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="bg-white/95 backdrop-blur-2xl rounded-[32px] shadow-2xl mt-4 p-2 max-h-[400px] overflow-y-auto pointer-events-auto border border-white/50">
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="bg-nav-bg backdrop-blur-2xl rounded-[32px] shadow-2xl mt-4 p-2 max-h-[400px] overflow-y-auto pointer-events-auto border border-border/50">
                             {searchResults.map((place, idx) => (
                                 <div key={idx} onClick={() => handleSelectPlace(place)} className="p-4 hover:bg-foreground/5 rounded-2xl cursor-pointer">
                                     <h5 className="font-black text-[15px] text-foreground mb-1" dangerouslySetInnerHTML={{ __html: place.title }} />
@@ -296,13 +337,13 @@ function MapContent() {
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10" style={{ paddingBottom: `${sheetHeight}vh` }}>
                     <motion.div animate={{ y: isMapMoving ? -40 : 0, scale: isMapMoving ? 1.15 : 1 }} className="relative flex flex-col items-center mb-10">
                         {storeAddress && !isMapLoading && (
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="absolute -top-16 bg-white/90 backdrop-blur-2xl px-5 py-3 rounded-[24px] shadow-2xl whitespace-nowrap flex items-center space-x-4 border border-white/60 pointer-events-auto">
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="absolute -top-16 bg-card-bg/90 backdrop-blur-2xl px-5 py-3 rounded-[24px] shadow-2xl whitespace-nowrap flex items-center space-x-4 border border-border pointer-events-auto">
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black text-foreground/40 tracking-tighter uppercase">현재 위치</span>
                                     <span className="text-[13px] font-black text-foreground max-w-[150px] truncate">{storeAddress}</span>
                                 </div>
                                 <button onClick={() => handleOpenCreate("share")} className="bg-secondary text-white text-[12px] px-5 py-2 rounded-xl font-black shadow-lg">제보하기</button>
-                                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white/90 rotate-45 border-r border-b border-white/60" />
+                                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-card-bg rotate-45 border-r border-b border-border" />
                             </motion.div>
                         )}
                         <MapPin size={54} className="text-secondary drop-shadow-[0_20px_20px_rgba(0,0,0,0.2)]" />
@@ -311,7 +352,7 @@ function MapContent() {
                 </div>
             </div>
 
-            <div className={`absolute bottom-0 left-0 w-full z-[60] bg-white/80 backdrop-blur-3xl rounded-t-[44px] shadow-2xl border-t border-white/50 pointer-events-auto flex flex-col transition-all duration-700`} style={{ height: `${sheetHeight}vh` }}>
+            <div className={`absolute bottom-0 left-0 w-full z-[60] bg-nav-bg backdrop-blur-3xl rounded-t-[44px] shadow-2xl border-t border-border flex flex-col transition-all duration-700`} style={{ height: `${sheetHeight}vh` }}>
                 <div className="w-full pt-5 pb-3 cursor-ns-resize flex flex-col items-center shrink-0 touch-none" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}>
                     <div className="w-12 h-1.5 bg-foreground/10 rounded-full mb-4" />
                     <div className="w-full px-8 flex items-center justify-between">
@@ -334,7 +375,7 @@ function MapContent() {
                                 mapRef.current.panTo(new window.naver.maps.LatLng(card.latitude || 37.3015, card.longitude || 126.9930));
                                 setSheetHeight(50);
                             }
-                        }} className={`p-6 rounded-[32px] border border-foreground/5 bg-white/50 transition-all duration-500 ${expandedCardId === card.id ? 'ring-4 ring-secondary/5 bg-white border-secondary/20 shadow-2xl' : ''}`}>
+                        }} className={`p-6 rounded-[32px] border border-border bg-card-bg/50 transition-all duration-500 ${expandedCardId === card.id ? 'ring-4 ring-secondary/5 bg-card-bg border-secondary/20 shadow-2xl' : ''}`}>
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                     <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block mb-2">{card.category}</span>
@@ -369,7 +410,7 @@ function MapContent() {
 
 export default function MapPage() {
     return (
-        <Suspense fallback={<div className="flex items-center justify-center h-screen bg-white"><div className="w-12 h-12 border-4 border-secondary/20 border-t-secondary rounded-full animate-spin"></div></div>}>
+        <Suspense fallback={<div className="flex items-center justify-center h-screen bg-background"><div className="w-12 h-12 border-4 border-secondary/20 border-t-secondary rounded-full animate-spin"></div></div>}>
             <MapContent />
         </Suspense>
     );

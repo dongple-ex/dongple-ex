@@ -21,6 +21,12 @@ export default function PostDetail({ post, onUpdate }: PostDetailProps) {
     const [isLiked, setIsLiked] = useState(false);
 
     useEffect(() => {
+        // 공식 데이터(TourAPI)이거나 ID가 없는 경우 댓글 조회를 건너뜁니다.
+        if (!post.id || (post as any).is_official) {
+            setIsLoading(false);
+            return;
+        }
+
         const loadComments = async () => {
             setIsLoading(true);
             try {
@@ -33,7 +39,7 @@ export default function PostDetail({ post, onUpdate }: PostDetailProps) {
             }
         };
         loadComments();
-    }, [post.id]);
+    }, [post.id, (post as any).is_official]);
 
     const handleLike = async () => {
         try {
@@ -55,7 +61,7 @@ export default function PostDetail({ post, onUpdate }: PostDetailProps) {
     const trust = getTrustLevel(post.score || 0.5);
 
     return (
-        <div className="flex flex-col bg-white">
+        <div className="flex flex-col bg-card-bg">
             {/* Header Content */}
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -75,7 +81,7 @@ export default function PostDetail({ post, onUpdate }: PostDetailProps) {
                 {/* Author Info */}
                 <div className="flex items-center justify-between py-4 border-y border-foreground/5">
                     <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-foreground/5 rounded-2xl flex items-center justify-center text-foreground/40">
+                        <div className="w-10 h-10 bg-nav-bg rounded-2xl flex items-center justify-center text-foreground/40 border border-border">
                             <UserIcon size={20} />
                         </div>
                         <div>
@@ -136,7 +142,7 @@ export default function PostDetail({ post, onUpdate }: PostDetailProps) {
                     ) : comments.length > 0 ? (
                         comments.map((comment, idx) => (
                             <div key={idx} className="flex space-x-4 items-start group">
-                                <div className="w-9 h-9 bg-foreground/5 rounded-2xl shrink-0 flex items-center justify-center text-foreground/30">
+                                <div className="w-9 h-9 bg-nav-bg rounded-2xl shrink-0 flex items-center justify-center text-foreground/30 border border-border">
                                     <UserIcon size={16} />
                                 </div>
                                 <div className="flex-1">
@@ -162,6 +168,9 @@ export default function PostDetail({ post, onUpdate }: PostDetailProps) {
                     )}
                 </div>
             </div>
+            
+            {/* 하단 스티키 바와 겹치지 않도록 여백 추가 */}
+            <div className="h-24" />
         </div>
     );
 }

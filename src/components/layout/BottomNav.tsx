@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Home, Search, MessageSquare, User, PlusCircle } from "lucide-react";
+import { Home, Search, MessageSquare, User, PlusCircle, Map, Image as ImageIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
 
@@ -11,14 +11,14 @@ export default function BottomNav() {
 
     const navItems = [
         { icon: Home, label: "홈", path: "/" },
-        { icon: Search, label: "동네정보", path: "/info" },
+        { icon: Map, label: "지도", path: "/map" },
         { icon: PlusCircle, label: "글쓰기", path: "/write" },
-        { icon: MessageSquare, label: "채팅", path: "/chat" },
+        { icon: ImageIcon, label: "앨범", path: "/album" },
         { icon: User, label: "나의 동플", path: "/profile" },
     ];
 
     return (
-        <nav className="fixed bottom-0 w-full max-w-md md:max-w-2xl lg:max-w-4xl bg-white border-t border-gray-100 flex justify-around items-center h-16 px-4 z-50">
+        <nav className="fixed bottom-0 w-full max-w-md md:max-w-2xl lg:max-w-4xl bg-nav-bg/80 backdrop-blur-xl border-t border-border flex justify-around items-center h-16 px-4 z-50">
             {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.path;
