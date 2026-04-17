@@ -12,6 +12,8 @@ import { useEffect } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import Link from "next/link";
 import { Map as MapIcon, ChevronRight } from "lucide-react";
+import { useUIStore } from "@/lib/store/uiStore";
+import { fetchPosts, subscribePosts, Post } from "@/services/postService";
 import OfficialEventSection from "@/features/events/components/OfficialEventSection";
 import LiveStatusBoard from "@/features/status/components/LiveStatusBoard";
 
