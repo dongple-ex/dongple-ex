@@ -126,10 +126,10 @@ function MapContent() {
     const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
         setIsDragging(false);
         e.currentTarget.releasePointerCapture(e.pointerId);
-        // 하단 네비게이션 바(약 120px)를 고려하여 최소 높이를 24vh로 조정
+        // 하단 네비게이션 바를 고려한 정교한 스냅 (15vh, 50vh, 92vh)
         if (sheetHeight > 70) setSheetHeight(92);
         else if (sheetHeight > 35) setSheetHeight(50);
-        else setSheetHeight(24);
+        else setSheetHeight(15);
     };
 
     const handleSearch = async (initialQuery?: string) => {
@@ -236,7 +236,7 @@ function MapContent() {
     const renderMarkers = () => {
         if (!window.naver?.maps || !mapRef.current) return;
 
-        // 0. 기존 마커 및 React Root 정리 (P1-2 핵심 수정)
+        // 0. 기존 마커 및 React Root 정리
         markersRef.current.forEach(m => m.setMap(null));
         markersRef.current = [];
         rootsRef.current.forEach(root => root.unmount());
@@ -252,7 +252,7 @@ function MapContent() {
             const markerContent = `
                 <div class="flex flex-col items-center transform -translate-x-1/2 -translate-y-full cursor-pointer transition-all duration-300 ${isSelected ? 'scale-125 z-50' : 'hover:scale-110 z-10'}">
                     <div class="px-3 py-1.5 ring-1 ring-black/5 shadow-2xl rounded-2xl text-white text-[12px] font-black flex items-center bg-white/90 backdrop-blur-xl border border-white/40">
-                        <div class="w-2.5 h-2.5 rounded-full mr-2 ${statusColorClass} animate-pulse shadow-sm"></div>
+                        <div class="w-2.5 h-2.5 rounded-full mr-2 ${statusColorClass} ${isSelected ? 'animate-ping' : 'animate-pulse'} shadow-sm"></div>
                         <span class="text-foreground">${isRequest ? '요청' : m.status}</span>
                     </div>
                     <div class="w-2 h-2 bg-white/90 rotate-45 -translate-y-1 shadow-sm border-r border-b border-black/5"></div>
@@ -264,11 +264,14 @@ function MapContent() {
                 icon: { content: markerContent, anchor: new window.naver.maps.Point(0, 0) }
             });
             window.naver.maps.Event.addListener(marker, 'click', () => {
-                setExpandedCardId(expandedCardId === m.id ? null : m.id);
-                if (expandedCardId !== m.id) {
-                    setSheetHeight(50);
-                    mapRef.current.panTo(marker.getPosition());
-                }
+                setExpandedCardId(m.id);
+                setSheetHeight(50);
+                mapRef.current.panTo(marker.getPosition());
+                // 리스트 자동 스크롤 연동 (FD 핵심 보완)
+                setTimeout(() => {
+                    const el = document.getElementById(`card-${m.id}`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
             });
             markersRef.current.push(marker);
         });
@@ -419,10 +422,13 @@ function MapContent() {
                         }} className={`p-6 rounded-[32px] border border-border bg-card-bg/50 transition-all duration-500 ${expandedCardId === card.id ? 'ring-4 ring-secondary/5 bg-card-bg border-secondary/20 shadow-2xl' : ''}`}>
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                    <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block mb-2">{card.category}</span>
+                                    <div className="flex items-center space-x-2 mb-2">
+                                        <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">{card.category}</span>
+                                        {card.message && <span className="text-[10px] font-black text-secondary uppercase animate-pulse">상세있음</span>}
+                                    </div>
                                     <h4 className="font-black text-foreground text-[18px] leading-tight mb-2">{card.place_name}</h4>
                                     <div className={`text-[13px] font-black flex items-center ${card.is_request ? 'text-orange-600' : card.status === '여유' ? 'text-green-600' : card.status === '보통' ? 'text-blue-600' : 'text-red-600'}`}>
-                                        <div className={`w-2 h-2 rounded-full mr-1.5 ${card.is_request ? 'bg-orange-500' : card.status === '여유' ? 'bg-green-500' : card.status === '보통' ? 'bg-blue-500' : 'bg-red-500'}`} />
+                                        <div className={`w-2 h-2 rounded-full mr-1.5 ${card.is_request ? 'bg-orange-500' : card.status === '여유' ? 'bg-green-500' : card.status === '보통' ? 'bg-blue-500' : 'bg-red-500'} ${expandedCardId === card.id ? 'animate-ping' : ''}`} />
                                         {card.is_request ? '답변 요청' : `${card.status} 상황`}
                                     </div>
                                 </div>
@@ -430,6 +436,11 @@ function MapContent() {
                             </div>
                             {expandedCardId === card.id && (
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-6 pt-6 border-t border-foreground/5 space-y-5">
+                                    {card.message && (
+                                        <div className="bg-foreground/[0.03] p-4 rounded-2xl border border-foreground/5">
+                                            <p className="text-[13px] text-foreground/70 font-medium leading-relaxed italic">"{card.message}"</p>
+                                        </div>
+                                    )}
                                     <div className="flex space-x-2">
                                         <button onClick={(e) => { e.stopPropagation(); handleOpenCreate("request"); }} className="flex-1 py-3.5 bg-foreground/5 text-foreground/60 rounded-2xl font-black text-[13px]">정보 업데이트</button>
                                         <button onClick={(e) => { e.stopPropagation(); handleOpenCreate("share"); }} className="flex-1 py-3.5 bg-secondary text-white rounded-2xl font-black text-[13px] shadow-lg shadow-secondary/20">여기에 제보</button>

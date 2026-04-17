@@ -74,6 +74,24 @@ export default function Home() {
             {/* V2 AI 요약 캐러셀 */}
             <QuestionSummaryV2 />
 
+            {/* 사회적 증명 (Social Proof) 배너 */}
+            <section className="px-6 py-2">
+                <div className="bg-foreground/[0.02] border border-foreground/5 rounded-[32px] p-6 flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-secondary tracking-widest mb-1 uppercase">Community Power</p>
+                        <h4 className="text-[15px] font-black text-foreground">30,000+ 이웃이 함께 기록 중</h4>
+                    </div>
+                    <div className="flex -space-x-2">
+                        {[1,2,3,4].map(i => (
+                            <div key={i} className="w-8 h-8 rounded-full border-2 border-background bg-foreground/10 overflow-hidden">
+                                <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="user" className="w-full h-full object-cover" />
+                            </div>
+                        ))}
+                        <div className="w-8 h-8 rounded-full border-2 border-background bg-secondary flex items-center justify-center text-[10px] font-black text-white">+</div>
+                    </div>
+                </div>
+            </section>
+
             {/* 카테고리 그리드 섹션 */}
             <section className="px-6 py-4">
                 <div className="flex items-center justify-between mb-6">
