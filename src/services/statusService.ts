@@ -50,37 +50,20 @@ export async function postLiveStatus(payload: Partial<LiveStatus>) {
 
 /**
  * 상황 인증하기 (나도 여기에요 버튼 클릭 시)
+ * RPC verify_status_once(p_status_id UUID, p_user_id TEXT) 사용
  */
-export async function verifyStatus(statusId: string, userId: string) {
-    // UUID 유효성 검사
-    const isValidUuid = (id?: string) => 
-        id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) : false;
-    
-    const cleanUserId = isValidUuid(userId) ? userId : null;
-
-    // 1. 인증 내역 기록
-    const { error: verifyError } = await supabase
-        .from("status_verifications")
-        .insert([{ status_id: statusId, user_id: cleanUserId }]);
-
-    if (verifyError) {
-        console.error("Verification error:", verifyError);
-        throw verifyError;
-    }
-
-    // 2. 메인 테이블의 카운트 증가 (RPC 또는 직접 업데이트)
-    const { error: updateError } = await supabase.rpc('increment_verified_count', {
-        status_id: statusId
+export async function verifyStatus(statusId: string, userId: string): Promise<boolean> {
+    const { data: isSuccess, error: rpcError } = await supabase.rpc('verify_status_once', {
+        p_status_id: statusId,
+        p_user_id: userId
     });
 
-    if (updateError) {
-        // RPC가 만약 없다면 일반 업데이트로 대체 가능
-        const { error: fallbackError } = await supabase
-            .from("live_status")
-            .update({ verified_count: supabase.rpc('increment', { row_id: statusId }) }) // 예시
-            .eq("id", statusId);
-        if (fallbackError) throw fallbackError;
+    if (rpcError) {
+        console.error("RPC error:", rpcError);
+        throw rpcError;
     }
+
+    return isSuccess as boolean;
 }
 
 /**

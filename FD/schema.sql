@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS public.status_verifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     status_id UUID REFERENCES public.live_status(id) ON DELETE CASCADE,
     user_id TEXT NOT NULL, -- 또는 UUID (auth.users 가입 시)
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (status_id, user_id)
 );
 
 -- 3. 동네 소식 (게시글) 테이블
@@ -63,6 +64,30 @@ BEGIN
   UPDATE public.live_status
   SET verified_count = verified_count + 1
   WHERE id = status_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 5-1. 중복 방지 인증 및 카운트 증가 (1차 코드리뷰 피드백 반영)
+CREATE OR REPLACE FUNCTION verify_status_once(p_status_id UUID, p_user_id TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  inserted_id UUID;
+BEGIN
+  -- 1. 인증 내역 삽입 시도
+  INSERT INTO public.status_verifications (status_id, user_id)
+  VALUES (p_status_id, p_user_id)
+  ON CONFLICT (status_id, user_id) DO NOTHING
+  RETURNING id INTO inserted_id;
+
+  -- 2. 새롭게 삽입된 경우에만 카운트 증가
+  IF inserted_id IS NOT NULL THEN
+    UPDATE public.live_status
+    SET verified_count = verified_count + 1
+    WHERE id = p_status_id;
+    RETURN TRUE;
+  END IF;
+
+  RETURN FALSE; -- 이미 인증함
 END;
 $$ LANGUAGE plpgsql;
 

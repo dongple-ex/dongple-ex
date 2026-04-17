@@ -59,7 +59,10 @@ function MapContent() {
 
     const mapRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
+    const rootsRef = useRef<any[]>([]); // React roots 추적용
     const tempMarkerRef = useRef<any>(null);
+    const [officialEvents, setOfficialEvents] = useState<any[]>([]); // 공식 데이터 캐싱
+    const isFetchingOfficial = useRef(false);
     const startY = useRef(0);
     const startHeight = useRef(24);
 
@@ -82,7 +85,7 @@ function MapContent() {
         if (mapRef.current) {
             renderMarkers();
         }
-    }, [markers, expandedCardId, sheetHeight]);
+    }, [markers, officialEvents, expandedCardId]); // sheetHeight 제거
 
     const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
         const R = 6371e3;
@@ -199,7 +202,15 @@ function MapContent() {
             setIsResultOpen(false);
         });
 
-        renderMarkers();
+        // 초기 공식 데이터 로드
+        const loadOfficial = async () => {
+            if (isFetchingOfficial.current) return;
+            isFetchingOfficial.current = true;
+            const data = await fetchOfficialEvents();
+            setOfficialEvents(data);
+            isFetchingOfficial.current = false;
+        };
+        loadOfficial();
     };
 
     useEffect(() => {
@@ -221,17 +232,24 @@ function MapContent() {
     };
 
     const renderMarkers = () => {
-        markersRef.current = [];
         if (!window.naver?.maps || !mapRef.current) return;
+
+        // 0. 기존 마커 및 React Root 정리 (P1-2 핵심 수정)
+        markersRef.current.forEach(m => m.setMap(null));
+        markersRef.current = [];
+        rootsRef.current.forEach(root => root.unmount());
+        rootsRef.current = [];
 
         // 1. 제보 데이터 마커 (기존)
         markers.forEach(m => {
             const isSelected = expandedCardId === m.id;
+            const isRequest = m.is_request;
+            const statusColorClass = isRequest ? 'bg-orange-500' : m.status === '여유' ? 'bg-green-500' : m.status === '보통' ? 'bg-blue-500' : 'bg-red-500';
             const markerContent = `
                 <div class="flex flex-col items-center transform -translate-x-1/2 -translate-y-full cursor-pointer transition-all duration-300 ${isSelected ? 'scale-125 z-50' : 'hover:scale-110 z-10'}">
                     <div class="px-3 py-1.5 ring-1 ring-black/5 shadow-2xl rounded-2xl text-white text-[12px] font-black flex items-center bg-white/90 backdrop-blur-xl border border-white/40">
-                        <div class="w-2.5 h-2.5 rounded-full mr-2 ${m.status === '여유' ? 'bg-green-500' : m.status === '보통' ? 'bg-yellow-500' : 'bg-red-500'} animate-pulse shadow-sm"></div>
-                        <span class="text-foreground">${m.status}</span>
+                        <div class="w-2.5 h-2.5 rounded-full mr-2 ${statusColorClass} animate-pulse shadow-sm"></div>
+                        <span class="text-foreground">${isRequest ? '요청' : m.status}</span>
                     </div>
                     <div class="w-2 h-2 bg-white/90 rotate-45 -translate-y-1 shadow-sm border-r border-b border-black/5"></div>
                 </div>
@@ -251,42 +269,38 @@ function MapContent() {
             markersRef.current.push(marker);
         });
 
-        // 2. 공식 인증(TourAPI) 데이터 마커 (신규)
-        const fetchAndRenderOfficial = async () => {
-            const officialEvents = await fetchOfficialEvents();
-            
-            officialEvents.forEach(festival => {
-                const el = document.createElement('div');
-                const root = createRoot(el);
-                root.render(
-                    <PulseMarker 
-                        title={festival.title} 
-                        category={festival.category_code} 
-                        onClick={() => {
-                            openGlobalBottomSheet("postDetail", {
-                                title: festival.title,
-                                content: `${festival.address}\n일시: ${festival.event_start_date} ~ ${festival.event_end_date}\n${festival.description}`,
-                                is_official: true
-                            });
-                            setSheetHeight(50);
-                            mapRef.current.panTo(new window.naver.maps.LatLng(festival.lat, festival.lng));
-                        }}
-                    />
-                );
+        // 2. 공식 인증(TourAPI) 데이터 마커
+        officialEvents.forEach(festival => {
+            const el = document.createElement('div');
+            const root = createRoot(el);
+            rootsRef.current.push(root);
 
-                const marker = new window.naver.maps.Marker({
-                    position: new window.naver.maps.LatLng(festival.lat, festival.lng),
-                    map: mapRef.current,
-                    icon: {
-                        content: el,
-                        anchor: new window.naver.maps.Point(0, 0)
-                    }
-                });
-                markersRef.current.push(marker);
+            root.render(
+                <PulseMarker 
+                    title={festival.title} 
+                    category={festival.category_code} 
+                    onClick={() => {
+                        openGlobalBottomSheet("postDetail", {
+                            title: festival.title,
+                            content: `${festival.address}\n일시: ${festival.event_start_date} ~ ${festival.event_end_date}\n${festival.description}`,
+                            is_official: true
+                        });
+                        setSheetHeight(50);
+                        mapRef.current.panTo(new window.naver.maps.LatLng(festival.lat, festival.lng));
+                    }}
+                />
+            );
+
+            const marker = new window.naver.maps.Marker({
+                position: new window.naver.maps.LatLng(festival.lat, festival.lng),
+                map: mapRef.current,
+                icon: {
+                    content: el,
+                    anchor: new window.naver.maps.Point(0, 0)
+                }
             });
-        };
-
-        fetchAndRenderOfficial();
+            markersRef.current.push(marker);
+        });
     };
 
     return (
@@ -380,9 +394,9 @@ function MapContent() {
                                 <div className="flex-1">
                                     <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block mb-2">{card.category}</span>
                                     <h4 className="font-black text-foreground text-[18px] leading-tight mb-2">{card.place_name}</h4>
-                                    <div className={`text-[13px] font-black flex items-center ${card.status === '여유' ? 'text-green-600' : card.status === '보통' ? 'text-yellow-600' : 'text-red-600'}`}>
-                                        <div className={`w-2 h-2 rounded-full mr-1.5 ${card.status === '여유' ? 'bg-green-500' : card.status === '보통' ? 'bg-yellow-500' : 'bg-red-500'}`} />
-                                        {card.status} 상황
+                                    <div className={`text-[13px] font-black flex items-center ${card.is_request ? 'text-orange-600' : card.status === '여유' ? 'text-green-600' : card.status === '보통' ? 'text-blue-600' : 'text-red-600'}`}>
+                                        <div className={`w-2 h-2 rounded-full mr-1.5 ${card.is_request ? 'bg-orange-500' : card.status === '여유' ? 'bg-green-500' : card.status === '보통' ? 'bg-blue-500' : 'bg-red-500'}`} />
+                                        {card.is_request ? '답변 요청' : `${card.status} 상황`}
                                     </div>
                                 </div>
                                 <div className="w-14 h-14 bg-foreground/5 rounded-3xl flex items-center justify-center text-foreground/30"><MapPin size={24} /></div>

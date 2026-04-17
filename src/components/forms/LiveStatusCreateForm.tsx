@@ -21,7 +21,7 @@ const CATEGORIES = [
 
 const statusOptions = [
     { label: "여유", color: "bg-green-100 text-green-700 hover:bg-green-200 border-green-200", badgeColor: "text-green-500" },
-    { label: "보통", color: "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-200", badgeColor: "text-yellow-500" },
+    { label: "보통", color: "bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200", badgeColor: "text-blue-500" },
     { label: "혼잡", color: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200", badgeColor: "text-red-500" }
 ];
 
@@ -190,7 +190,7 @@ export default function LiveStatusCreateForm({
                                 key={option.label}
                                 onClick={() => setSelectedStatus(option.label)}
                                 className={`flex-1 py-3 text-sm font-bold rounded-xl border transition-all ${selectedStatus === option.label
-                                    ? `${option.color} ring-2 ring-offset-1 ${option.label === '여유' ? 'ring-green-300' : option.label === '보통' ? 'ring-yellow-300' : 'ring-red-300'}`
+                                    ? `${option.color} ring-2 ring-offset-1 ${option.label === '여유' ? 'ring-green-300' : option.label === '보통' ? 'ring-blue-300' : 'ring-red-300'}`
                                     : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
                                     }`}
                             >

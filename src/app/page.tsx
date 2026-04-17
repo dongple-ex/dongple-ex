@@ -8,19 +8,16 @@ import {
   Activity, ShieldCheck, User as UserIcon, Star
 } from "lucide-react";
 import QuestionSummary from "@/components/dashboard/QuestionSummary";
-import LiveStatusBoard from "@/components/dashboard/LiveStatusBoard";
-import { useUIStore } from "@/lib/store/uiStore";
-import { fetchPosts, subscribePosts, Post } from "@/services/postService";
 import { useEffect } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
-import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Map as MapIcon, ChevronRight } from "lucide-react";
+import OfficialEventSection from "@/features/events/components/OfficialEventSection";
+import LiveStatusBoard from "@/features/status/components/LiveStatusBoard";
 
 type UserMode = "popular" | "interest";
 
 export default function Home() {
-  // 당분간 테스트를 위해 V2로 자동 리다이렉트
-  redirect("/v2");
-
   const [mode, setMode] = useState<UserMode>("popular");
   const [sortBy, setSortBy] = useState<"popular" | "recent">("popular");
   const openBottomSheet = useUIStore((state) => state.openBottomSheet);
@@ -74,8 +71,29 @@ export default function Home() {
       {/* AI Summary Dashboard */}
       <QuestionSummary />
 
+      {/* Map Explorer CTA */}
+      <Link href="/map" className="block mx-4">
+        <div className="bg-foreground text-white rounded-[32px] p-6 shadow-2xl relative overflow-hidden group active:scale-[0.98] transition-all">
+          <div className="absolute right-[-20px] top-[-20px] opacity-10 group-hover:rotate-12 transition-transform duration-500">
+             <MapIcon size={120} />
+          </div>
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-black text-white/40 tracking-widest uppercase mb-1">MAP EXPLORER</p>
+              <h3 className="text-xl font-black tracking-tight">지도로 동네 곳곳의 <br/>실시간 상황을 확인하세요</h3>
+            </div>
+            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-lg">
+               <ChevronRight size={24} />
+            </div>
+          </div>
+        </div>
+      </Link>
+
       {/* Real-time Live Status Certification */}
       <LiveStatusBoard />
+
+      {/* Official Events Section */}
+      <OfficialEventSection />
 
       {/* Mode Switcher (Underline Style) */}
       <div className="flex border-b border-gray-100 -mx-4 px-4">
