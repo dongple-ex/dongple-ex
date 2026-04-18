@@ -242,7 +242,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
         setIsSubmitting(true);
         try {
             await createPost({
-                title: title.trim() || null,
+                title: title.trim() || undefined,
                 content,
                 post_type: postType,
                 category,
@@ -362,7 +362,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
 });
 
 function PostDetailView() {
-    const { bottomSheetData } = useUIStore();
+    const { bottomSheetData, openBottomSheet } = useUIStore();
     const { userId } = useAuthStore();
     const isOfficial = bottomSheetData?.is_official;
     const [comments, setComments] = useState<any[]>([]);
@@ -401,13 +401,13 @@ function PostDetailView() {
         if (!userId || isOfficial) return;
         const newIsLiked = !isLiked;
         setIsLiked(newIsLiked);
-        setLikes(prev => newIsLiked ? prev + 1 : Math.max(0, prev - 1));
+        setLikes((prev: number) => newIsLiked ? prev + 1 : Math.max(0, prev - 1));
         
         try {
             await likePost(bottomSheetData.id);
         } catch (error) {
             setIsLiked(!newIsLiked);
-            setLikes(prev => !newIsLiked ? prev + 1 : Math.max(0, prev - 1));
+            setLikes((prev: number) => !newIsLiked ? prev + 1 : Math.max(0, prev - 1));
             console.error("Like failed:", error);
         }
     };
@@ -621,7 +621,7 @@ function LiveReplyForm() {
 }
 
 function LiveDetailView() {
-    const { bottomSheetData } = useUIStore();
+    const { bottomSheetData, openBottomSheet } = useUIStore();
     const detailItem = bottomSheetData?.detailItem;
 
     if (!detailItem) return null;

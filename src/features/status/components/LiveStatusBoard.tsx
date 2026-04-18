@@ -5,10 +5,9 @@ import { Clock, CheckCircle2, Plus, HelpCircle, AlertCircle, X } from "lucide-re
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
-import { fetchLiveStatus, postLiveStatus, verifyStatus, subscribeLiveUpdates, LiveStatus } from "@/services/statusService";
-import { v4 as uuidv4 } from 'uuid';
+import { fetchLiveStatus, postLiveStatus, verifyStatusWithTrust as verifyStatus, subscribeLiveUpdates } from "@/services/statusService";
 
-interface LiveStatus {
+interface BoardLiveStatus {
     id: string;
     place_name: string;
     category: string;
@@ -22,7 +21,7 @@ interface LiveStatus {
 }
 
 export default function LiveStatusBoard() {
-    const [liveUpdates, setLiveUpdates] = useState<LiveStatus[]>([]);
+    const [liveUpdates, setLiveUpdates] = useState<any[]>([]);
     const [userId, setUserId] = useState<string>("");
 
     // 로컬 스토리지에서 임시 사용자 ID 관리

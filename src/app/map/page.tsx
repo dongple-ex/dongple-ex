@@ -52,7 +52,7 @@ function MapContent() {
     } = useLocationStore();
 
     const [markers, setMarkers] = useState<LiveStatus[]>([]);
-    const [expandedCardId, setExpandedCardId] = useState<number | null>(null);
+    const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isResultOpen, setIsResultOpen] = useState(false);

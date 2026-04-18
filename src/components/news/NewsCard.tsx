@@ -25,7 +25,7 @@ export default function NewsCard({ item, isRss, onUpdate }: NewsCardProps) {
         e.stopPropagation();
         try {
             await likePost(item.id);
-            setLocalLikes(prev => prev + 1);
+            setLocalLikes((prev: number) => prev + 1);
             setIsLiked(true);
             onUpdate?.();
         } catch (error) {

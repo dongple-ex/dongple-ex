@@ -10,8 +10,8 @@ interface MapBottomSheetProps {
     onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => void;
     onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
     markers: LiveStatus[];
-    expandedCardId: number | null;
-    onCardClick: (id: number, lat: number, lng: number) => void;
+    expandedCardId: string | null;
+    onCardClick: (id: string, lat: number, lng: number) => void;
     onOpenCreate: (mode: string) => void;
 }
 

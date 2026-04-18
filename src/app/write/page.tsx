@@ -63,6 +63,7 @@ export default function WritePage() {
                     </button>
                 </div>
             </div>
+            </div>
         </div>
     );
 }

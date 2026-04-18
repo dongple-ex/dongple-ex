@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type BottomSheetContent = "write" | "postDetail" | "liveCreate" | "liveReply" | "liveDetail" | null;
+export type BottomSheetContent = "write" | "postDetail" | "liveCreate" | "liveReply" | "liveDetail" | "contentReport" | null;
 
 interface UIState {
   isBottomSheetOpen: boolean;
