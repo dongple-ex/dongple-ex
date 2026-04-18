@@ -59,19 +59,19 @@ export default function Header({
             {isSearchMode ? (
                 <div className="flex items-center w-full space-x-3">
                     {showBackButton && (
-                        <button 
+                        <button
                             onClick={handleBack}
                             className="p-1 -ml-1 text-gray-700 hover:text-[#2E7D32] transition-colors"
                         >
                             <ArrowLeft size={24} />
                         </button>
                     ) || (
-                         <MapPin size={20} className="text-[#2E7D32]" />
-                    )}
-                    
+                            <MapPin size={20} className="text-[#2E7D32]" />
+                        )}
+
                     <div className="flex-1 relative group">
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             placeholder={placeholder}
                             value={searchValue}
                             onChange={(e) => onSearchChange?.(e.target.value)}
@@ -83,12 +83,12 @@ export default function Header({
                             className="w-full h-10 pl-10 pr-10 bg-gray-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#2E7D32]/20 outline-none transition-all"
                             autoFocus={isSearchMode}
                         />
-                        <Search 
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#2E7D32] transition-colors" 
-                            size={18} 
+                        <Search
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#2E7D32] transition-colors"
+                            size={18}
                         />
                         {searchValue && (
-                            <button 
+                            <button
                                 onClick={() => onClearSearch?.()}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                             >
@@ -96,7 +96,7 @@ export default function Header({
                             </button>
                         )}
                     </div>
-                    
+
                     {rightElement || (
                         <button className="p-1 text-gray-700 hover:text-[#2E7D32] transition-colors">
                             <SlidersHorizontal size={22} />
@@ -105,14 +105,14 @@ export default function Header({
                 </div>
             ) : (
                 <>
-                    <div 
+                    <div
                         className="flex items-center space-x-1 font-bold text-lg text-[#3E2723] cursor-pointer hover:opacity-70 transition-opacity"
                         onClick={() => fetchLocation()}
                         title="위치 새로고침"
                     >
-                        <MapPin 
-                            size={20} 
-                            className={`text-[#2E7D32] ${isLoading ? 'animate-pulse' : ''}`} 
+                        <MapPin
+                            size={20}
+                            className={`text-[#2E7D32] ${isLoading ? 'animate-pulse' : ''}`}
                         />
                         <span className={isLoading ? "text-gray-400" : ""}>
                             {regionName}
