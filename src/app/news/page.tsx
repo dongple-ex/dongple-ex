@@ -5,8 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
     CloudSun, Coffee, Building2, Store,
-    HeartPulse, Landmark, Bell, Search,
-    Plus, ChevronLeft
+    HeartPulse, Landmark, ChevronLeft
 } from "lucide-react";
 import Link from "next/link";
 import CategorizedNewsCarousel from "@/components/news/CategorizedNewsCarousel";
@@ -39,14 +38,6 @@ function NewsContent() {
                         <h1 className="text-xl font-black text-foreground">동네 소식들</h1>
                         <p className="text-[11px] font-bold text-accent">수원시 정자동 기준</p>
                     </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <button className="p-2 hover:bg-foreground/5 rounded-full transition-colors">
-                        <Search size={22} className="text-foreground/60" />
-                    </button>
-                    <button className="p-2 hover:bg-foreground/5 rounded-full transition-colors">
-                        <Bell size={22} className="text-foreground/60" />
-                    </button>
                 </div>
             </header>
 
