@@ -11,7 +11,7 @@ export default function BottomNavV2() {
     const openBottomSheet = useUIStore((state) => state.openBottomSheet);
 
     const navItems = [
-        { icon: Home, label: "홈", path: "/v2" },
+        { icon: Home, label: "홈", path: "/" },
         { icon: Search, label: "지도", path: "/map" },
         { icon: Plus, label: "기록", isCenter: true },
         { icon: LayoutList, label: "소식", path: "/news" },

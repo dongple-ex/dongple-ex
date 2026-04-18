@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Camera, MapPin } from "lucide-react";
+import IdentityHeader from "@/features/auth/components/IdentityHeader";
 
 export default function WritePage() {
     const router = useRouter();
@@ -27,7 +28,12 @@ export default function WritePage() {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto">
+                <div className="pt-4">
+                    <IdentityHeader />
+                </div>
+                
+                <div className="p-4 space-y-4">
                 <div className="flex space-x-2 overflow-x-auto pb-2">
                     {["동네질문", "동네맛집", "일상", "부동산", "병원/의료", "카페/학습"].map((cat) => (
                         <button

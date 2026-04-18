@@ -6,6 +6,7 @@ import {
     MapPin, HelpCircle, Plus
 } from "lucide-react";
 import { postLiveStatus } from "@/services/statusService";
+import IdentityHeader from "@/features/auth/components/IdentityHeader";
 
 const CATEGORIES = [
     { id: "기타", label: "기타", icon: Home },
@@ -122,6 +123,10 @@ export default function LiveStatusCreateForm({
 
     return (
         <div className="space-y-5">
+            <div className="-mx-4">
+               <IdentityHeader />
+            </div>
+            
             {/* Address Badge */}
             <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">

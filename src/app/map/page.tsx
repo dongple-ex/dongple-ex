@@ -1,14 +1,9 @@
 "use client";
 
-import { 
-    ArrowLeft, MapPin, SlidersHorizontal, HelpCircle, Plus, X, Search,
-    Home, Trees, Dumbbell, Coffee, ShoppingBag, Store, ParkingCircle, HeartPulse, Building2 
-} from "lucide-react";
 import { useState, useRef, useEffect, Suspense } from "react";
 import { fetchLiveStatus, LiveStatus, subscribeLiveUpdates } from "@/services/statusService";
 import { getAddressFromCoords, getCoordsFromAddress, searchPlaces } from "@/services/api";
 import { fetchOfficialEvents } from "@/services/eventService";
-import { TOURAPI_MOCK_DATA, FestivalMockItem } from "@/services/tourapi/mockData";
 import Script from "next/script";
 import { createRoot } from "react-dom/client";
 import PulseMarker from "@/components/map/PulseMarker";
@@ -16,6 +11,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useLocationStore } from "@/lib/store/locationStore";
 import { motion, AnimatePresence } from "framer-motion";
+import { 
+    Home, Trees, Dumbbell, Coffee, ShoppingBag, Store, ParkingCircle, HeartPulse, Building2 
+} from "lucide-react";
+
+// New Components
+import MapHeader from "@/features/map/components/MapHeader";
+import MapOverlay from "@/features/map/components/MapOverlay";
+import MapBottomSheet from "@/features/map/components/MapBottomSheet";
+import { StatusMarker, ClickTargetMarker } from "@/features/map/components/Markers";
 
 declare global {
   interface Window {
@@ -54,16 +58,20 @@ function MapContent() {
     const [isResultOpen, setIsResultOpen] = useState(false);
     const [isMapLoading, setIsMapLoading] = useState(true);
     const [isMapMoving, setIsMapMoving] = useState(false);
-    const [isNearbyStatus, setIsNearbyStatus] = useState(false);
     const [sheetHeight, setSheetHeight] = useState(24);
     const [isDragging, setIsDragging] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState("전체");
 
+    // Click-to-Pin states
+    const [clickedLatLng, setClickedLatLng] = useState<{ lat: number, lng: number } | null>(null);
+    const [clickedAddress, setClickedAddress] = useState<string | null>(null);
+
     const mapRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
-    const rootsRef = useRef<any[]>([]); // React roots 추적용
+    const rootsRef = useRef<any[]>([]);
     const tempMarkerRef = useRef<any>(null);
-    const [officialEvents, setOfficialEvents] = useState<any[]>([]); // 공식 데이터 캐싱
+    const clickMarkerRef = useRef<any>(null);
+    const [officialEvents, setOfficialEvents] = useState<any[]>([]);
     const isFetchingOfficial = useRef(false);
     const startY = useRef(0);
     const startHeight = useRef(24);
@@ -87,27 +95,7 @@ function MapContent() {
         if (mapRef.current) {
             renderMarkers();
         }
-    }, [markers, officialEvents, expandedCardId]); // sheetHeight 제거
-
-    const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-        const R = 6371e3;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLng = (lng2 - lng1) * Math.PI / 180;
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                  Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    };
-
-    const checkNearbyStatus = (centerLat: number, centerLng: number) => {
-        const threshold = 50;
-        const exists = markers.some(m => {
-            if (!m.latitude || !m.longitude) return false;
-            return getDistance(centerLat, centerLng, m.latitude, m.longitude) < threshold;
-        });
-        setIsNearbyStatus(exists);
-    };
+    }, [markers, officialEvents, expandedCardId, clickedLatLng]);
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
         setIsDragging(true);
@@ -119,14 +107,13 @@ function MapContent() {
     const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
         if (!isDragging) return;
         const deltaVH = ((e.clientY - startY.current) / window.innerHeight) * 100;
-        let newHeight = Math.max(24, Math.min(92, startHeight.current - deltaVH));
+        let newHeight = Math.max(15, Math.min(92, startHeight.current - deltaVH));
         setSheetHeight(newHeight);
     };
 
     const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
         setIsDragging(false);
         e.currentTarget.releasePointerCapture(e.pointerId);
-        // 하단 네비게이션 바를 고려한 정교한 스냅 (15vh, 50vh, 92vh)
         if (sheetHeight > 70) setSheetHeight(92);
         else if (sheetHeight > 35) setSheetHeight(50);
         else setSheetHeight(15);
@@ -146,6 +133,9 @@ function MapContent() {
                 const coords = await getCoordsFromAddress(queryToSearch);
                 if (coords && mapRef.current) {
                     mapRef.current.setCenter(new window.naver.maps.LatLng(coords.lat, coords.lng));
+                    setClickedLatLng(coords);
+                    const addr = await getAddressFromCoords(coords.lat, coords.lng);
+                    setClickedAddress(addr.fullAddress);
                 }
             }
         } catch (err) {
@@ -161,15 +151,8 @@ function MapContent() {
             if (mapRef.current) {
                 mapRef.current.setCenter(latlng);
                 mapRef.current.setZoom(17);
-                if (tempMarkerRef.current) tempMarkerRef.current.setMap(null);
-                tempMarkerRef.current = new window.naver.maps.Marker({
-                    position: latlng,
-                    map: mapRef.current,
-                    icon: {
-                        content: `<div class="w-4 h-4 bg-secondary rounded-full border-2 border-white shadow-lg animate-bounce"></div>`,
-                        anchor: new window.naver.maps.Point(8, 8),
-                    }
-                });
+                setClickedLatLng({ lat: latlng.y, lng: latlng.x });
+                setClickedAddress(place.roadAddress || place.address);
             }
         }
     };
@@ -195,16 +178,23 @@ function MapContent() {
             const center = map.getCenter();
             const addrResult = await getAddressFromCoords(center.y, center.x);
             setLocation(center.y, center.x, addrResult.fullAddress, addrResult.regionName);
-            checkNearbyStatus(center.y, center.x);
+        });
+
+        window.naver.maps.Event.addListener(map, 'click', async (e: any) => {
+            const latlng = e.coord;
+            setClickedLatLng({ lat: latlng.y, lng: latlng.x });
+            const addrResult = await getAddressFromCoords(latlng.y, latlng.x);
+            setClickedAddress(addrResult.fullAddress);
+            setSheetHeight(15);
+            setExpandedCardId(null);
+            setIsResultOpen(false);
         });
 
         window.naver.maps.Event.addListener(map, 'dragstart', () => {
             setIsMapMoving(true);
-            setSheetHeight(15);
             setIsResultOpen(false);
         });
 
-        // 초기 공식 데이터 로드
         const loadOfficial = async () => {
             if (isFetchingOfficial.current) return;
             isFetchingOfficial.current = true;
@@ -221,53 +211,74 @@ function MapContent() {
         }
     }, []);
 
-    const handleOpenCreate = async (mode: string) => {
-        if (!mapRef.current) return;
-        const center = mapRef.current.getCenter();
-        const addrResult = await getAddressFromCoords(center.y, center.x);
+    const handleOpenCreateAt = (mode: string, lat: number, lng: number, address: string) => {
         openGlobalBottomSheet("liveCreate", {
             mode,
-            address: addrResult.fullAddress,
-            latitude: center.y,
-            longitude: center.x
+            address,
+            latitude: lat,
+            longitude: lng
         });
     };
 
     const renderMarkers = () => {
         if (!window.naver?.maps || !mapRef.current) return;
 
-        // 0. 기존 마커 및 React Root 정리
         markersRef.current.forEach(m => m.setMap(null));
         markersRef.current = [];
         rootsRef.current.forEach(root => root.unmount());
         rootsRef.current = [];
 
-        // 1. 제보 데이터 마커 (필터링 적용)
+        if (clickMarkerRef.current) clickMarkerRef.current.setMap(null);
+
+        // 1. Click-to-Pin Marker
+        if (clickedLatLng) {
+            const el = document.createElement('div');
+            const root = createRoot(el);
+            rootsRef.current.push(root);
+
+            root.render(
+                <ClickTargetMarker 
+                    address={clickedAddress || ""} 
+                    onReport={() => handleOpenCreateAt("share", clickedLatLng.lat, clickedLatLng.lng, clickedAddress || "")} 
+                />
+            );
+
+            const marker = new window.naver.maps.Marker({
+                position: new window.naver.maps.LatLng(clickedLatLng.lat, clickedLatLng.lng),
+                map: mapRef.current,
+                icon: { content: el, anchor: new window.naver.maps.Point(0, 0) }
+            });
+            clickMarkerRef.current = marker;
+        }
+
+        // 2. Live Status Markers (Shape: Balloon with status dot)
         markers
             .filter(m => selectedCategory === "전체" || m.category === selectedCategory)
             .forEach(m => {
             const isSelected = expandedCardId === m.id;
-            const isRequest = m.is_request;
-            const statusColorClass = isRequest ? 'bg-orange-500' : m.status === '여유' ? 'bg-green-500' : m.status === '보통' ? 'bg-blue-500' : 'bg-red-500';
-            const markerContent = `
-                <div class="flex flex-col items-center transform -translate-x-1/2 -translate-y-full cursor-pointer transition-all duration-300 ${isSelected ? 'scale-125 z-50' : 'hover:scale-110 z-10'}">
-                    <div class="px-3 py-1.5 ring-1 ring-black/5 shadow-2xl rounded-2xl text-white text-[12px] font-black flex items-center bg-white/90 backdrop-blur-xl border border-white/40">
-                        <div class="w-2.5 h-2.5 rounded-full mr-2 ${statusColorClass} ${isSelected ? 'animate-ping' : 'animate-pulse'} shadow-sm"></div>
-                        <span class="text-foreground">${isRequest ? '요청' : m.status}</span>
-                    </div>
-                    <div class="w-2 h-2 bg-white/90 rotate-45 -translate-y-1 shadow-sm border-r border-b border-black/5"></div>
-                </div>
-            `;
+            const el = document.createElement('div');
+            const root = createRoot(el);
+            rootsRef.current.push(root);
+
+            root.render(
+                <StatusMarker 
+                    status={m.status} 
+                    isRequest={m.is_request} 
+                    isSelected={isSelected} 
+                />
+            );
+
             const marker = new window.naver.maps.Marker({
                 position: new window.naver.maps.LatLng(m.latitude || 37.3015, m.longitude || 126.9930),
                 map: mapRef.current,
-                icon: { content: markerContent, anchor: new window.naver.maps.Point(0, 0) }
+                icon: { content: el, anchor: new window.naver.maps.Point(0, 0) }
             });
+
             window.naver.maps.Event.addListener(marker, 'click', () => {
                 setExpandedCardId(m.id);
                 setSheetHeight(50);
+                setClickedLatLng(null); 
                 mapRef.current.panTo(marker.getPosition());
-                // 리스트 자동 스크롤 연동 (FD 핵심 보완)
                 setTimeout(() => {
                     const el = document.getElementById(`card-${m.id}`);
                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -276,7 +287,7 @@ function MapContent() {
             markersRef.current.push(marker);
         });
 
-        // 2. 공식 인증(TourAPI) 데이터 마커
+        // 3. Official Event Markers (Shape: Circular Pulse)
         officialEvents.forEach(festival => {
             const el = document.createElement('div');
             const root = createRoot(el);
@@ -293,6 +304,7 @@ function MapContent() {
                             is_official: true
                         });
                         setSheetHeight(50);
+                        setClickedLatLng(null);
                         mapRef.current.panTo(new window.naver.maps.LatLng(festival.lat, festival.lng));
                     }}
                 />
@@ -301,10 +313,7 @@ function MapContent() {
             const marker = new window.naver.maps.Marker({
                 position: new window.naver.maps.LatLng(festival.lat, festival.lng),
                 map: mapRef.current,
-                icon: {
-                    content: el,
-                    anchor: new window.naver.maps.Point(0, 0)
-                }
+                icon: { content: el, anchor: new window.naver.maps.Point(0, 0) }
             });
             markersRef.current.push(marker);
         });
@@ -320,142 +329,54 @@ function MapContent() {
             
             <div className="absolute top-6 left-5 right-5 z-50 pointer-events-none">
                 <div className="flex flex-col space-y-3">
-                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center space-x-3 pointer-events-auto">
-                        <button onClick={() => router.back()} className="p-3 bg-nav-bg backdrop-blur-xl border border-border rounded-2xl shadow-xl text-foreground/60 hover:text-accent active:scale-95 transition-all">
-                            <ArrowLeft size={24} />
-                        </button>
-                        <div className="flex-1 relative group">
-                            <input 
-                                type="text" placeholder="어디로 갈까요? 장소나 주소 검색..." value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onFocus={() => setIsResultOpen(true)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="w-full h-14 pl-12 pr-12 bg-nav-bg backdrop-blur-xl border border-border rounded-[24px] text-[15px] font-black text-foreground shadow-2xl transition-all outline-none placeholder:text-foreground/30"
-                            />
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/30" size={20} />
-                            {searchQuery && (
-                                <button onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 bg-foreground/5 rounded-full text-foreground/40"><X size={14} /></button>
-                            )}
-                        </div>
-                    </motion.div>
+                    <MapHeader 
+                        searchQuery={searchQuery}
+                        onSearchChange={setSearchQuery}
+                        onSearchSubmit={handleSearch}
+                        onClear={() => setSearchQuery("")}
+                        onBack={() => router.back()}
+                        onFocus={() => setIsResultOpen(true)}
+                    />
 
-                    {/* Category Filter Chips */}
-                    <motion.div 
-                        initial={{ opacity: 0, y: -10 }} 
-                        animate={{ opacity: 1, y: 0 }} 
-                        transition={{ delay: 0.1 }}
-                        className="flex overflow-x-auto pb-2 space-x-2 no-scrollbar pointer-events-auto"
-                    >
-                        {CATEGORIES.map((cat) => (
-                            <button
-                                key={cat.id}
-                                onClick={() => setSelectedCategory(cat.id)}
-                                className={`px-4 py-2.5 rounded-2xl text-[13px] font-black whitespace-nowrap transition-all border flex items-center space-x-2 ${
-                                    selectedCategory === cat.id
-                                    ? "bg-secondary text-white border-secondary shadow-lg shadow-secondary/20"
-                                    : "bg-nav-bg/80 backdrop-blur-xl text-foreground/50 border-border hover:bg-card-bg"
-                                }`}
-                            >
-                                <cat.icon size={14} />
-                                <span>{cat.label}</span>
-                            </button>
-                        ))}
-                    </motion.div>
+                    <MapOverlay 
+                        categories={CATEGORIES}
+                        selectedCategory={selectedCategory}
+                        onCategorySelect={setSelectedCategory}
+                        isResultOpen={isResultOpen}
+                        searchResults={searchResults}
+                        onSelectPlace={handleSelectPlace}
+                    />
                 </div>
-                <AnimatePresence>
-                    {isResultOpen && searchResults.length > 0 && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="bg-nav-bg backdrop-blur-2xl rounded-[32px] shadow-2xl mt-4 p-2 max-h-[400px] overflow-y-auto pointer-events-auto border border-border/50">
-                            {searchResults.map((place, idx) => (
-                                <div key={idx} onClick={() => handleSelectPlace(place)} className="p-4 hover:bg-foreground/5 rounded-2xl cursor-pointer">
-                                    <h5 className="font-black text-[15px] text-foreground mb-1" dangerouslySetInnerHTML={{ __html: place.title }} />
-                                    <p className="text-[12px] text-foreground/40 font-bold">{place.roadAddress || place.address}</p>
-                                </div>
-                            ))}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </div>
 
             <div className="relative flex-1 w-full" style={{ minHeight: 'calc(100dvh - 15vh)' }}>
                 <div id="map-container" className="absolute inset-0 w-full h-full bg-gray-100" />
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10" style={{ paddingBottom: `${sheetHeight}vh` }}>
-                    <motion.div animate={{ y: isMapMoving ? -40 : 0, scale: isMapMoving ? 1.15 : 1 }} className="relative flex flex-col items-center mb-10">
-                        {storeAddress && !isMapLoading && (
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="absolute -top-16 bg-card-bg/90 backdrop-blur-2xl px-5 py-3 rounded-[24px] shadow-2xl whitespace-nowrap flex items-center space-x-4 border border-border pointer-events-auto">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-foreground/40 tracking-tighter uppercase">현재 위치</span>
-                                    <span className="text-[13px] font-black text-foreground max-w-[150px] truncate">{storeAddress}</span>
-                                </div>
-                                <button onClick={() => handleOpenCreate("share")} className="bg-secondary text-white text-[12px] px-5 py-2 rounded-xl font-black shadow-lg">제보하기</button>
-                                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-card-bg rotate-45 border-r border-b border-border" />
-                            </motion.div>
-                        )}
-                        <MapPin size={54} className="text-secondary drop-shadow-[0_20px_20px_rgba(0,0,0,0.2)]" />
-                        <motion.div animate={{ scale: isMapMoving ? 1.8 : 0.8, opacity: isMapMoving ? 0.3 : 0.1 }} className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-2.5 bg-black rounded-[100%] blur-[4px]" />
-                    </motion.div>
-                </div>
             </div>
 
-            <div className={`absolute bottom-0 left-0 w-full z-[60] bg-nav-bg backdrop-blur-3xl rounded-t-[44px] shadow-2xl border-t border-border flex flex-col transition-all duration-700`} style={{ height: `${sheetHeight}vh` }}>
-                <div className="w-full pt-5 pb-3 cursor-ns-resize flex flex-col items-center shrink-0 touch-none" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}>
-                    <div className="w-12 h-1.5 bg-foreground/10 rounded-full mb-4" />
-                    <div className="w-full px-8 flex items-center justify-between">
-                        <div className="flex flex-col">
-                            <span className="text-[11px] font-black text-secondary tracking-widest uppercase mb-1">DONGPLE LIVE</span>
-                            <h3 className="font-black text-foreground text-2xl tracking-tighter">주변의 순간들 <span className="text-secondary opacity-30 ml-1">{markers.length}</span></h3>
-                        </div>
-                        <div className="flex space-x-2">
-                             <button onClick={() => handleOpenCreate("request")} className="p-3 bg-foreground/5 rounded-2xl text-foreground/40 hover:text-foreground transition-all"><HelpCircle size={22} /></button>
-                             <button onClick={() => handleOpenCreate("share")} className="p-3 bg-secondary text-white rounded-2xl shadow-lg shadow-secondary/30 transition-all"><Plus size={22} /></button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="px-6 py-4 overflow-y-auto space-y-4 flex-1 pb-32 no-scrollbar">
-                    {markers.length > 0 ? markers.map(card => (
-                        <motion.div key={card.id} id={`card-${card.id}`} onClick={() => {
-                            setExpandedCardId(expandedCardId === card.id ? null : card.id);
-                            if (expandedCardId !== card.id && mapRef.current) {
-                                mapRef.current.panTo(new window.naver.maps.LatLng(card.latitude || 37.3015, card.longitude || 126.9930));
-                                setSheetHeight(50);
-                            }
-                        }} className={`p-6 rounded-[32px] border border-border bg-card-bg/50 transition-all duration-500 ${expandedCardId === card.id ? 'ring-4 ring-secondary/5 bg-card-bg border-secondary/20 shadow-2xl' : ''}`}>
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                    <div className="flex items-center space-x-2 mb-2">
-                                        <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">{card.category}</span>
-                                        {card.message && <span className="text-[10px] font-black text-secondary uppercase animate-pulse">상세있음</span>}
-                                    </div>
-                                    <h4 className="font-black text-foreground text-[18px] leading-tight mb-2">{card.place_name}</h4>
-                                    <div className={`text-[13px] font-black flex items-center ${card.is_request ? 'text-orange-600' : card.status === '여유' ? 'text-green-600' : card.status === '보통' ? 'text-blue-600' : 'text-red-600'}`}>
-                                        <div className={`w-2 h-2 rounded-full mr-1.5 ${card.is_request ? 'bg-orange-500' : card.status === '여유' ? 'bg-green-500' : card.status === '보통' ? 'bg-blue-500' : 'bg-red-500'} ${expandedCardId === card.id ? 'animate-ping' : ''}`} />
-                                        {card.is_request ? '답변 요청' : `${card.status} 상황`}
-                                    </div>
-                                </div>
-                                <div className="w-14 h-14 bg-foreground/5 rounded-3xl flex items-center justify-center text-foreground/30"><MapPin size={24} /></div>
-                            </div>
-                            {expandedCardId === card.id && (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-6 pt-6 border-t border-foreground/5 space-y-5">
-                                    {card.message && (
-                                        <div className="bg-foreground/[0.03] p-4 rounded-2xl border border-foreground/5">
-                                            <p className="text-[13px] text-foreground/70 font-medium leading-relaxed italic">"{card.message}"</p>
-                                        </div>
-                                    )}
-                                    <div className="flex space-x-2">
-                                        <button onClick={(e) => { e.stopPropagation(); handleOpenCreate("request"); }} className="flex-1 py-3.5 bg-foreground/5 text-foreground/60 rounded-2xl font-black text-[13px]">정보 업데이트</button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleOpenCreate("share"); }} className="flex-1 py-3.5 bg-secondary text-white rounded-2xl font-black text-[13px] shadow-lg shadow-secondary/20">여기에 제보</button>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </motion.div>
-                    )) : (
-                        <div className="py-20 flex flex-col items-center justify-center text-foreground/10 text-center">
-                            <MapPin size={48} className="mb-4 opacity-5" />
-                            <p className="font-black text-lg">주변에 등록된 소식이 없습니다.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
+            <MapBottomSheet 
+                sheetHeight={sheetHeight}
+                markers={markers}
+                expandedCardId={expandedCardId}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onCardClick={(id, lat, lng) => {
+                    setExpandedCardId(expandedCardId === id ? null : id);
+                    if (expandedCardId !== id && mapRef.current) {
+                        mapRef.current.panTo(new window.naver.maps.LatLng(lat, lng));
+                        setSheetHeight(50);
+                        setClickedLatLng(null);
+                    }
+                }}
+                onOpenCreate={(mode) => {
+                    if (clickedLatLng) {
+                        handleOpenCreateAt(mode, clickedLatLng.lat, clickedLatLng.lng, clickedAddress || "");
+                    } else {
+                        const center = mapRef.current.getCenter();
+                        handleOpenCreateAt(mode, center.y, center.x, storeAddress);
+                    }
+                }}
+            />
         </div>
     );
 }

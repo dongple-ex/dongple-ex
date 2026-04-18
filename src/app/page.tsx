@@ -14,7 +14,6 @@ import HeroSection from "@/components/dashboard/v2/HeroSection";
 import QuestionSummaryV2 from "@/components/dashboard/v2/QuestionSummaryV2";
 import LiveBoardTickerv2 from "@/components/dashboard/v2/LiveBoardTickerv2";
 import OfficialEventSection from "@/features/events/components/OfficialEventSection";
-import IdentityHeader from "@/features/auth/components/IdentityHeader";
 
 import { useUIStore } from "@/lib/store/uiStore";
 import { fetchPosts, subscribePosts, Post } from "@/services/postService";
@@ -61,13 +60,10 @@ export default function Home() {
             {/* V2 실시간 동형 티커 */}
             <LiveBoardTickerv2 />
 
-            {/* 사용자 정체성 헤더 */}
-            <div className="mt-4">
-                <IdentityHeader />
-            </div>
+
 
             {/* 공식 행사 섹션 (Phase 1 핵심 기능) */}
-            <div className="mt-4">
+            <div className="mt-8">
                 <OfficialEventSection />
             </div>
 

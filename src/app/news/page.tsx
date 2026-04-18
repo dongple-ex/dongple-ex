@@ -30,7 +30,7 @@ function NewsContent() {
         <div className="bg-background min-h-screen pb-32 transition-colors duration-500">
             <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border px-6 py-4 flex items-center justify-between transition-colors duration-500">
                 <div className="flex items-center space-x-4">
-                    <Link href="/v2">
+                    <Link href="/">
                         <button className="p-2 hover:bg-foreground/5 rounded-full transition-colors">
                             <ChevronLeft size={24} className="text-foreground" />
                         </button>
