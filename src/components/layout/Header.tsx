@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { MapPin, Search, Bell, ArrowLeft, SlidersHorizontal, X } from "lucide-react";
 import { useLocationStore } from "@/lib/store/locationStore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getVillageWeather, WeatherData } from "@/services/api";
 
 interface HeaderProps {
     isSearchMode?: boolean;
@@ -29,15 +30,21 @@ export default function Header({
     placeholder = "동네 소식 검색...",
     onClearSearch
 }: HeaderProps) {
-    const { regionName, fetchLocation, isLoading } = useLocationStore();
+    const { regionName, latitude, longitude, fetchLocation, isLoading } = useLocationStore();
     const router = useRouter();
+    const [weather, setWeather] = useState<WeatherData | null>(null);
 
     useEffect(() => {
-        // 컴포넌트 마운트 시 최초 1회 위치 확인 (검색 모드가 아닐 때만)
         if (!isSearchMode && !regionName) {
             fetchLocation();
         }
     }, [fetchLocation, isSearchMode, regionName]);
+
+    useEffect(() => {
+        if (latitude && longitude) {
+            getVillageWeather(latitude, longitude).then(data => setWeather(data));
+        }
+    }, [latitude, longitude]);
 
     const handleBack = () => {
         if (backUrl) {
@@ -112,6 +119,12 @@ export default function Header({
                         </span>
                     </div>
                     <div className="flex items-center space-x-4">
+                        {weather && (
+                            <div className="flex items-center space-x-1 text-sm font-bold text-gray-700 bg-gray-100 px-2.5 py-1 rounded-full cursor-pointer hover:bg-gray-200 transition-colors">
+                                <span>{weather.icon}</span>
+                                <span>{weather.temp}</span>
+                            </div>
+                        )}
                         <Search size={22} className="text-gray-700 cursor-pointer" />
                         <Bell size={22} className="text-gray-700 cursor-pointer" />
                     </div>

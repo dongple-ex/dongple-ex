@@ -143,25 +143,44 @@ export async function getCoordsFromAddress(address: string): Promise<{ lat: numb
 /**
  * 공공 데이터 API 연동: 날씨 정보 가져오기
  */
-export async function getVillageWeather(region: string): Promise<WeatherData> {
-    // TODO: 기상청 단기예보 API 연동
-    return {
-        temp: "12°",
-        condition: "맑음",
-        icon: "☀️",
-    };
+export async function getVillageWeather(lat: number, lng: number): Promise<WeatherData> {
+    try {
+        const res = await fetch(`/api/weather?lat=${lat}&lng=${lng}`);
+        if (!res.ok) throw new Error("Weather fetch failed");
+        return await res.json();
+    } catch(e) {
+        console.error("Weather API error", e);
+        return {
+            temp: "12°",
+            condition: "맑음",
+            icon: "☀️",
+        };
+    }
 }
 
 /**
  * 네이버 지역 검색 API 연동: 주변 특화 장소 찾기
  */
 export async function getNearbyPlaces(lat: number, lng: number, keyword: string): Promise<PlaceData[]> {
-    // TODO: Naver Local Search API 연동
-    console.log(`Searching for ${keyword} near ${lat}, ${lng}`);
-
-    // 모의 데이터
-    return [
-        { name: `${keyword} 1호점`, address: "강남구 역삼동 123", distance: "300m", category: keyword },
-        { name: `${keyword} 2호점`, address: "강남구 역삼동 456", distance: "500m", category: keyword },
-    ];
+    try {
+        const address = await getAddressFromCoords(lat, lng);
+        const query = `${address.regionName !== "위치 확인 불가" ? address.regionName : ""} ${keyword}`.trim();
+        const response = await fetch(`/api/search?query=${encodeURIComponent(query || keyword)}`);
+        
+        if (!response.ok) throw new Error('Search API failed');
+        const data = await response.json();
+        
+        return (data.items || []).map((item: any) => {
+            const cleanName = item.title.replace(/<[^>]*>?/gm, '');
+            return {
+                name: cleanName,
+                address: item.roadAddress || item.address,
+                distance: "", 
+                category: item.category
+            };
+        });
+    } catch (err) {
+        console.error('POI 주변 검색 실패:', err);
+        return [];
+    }
 }
