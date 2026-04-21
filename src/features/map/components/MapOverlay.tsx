@@ -9,13 +9,21 @@ interface Category {
     icon: LucideIcon;
 }
 
+interface SearchResultItem {
+    title: string;
+    mapx: string;
+    mapy: string;
+    roadAddress?: string;
+    address?: string;
+}
+
 interface MapOverlayProps {
     categories: Category[];
     selectedCategory: string;
     onCategorySelect: (id: string) => void;
     isResultOpen: boolean;
-    searchResults: any[];
-    onSelectPlace: (place: any) => void;
+    searchResults: SearchResultItem[];
+    onSelectPlace: (place: SearchResultItem) => void;
 }
 
 export default function MapOverlay({

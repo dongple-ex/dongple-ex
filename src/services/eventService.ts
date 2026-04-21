@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 
-export interface OfficialEvent {
+type EventMeta = Record<string, unknown>;
+
+interface OfficialEventRow {
     id: number;
     title: string;
     category_code: string;
@@ -12,16 +14,65 @@ export interface OfficialEvent {
     event_end_date: string;
     thumbnail_url: string;
     trust_score: number;
-    // 확장 필드
-    meta?: any;
+    events_ext?: {
+        meta?: EventMeta;
+        source?: string;
+    } | null;
+}
+
+export interface OfficialEvent {
+    id: number | string;
+    title: string;
+    category_code: string;
+    description: string;
+    lat: number;
+    lng: number;
+    address: string;
+    event_start_date: string;
+    event_end_date: string;
+    thumbnail_url: string;
+    trust_score: number;
+    meta?: EventMeta;
     source?: string;
 }
 
-/**
- * DB에서 공식 행사/축제 데이터를 가져옵니다. (P1-3: 확장 데이터 JOIN 반영)
- */
+interface TourApiEventsResponse {
+    items?: OfficialEvent[];
+}
+
+async function fetchTourApiEvents(): Promise<OfficialEvent[]> {
+    try {
+        const response = await fetch('/api/tour/events?numOfRows=30', {
+            cache: 'no-store'
+        });
+
+        if (!response.ok) {
+            return [];
+        }
+
+        const data = (await response.json()) as TourApiEventsResponse;
+        return data.items || [];
+    } catch (err) {
+        console.error('TourAPI live fetch failed:', err);
+        return [];
+    }
+}
+
+function mapDbEvents(data: OfficialEventRow[]) {
+    return data.map((item) => ({
+        ...item,
+        meta: item.events_ext?.meta || {},
+        source: item.events_ext?.source || 'TOURAPI'
+    }));
+}
+
 export async function fetchOfficialEvents(): Promise<OfficialEvent[]> {
     try {
+        const liveEvents = await fetchTourApiEvents();
+        if (liveEvents.length > 0) {
+            return liveEvents;
+        }
+
         const { data, error } = await supabase
             .from('events')
             .select('*, events_ext(*)')
@@ -32,23 +83,21 @@ export async function fetchOfficialEvents(): Promise<OfficialEvent[]> {
             return [];
         }
 
-        return (data || []).map((item: any) => ({
-            ...item,
-            meta: item.events_ext?.meta || {},
-            source: item.events_ext?.source || 'TOURAPI'
-        })) as OfficialEvent[];
+        return mapDbEvents((data || []) as OfficialEventRow[]);
     } catch (err) {
-        console.error('이벤트 서비스 에러:', err);
+        console.error('이벤트 서비스 오류:', err);
         return [];
     }
 }
 
-/**
- * 특정 이벤트의 상세 정보 및 확장 메타데이터를 가져옵니다.
- */
-export async function fetchEventDetail(eventId: number): Promise<OfficialEvent | null> {
+export async function fetchEventDetail(eventId: number | string): Promise<OfficialEvent | null> {
     try {
-        // 1. 기본 정보 조회
+        const liveEvents = await fetchTourApiEvents();
+        const liveMatch = liveEvents.find((item) => String(item.id) === String(eventId));
+        if (liveMatch) {
+            return liveMatch;
+        }
+
         const { data: event, error: eventError } = await supabase
             .from('events')
             .select('*')
@@ -57,8 +106,7 @@ export async function fetchEventDetail(eventId: number): Promise<OfficialEvent |
 
         if (eventError || !event) return null;
 
-        // 2. 확장 정보 조회 (events_ext)
-        const { data: ext, error: extError } = await supabase
+        const { data: ext } = await supabase
             .from('events_ext')
             .select('*')
             .eq('event_id', eventId)
@@ -70,7 +118,7 @@ export async function fetchEventDetail(eventId: number): Promise<OfficialEvent |
             source: ext?.source || 'TOURAPI'
         } as OfficialEvent;
     } catch (err) {
-        console.error('이벤트 상세 조회 에러:', err);
+        console.error('이벤트 상세 조회 오류:', err);
         return null;
     }
 }

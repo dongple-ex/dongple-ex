@@ -1,38 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, CheckCircle2, Plus, HelpCircle, AlertCircle, X } from "lucide-react";
+import { Plus, HelpCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
-import { fetchLiveStatus, postLiveStatus, verifyStatusWithTrust as verifyStatus, subscribeLiveUpdates } from "@/services/statusService";
+import { fetchLiveStatus, postLiveStatus, subscribeLiveUpdates } from "@/services/statusService";
+import { SHAREABLE_STATUS_OPTIONS, getStatusTheme } from "@/lib/statusTheme";
 
-interface BoardLiveStatus {
-    id: string;
-    place_name: string;
-    category: string;
-    status: string;
-    status_color: string;
-    verified_count: number;
-    is_request: boolean;
-    time_ago: string;
-    message?: string;
-    history?: { status: string; status_color: string; text: string; time: string; }[];
-}
+type LiveUpdateItem = Awaited<ReturnType<typeof fetchLiveStatus>>[number];
 
 export default function LiveStatusBoard() {
-    const [liveUpdates, setLiveUpdates] = useState<any[]>([]);
-    const [userId, setUserId] = useState<string>("");
-
-    // 로컬 스토리지에서 임시 사용자 ID 관리
-    useEffect(() => {
-        let id = localStorage.getItem('dongple_temp_id');
-        if (!id) {
-            id = `user-${Math.random().toString(36).substr(2, 9)}`;
-            localStorage.setItem('dongple_temp_id', id);
-        }
-        setUserId(id);
-    }, []);
+    const [liveUpdates, setLiveUpdates] = useState<LiveUpdateItem[]>([]);
 
     // 초기 데이터 로드 및 실시간 구독
     const loadData = async () => {
@@ -68,25 +47,8 @@ export default function LiveStatusBoard() {
         return () => clearInterval(timer);
     }, [liveUpdates.length]);
 
-    const statusOptions = [
-        { label: "여유", color: "bg-green-100 text-green-700 hover:bg-green-200 border-green-200", badgeColor: "text-green-500" },
-        { label: "보통", color: "bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200", badgeColor: "text-blue-500" },
-        { label: "혼잡", color: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200", badgeColor: "text-red-500" },
-        { label: "요청", color: "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200", badgeColor: "text-orange-500" }
-    ];
-
-    const handleAgree = async (id: string) => {
-        if (!userId) return;
-        try {
-            await verifyStatus(id, userId);
-            // 실시간 구독이 데이터를 다시 불러오므로 여기서 별도 갱신 불필요 (또는 낙관적 업데이트 가능)
-        } catch (error) {
-            alert("이미 인증하셨거나 처리 중 에러가 발생했습니다.");
-        }
-    };
-
-    const handleReplySubmit = async ({ selectedStatus, replyText, id }: any) => {
-        const option = statusOptions.find(opt => opt.label === selectedStatus);
+    const handleReplySubmit = async ({ selectedStatus, replyText, id }: { selectedStatus: string; replyText: string; id: string }) => {
+        const option = SHAREABLE_STATUS_OPTIONS.find(opt => opt.label === selectedStatus);
         const newStatus = option ? option.label : "보통";
         const newBadgeColor = option ? option.badgeColor : "text-gray-500";
 
@@ -105,48 +67,12 @@ export default function LiveStatusBoard() {
         }
     };
 
-    const handleCreateSubmit = async ({ newPlaceName, newCategory, selectedStatus, replyText, mode }: any) => {
-        const isRequest = mode === "request";
-        
-        let newStatus = "답변대기";
-        let newBadgeColor = "text-[#5D4037]";
-        
-        if (!isRequest) {
-            const statusOpt = statusOptions.find(opt => opt.label === selectedStatus);
-            if (statusOpt) {
-                newStatus = statusOpt.label;
-                newBadgeColor = statusOpt.badgeColor;
-            }
-        }
-
-        try {
-            await postLiveStatus({
-                place_name: newPlaceName,
-                category: newCategory,
-                status: newStatus,
-                status_color: newBadgeColor,
-                is_request: isRequest,
-                verified_count: 1
-            });
-        } catch (error) {
-            console.error("등록 실패:", error);
-        }
-    };
-
     const getCardBgColor = (status: string, is_request: boolean) => {
-        if (is_request) return "bg-orange-50/50 border-orange-100 shadow-orange-900/5";
-        if (status === "여유") return "bg-green-50/50 border-green-100 shadow-green-900/5";
-        if (status === "보통") return "bg-blue-50/50 border-blue-100 shadow-blue-900/5";
-        if (status === "혼잡") return "bg-red-50/50 border-red-100 shadow-red-900/5";
-        return "bg-white border-gray-100";
+        return getStatusTheme(status, is_request).card;
     };
 
     const getIndicatorColor = (status: string, is_request: boolean) => {
-        if (is_request) return "bg-orange-500";
-        if (status === "여유") return "bg-green-500";
-        if (status === "보통") return "bg-blue-500";
-        if (status === "혼잡") return "bg-red-500";
-        return "bg-blue-500";
+        return getStatusTheme(status, is_request).indicator;
     };
 
     const router = useRouter();
@@ -233,7 +159,7 @@ export default function LiveStatusBoard() {
                                 openBottomSheet("liveReply", { 
                                     mode, 
                                     defaultStatus, 
-                                    onSubmit: (data: any) => handleReplySubmit({ ...data, id: item.id }) 
+                                    onSubmit: (data: { selectedStatus: string; replyText: string }) => handleReplySubmit({ ...data, id: item.id }) 
                                 });
                             }}
                             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shadow-sm ${liveUpdates[currentIndex].is_request ? 'bg-[#5D4037] text-white hover:bg-[#4E342E]' : 'bg-white border border-[#D7CCC8] text-[#5D4037] hover:bg-[#EFEBE9]'}`}

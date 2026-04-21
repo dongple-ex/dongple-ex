@@ -20,7 +20,7 @@ interface AuthState {
     initAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
     userId: "",
     publicId: "",
     profile: {
@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
         // 2. Supabase 프로필 자동 생성/조회 (Upsert)
         try {
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('profiles')
                 .upsert([
                     { 

@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect, Suspense } from "react";
+import { useState, useRef, useEffect, Suspense, useCallback } from "react";
 import { fetchLiveStatus, LiveStatus, subscribeLiveUpdates } from "@/services/statusService";
 import { getAddressFromCoords, getCoordsFromAddress, searchPlaces } from "@/services/api";
 import { fetchOfficialEvents } from "@/services/eventService";
-import Script from "next/script";
 import { createRoot } from "react-dom/client";
 import PulseMarker from "@/components/map/PulseMarker";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useLocationStore } from "@/lib/store/locationStore";
-import { motion, AnimatePresence } from "framer-motion";
 import { 
     Home, Trees, Dumbbell, Coffee, ShoppingBag, Store, ParkingCircle, HeartPulse, Building2 
 } from "lucide-react";
@@ -23,9 +21,27 @@ import { StatusMarker, ClickTargetMarker } from "@/features/map/components/Marke
 
 declare global {
   interface Window {
-    naver: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    kakao: any;
   }
 }
+
+type MapPoint = { lat: number; lng: number };
+
+type SearchResultItem = {
+    title: string;
+    mapx: string;
+    mapy: string;
+    roadAddress?: string;
+    address?: string;
+};
+
+type OfficialEventMarker = Awaited<ReturnType<typeof fetchOfficialEvents>>[number];
+
+type MarkerEntry = {
+    marker: { setMap: (map: unknown) => void };
+    root: ReturnType<typeof createRoot> | null;
+};
 
 const CATEGORIES = [
     { id: "전체", label: "전체", icon: Home },
@@ -40,9 +56,15 @@ const CATEGORIES = [
     { id: "기관", label: "기관", icon: Building2 },
 ];
 
+const createLatLng = (lat: number, lng: number) => new window.kakao.maps.LatLng(lat, lng);
+
+const getLatLngPoint = (latlng: { getLat: () => number; getLng: () => number }) => ({
+    lat: latlng.getLat(),
+    lng: latlng.getLng(),
+});
+
 function MapContent() {
     const router = useRouter();
-    const searchParams = useSearchParams();
     const openGlobalBottomSheet = useUIStore((state) => state.openBottomSheet);
     const { 
         latitude: storeLat, 
@@ -54,24 +76,21 @@ function MapContent() {
     const [markers, setMarkers] = useState<LiveStatus[]>([]);
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
-    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
     const [isResultOpen, setIsResultOpen] = useState(false);
-    const [isMapLoading, setIsMapLoading] = useState(true);
-    const [isMapMoving, setIsMapMoving] = useState(false);
     const [sheetHeight, setSheetHeight] = useState(24);
     const [isDragging, setIsDragging] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState("전체");
 
     // Click-to-Pin states
-    const [clickedLatLng, setClickedLatLng] = useState<{ lat: number, lng: number } | null>(null);
+    const [clickedLatLng, setClickedLatLng] = useState<MapPoint | null>(null);
     const [clickedAddress, setClickedAddress] = useState<string | null>(null);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mapRef = useRef<any>(null);
-    const markersRef = useRef<any[]>([]);
-    const rootsRef = useRef<any[]>([]);
-    const tempMarkerRef = useRef<any>(null);
-    const clickMarkerRef = useRef<any>(null);
-    const [officialEvents, setOfficialEvents] = useState<any[]>([]);
+    const markersRef = useRef<MarkerEntry[]>([]);
+    const clickMarkerRef = useRef<{ setMap: (map: unknown) => void } | null>(null);
+    const [officialEvents, setOfficialEvents] = useState<OfficialEventMarker[]>([]);
     const isFetchingOfficial = useRef(false);
     const startY = useRef(0);
     const startHeight = useRef(24);
@@ -91,11 +110,23 @@ function MapContent() {
         return () => { sub.unsubscribe(); };
     }, []);
 
+    const clearRenderedMarkers = useCallback(() => {
+        markersRef.current.forEach(({ marker, root }) => {
+            marker?.setMap?.(null);
+            root?.unmount?.();
+        });
+        markersRef.current = [];
+    }, []);
+
     useEffect(() => {
-        if (mapRef.current) {
-            renderMarkers();
-        }
-    }, [markers, officialEvents, expandedCardId, clickedLatLng]);
+        return () => {
+            clearRenderedMarkers();
+            if (clickMarkerRef.current) {
+                clickMarkerRef.current.setMap(null);
+                clickMarkerRef.current = null;
+            }
+        };
+    }, [clearRenderedMarkers]);
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
         setIsDragging(true);
@@ -107,7 +138,7 @@ function MapContent() {
     const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
         if (!isDragging) return;
         const deltaVH = ((e.clientY - startY.current) / window.innerHeight) * 100;
-        let newHeight = Math.max(15, Math.min(92, startHeight.current - deltaVH));
+        const newHeight = Math.max(15, Math.min(92, startHeight.current - deltaVH));
         setSheetHeight(newHeight);
     };
 
@@ -132,7 +163,7 @@ function MapContent() {
             } else {
                 const coords = await getCoordsFromAddress(queryToSearch);
                 if (coords && mapRef.current) {
-                    mapRef.current.setCenter(new window.naver.maps.LatLng(coords.lat, coords.lng));
+                    mapRef.current.setCenter(createLatLng(coords.lat, coords.lng));
                     setClickedLatLng(coords);
                     const addr = await getAddressFromCoords(coords.lat, coords.lng);
                     setClickedAddress(addr.fullAddress);
@@ -143,55 +174,50 @@ function MapContent() {
         }
     };
 
-    const handleSelectPlace = async (place: any) => {
+    const handleSelectPlace = async (place: SearchResultItem) => {
         setIsResultOpen(false);
-        if (window.naver?.maps?.TransCoord) {
-            const tm128 = new window.naver.maps.Point(parseInt(place.mapx), parseInt(place.mapy));
-            const latlng = window.naver.maps.TransCoord.fromTM128ToLatLng(tm128);
+        if (window.kakao?.maps) {
+            const lat = parseFloat(place.mapy);
+            const lng = parseFloat(place.mapx);
+            const latlng = createLatLng(lat, lng);
             if (mapRef.current) {
                 mapRef.current.setCenter(latlng);
-                mapRef.current.setZoom(17);
-                setClickedLatLng({ lat: latlng.y, lng: latlng.x });
-                setClickedAddress(place.roadAddress || place.address);
+                mapRef.current.setLevel(3);
+                setClickedLatLng({ lat, lng });
+                setClickedAddress(place.roadAddress || place.address || place.title);
             }
         }
     };
 
-    const initMap = () => {
-        if (!window.naver?.maps || mapRef.current) return;
+    const initMap = useCallback(() => {
+        if (!window.kakao?.maps || mapRef.current) return;
         const container = document.getElementById('map-container');
         if (!container) return;
 
-        const map = new window.naver.maps.Map(container, {
-            center: new window.naver.maps.LatLng(storeLat, storeLng),
-            zoom: 15,
-            logoControl: false,
-            mapDataControl: false,
-            scaleControl: false,
-            mapTypeControl: false,
+        const map = new window.kakao.maps.Map(container, {
+            center: createLatLng(storeLat, storeLng),
+            level: 4,
         });
         mapRef.current = map;
 
-        window.naver.maps.Event.addListener(map, 'idle', async () => {
-            setIsMapLoading(false);
-            setIsMapMoving(false);
+        window.kakao.maps.event.addListener(map, 'idle', async () => {
             const center = map.getCenter();
-            const addrResult = await getAddressFromCoords(center.y, center.x);
-            setLocation(center.y, center.x, addrResult.fullAddress, addrResult.regionName);
+            const { lat, lng } = getLatLngPoint(center);
+            const addrResult = await getAddressFromCoords(lat, lng);
+            setLocation(lat, lng, addrResult.fullAddress, addrResult.regionName);
         });
 
-        window.naver.maps.Event.addListener(map, 'click', async (e: any) => {
-            const latlng = e.coord;
-            setClickedLatLng({ lat: latlng.y, lng: latlng.x });
-            const addrResult = await getAddressFromCoords(latlng.y, latlng.x);
+        window.kakao.maps.event.addListener(map, 'click', async (e: { latLng: { getLat: () => number; getLng: () => number } }) => {
+            const { lat, lng } = getLatLngPoint(e.latLng);
+            setClickedLatLng({ lat, lng });
+            const addrResult = await getAddressFromCoords(lat, lng);
             setClickedAddress(addrResult.fullAddress);
             setSheetHeight(15);
             setExpandedCardId(null);
             setIsResultOpen(false);
         });
 
-        window.naver.maps.Event.addListener(map, 'dragstart', () => {
-            setIsMapMoving(true);
+        window.kakao.maps.event.addListener(map, 'dragstart', () => {
             setIsResultOpen(false);
         });
 
@@ -203,38 +229,49 @@ function MapContent() {
             isFetchingOfficial.current = false;
         };
         loadOfficial();
-    };
+    }, [setLocation, storeLat, storeLng]);
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && window.naver?.maps && !mapRef.current) {
-            initMap();
-        }
-    }, []);
+        if (typeof window === 'undefined' || mapRef.current) return;
 
-    const handleOpenCreateAt = (mode: string, lat: number, lng: number, address: string) => {
+        if (window.kakao?.maps?.load) {
+            window.kakao.maps.load(initMap);
+            return;
+        }
+
+        const timer = window.setInterval(() => {
+            if (window.kakao?.maps?.load) {
+                window.clearInterval(timer);
+                window.kakao.maps.load(initMap);
+            }
+        }, 100);
+
+        return () => window.clearInterval(timer);
+    }, [initMap]);
+
+    const handleOpenCreateAt = useCallback((mode: string, lat: number, lng: number, address: string) => {
         openGlobalBottomSheet("liveCreate", {
             mode,
             address,
             latitude: lat,
             longitude: lng
         });
-    };
+    }, [openGlobalBottomSheet]);
 
-    const renderMarkers = () => {
-        if (!window.naver?.maps || !mapRef.current) return;
+    const renderMarkers = useCallback(() => {
+        if (!window.kakao?.maps || !mapRef.current) return;
 
-        markersRef.current.forEach(m => m.setMap(null));
-        markersRef.current = [];
-        rootsRef.current.forEach(root => root.unmount());
-        rootsRef.current = [];
+        clearRenderedMarkers();
 
-        if (clickMarkerRef.current) clickMarkerRef.current.setMap(null);
+        if (clickMarkerRef.current) {
+            clickMarkerRef.current.setMap(null);
+            clickMarkerRef.current = null;
+        }
 
         // 1. Click-to-Pin Marker
         if (clickedLatLng) {
             const el = document.createElement('div');
             const root = createRoot(el);
-            rootsRef.current.push(root);
 
             root.render(
                 <ClickTargetMarker 
@@ -243,12 +280,15 @@ function MapContent() {
                 />
             );
 
-            const marker = new window.naver.maps.Marker({
-                position: new window.naver.maps.LatLng(clickedLatLng.lat, clickedLatLng.lng),
+            const marker = new window.kakao.maps.CustomOverlay({
+                position: createLatLng(clickedLatLng.lat, clickedLatLng.lng),
                 map: mapRef.current,
-                icon: { content: el, anchor: new window.naver.maps.Point(0, 0) }
+                content: el,
+                xAnchor: 0.5,
+                yAnchor: 1,
             });
             clickMarkerRef.current = marker;
+            markersRef.current.push({ marker, root });
         }
 
         // 2. Live Status Markers (Shape: Balloon with status dot)
@@ -258,40 +298,50 @@ function MapContent() {
             const isSelected = expandedCardId === m.id;
             const el = document.createElement('div');
             const root = createRoot(el);
-            rootsRef.current.push(root);
 
             root.render(
-                <StatusMarker 
-                    status={m.status} 
-                    isRequest={m.is_request} 
-                    isSelected={isSelected} 
-                />
+                <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                        setExpandedCardId(m.id);
+                        setSheetHeight(50);
+                        setClickedLatLng(null);
+                        mapRef.current.panTo(createLatLng(m.latitude || 37.3015, m.longitude || 126.9930));
+                        setTimeout(() => {
+                            const card = document.getElementById(`card-${m.id}`);
+                            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 300);
+                    }}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            event.currentTarget.click();
+                        }
+                    }}
+                >
+                    <StatusMarker 
+                        status={m.status} 
+                        isRequest={m.is_request} 
+                        isSelected={isSelected} 
+                    />
+                </div>
             );
 
-            const marker = new window.naver.maps.Marker({
-                position: new window.naver.maps.LatLng(m.latitude || 37.3015, m.longitude || 126.9930),
+            const marker = new window.kakao.maps.CustomOverlay({
+                position: createLatLng(m.latitude || 37.3015, m.longitude || 126.9930),
                 map: mapRef.current,
-                icon: { content: el, anchor: new window.naver.maps.Point(0, 0) }
+                content: el,
+                xAnchor: 0.5,
+                yAnchor: 1,
             });
-
-            window.naver.maps.Event.addListener(marker, 'click', () => {
-                setExpandedCardId(m.id);
-                setSheetHeight(50);
-                setClickedLatLng(null); 
-                mapRef.current.panTo(marker.getPosition());
-                setTimeout(() => {
-                    const el = document.getElementById(`card-${m.id}`);
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 300);
-            });
-            markersRef.current.push(marker);
+            markersRef.current.push({ marker, root });
         });
 
         // 3. Official Event Markers (Shape: Circular Pulse)
         officialEvents.forEach(festival => {
             const el = document.createElement('div');
             const root = createRoot(el);
-            rootsRef.current.push(root);
 
             root.render(
                 <PulseMarker 
@@ -305,28 +355,30 @@ function MapContent() {
                         });
                         setSheetHeight(50);
                         setClickedLatLng(null);
-                        mapRef.current.panTo(new window.naver.maps.LatLng(festival.lat, festival.lng));
+                        mapRef.current.panTo(createLatLng(festival.lat, festival.lng));
                     }}
                 />
             );
 
-            const marker = new window.naver.maps.Marker({
-                position: new window.naver.maps.LatLng(festival.lat, festival.lng),
+            const marker = new window.kakao.maps.CustomOverlay({
+                position: createLatLng(festival.lat, festival.lng),
                 map: mapRef.current,
-                icon: { content: el, anchor: new window.naver.maps.Point(0, 0) }
+                content: el,
+                xAnchor: 0.5,
+                yAnchor: 1,
             });
-            markersRef.current.push(marker);
+            markersRef.current.push({ marker, root });
         });
-    };
+    }, [clickedAddress, clickedLatLng, expandedCardId, markers, officialEvents, selectedCategory, clearRenderedMarkers, handleOpenCreateAt, openGlobalBottomSheet]);
+
+    useEffect(() => {
+        if (mapRef.current) {
+            renderMarkers();
+        }
+    }, [renderMarkers]);
 
     return (
         <div className="relative w-full h-[100dvh] bg-background overflow-hidden flex flex-col max-w-md mx-auto shadow-2xl">
-            <Script 
-                src={`https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}&submodules=geocoder&submodules=transcoord`}
-                onLoad={initMap}
-                strategy="afterInteractive"
-            />
-            
             <div className="absolute top-6 left-5 right-5 z-50 pointer-events-none">
                 <div className="flex flex-col space-y-3">
                     <MapHeader 
@@ -363,7 +415,7 @@ function MapContent() {
                 onCardClick={(id, lat, lng) => {
                     setExpandedCardId(expandedCardId === id ? null : id);
                     if (expandedCardId !== id && mapRef.current) {
-                        mapRef.current.panTo(new window.naver.maps.LatLng(lat, lng));
+                        mapRef.current.panTo(createLatLng(lat, lng));
                         setSheetHeight(50);
                         setClickedLatLng(null);
                     }
@@ -373,7 +425,8 @@ function MapContent() {
                         handleOpenCreateAt(mode, clickedLatLng.lat, clickedLatLng.lng, clickedAddress || "");
                     } else {
                         const center = mapRef.current.getCenter();
-                        handleOpenCreateAt(mode, center.y, center.x, storeAddress);
+                        const { lat, lng } = getLatLngPoint(center);
+                        handleOpenCreateAt(mode, lat, lng, storeAddress);
                     }
                 }}
             />

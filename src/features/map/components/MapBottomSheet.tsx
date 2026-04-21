@@ -83,7 +83,7 @@ export default function MapBottomSheet({
                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-6 pt-6 border-t border-foreground/5 space-y-5">
                                 {card.message && (
                                     <div className="bg-foreground/[0.03] p-4 rounded-2xl border border-foreground/5">
-                                        <p className="text-[13px] text-foreground/70 font-medium leading-relaxed italic">"{card.message}"</p>
+                                        <p className="text-[13px] text-foreground/70 font-medium leading-relaxed italic">&quot;{card.message}&quot;</p>
                                     </div>
                                 )}
                                 <div className="flex space-x-2">

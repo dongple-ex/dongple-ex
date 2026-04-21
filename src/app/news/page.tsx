@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
     CloudSun, Coffee, Building2, Store,
-    HeartPulse, Landmark, ChevronLeft
+    HeartPulse, Landmark, ChevronLeft, LayoutList, MessageSquare, Share2
 } from "lucide-react";
 import Link from "next/link";
 import CategorizedNewsCarousel from "@/components/news/CategorizedNewsCarousel";
@@ -41,33 +41,40 @@ function NewsContent() {
                 </div>
             </header>
 
-            {/* Quick Hero Banner with Background Image */}
-            <section className="px-6 pt-8 pb-4">
+            <section className="px-6 pt-6 pb-3">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="relative h-56 bg-foreground/10 rounded-[40px] px-8 py-10 flex flex-col justify-end text-white shadow-2xl overflow-hidden group"
+                    className="rounded-[32px] border border-border bg-card-bg p-6 shadow-sm"
                 >
-                    <motion.img
-                        src="https://tse1.mm.bing.net/th/id/OIP.5DdnYb82wRb8F3a84o0lJQHaEK?rs=1&pid=ImgDetMain&o=7&rm=3"
-                        alt="Neighborhood"
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-widest text-accent">Community Board</p>
+                            <h2 className="mt-2 text-[26px] font-black tracking-tight text-foreground">동네 소식란</h2>
+                            <p className="mt-3 max-w-[320px] text-[13px] font-medium leading-relaxed text-foreground/60">
+                                상황공유가 지금 당장의 현장을 빠르게 전하는 기능이라면,
+                                소식란은 경험과 정보, 질문과 추천을 게시글로 남기는 동네 커뮤니티 공간입니다.
+                            </p>
+                        </div>
+                        <LayoutList size={26} className="shrink-0 text-accent" />
+                    </div>
 
-                    <div className="relative z-10">
-                        <motion.span
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="text-[11px] font-black px-4 py-1.5 bg-accent/90 text-white rounded-full backdrop-blur-md mb-4 inline-block shadow-lg"
-                        >
-                            실시간 핫이슈
-                        </motion.span>
-                        <h2 className="text-3xl font-black leading-tight mb-2 tracking-tight">
-                            만석공원 이번 주말<br />벚꽃 축제가 열립니다!
-                        </h2>
-                        <p className="text-xs text-white/70 font-bold mb-1">우리 이웃들이 가장 많이 확인한 소식</p>
+                    <div className="mt-5 grid grid-cols-3 gap-2.5">
+                        <div className="rounded-2xl bg-nav-bg px-3 py-3 text-center">
+                            <MessageSquare size={15} className="mx-auto mb-1 text-secondary" />
+                            <p className="text-[10px] font-black uppercase tracking-wider text-foreground/40">대화형</p>
+                            <p className="mt-1 text-[12px] font-bold text-foreground">댓글로 이어짐</p>
+                        </div>
+                        <div className="rounded-2xl bg-nav-bg px-3 py-3 text-center">
+                            <Share2 size={15} className="mx-auto mb-1 text-secondary" />
+                            <p className="text-[10px] font-black uppercase tracking-wider text-foreground/40">게시형</p>
+                            <p className="mt-1 text-[12px] font-bold text-foreground">글과 공유 중심</p>
+                        </div>
+                        <div className="rounded-2xl bg-nav-bg px-3 py-3 text-center">
+                            <LayoutList size={15} className="mx-auto mb-1 text-secondary" />
+                            <p className="text-[10px] font-black uppercase tracking-wider text-foreground/40">맥락형</p>
+                            <p className="mt-1 text-[12px] font-bold text-foreground">설명과 경험 축적</p>
+                        </div>
                     </div>
                 </motion.div>
             </section>

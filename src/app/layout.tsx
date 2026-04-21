@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import GlobalModalProvider from "@/components/ui/GlobalModalProvider";
-import NaverScript from "@/components/map/NaverScript";
+import KakaoScript from "@/components/map/KakaoScript";
 import NavigationWrapper from "@/components/layout/NavigationWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -51,7 +51,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${inter.className} bg-gray-50`}>
-        <NaverScript />
+        <KakaoScript />
         <GlobalModalProvider>
           <NavigationWrapper>
             {children}

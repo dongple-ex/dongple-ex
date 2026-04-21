@@ -50,7 +50,7 @@ export const useLocationStore = create<LocationState>((set) => ({
                             isLoading: false 
                         });
                         resolve();
-                    } catch (err) {
+                    } catch {
                         set({ error: "Failed to fetch address", isLoading: false });
                         resolve();
                     }

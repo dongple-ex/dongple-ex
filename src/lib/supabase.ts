@@ -59,7 +59,31 @@ const mockEvents = [
   }
 ];
 
-const mockSupabase = {
+type MockQueryResult<T> = Promise<{ data: T; error: null }>;
+
+type MockEvent = (typeof mockEvents)[number];
+
+interface MockSupabaseClient {
+  from: (table: string) => {
+    select: () => {
+      order: () => {
+        limit: () => MockQueryResult<MockEvent[] | []>;
+        gt: () => { order: () => MockQueryResult<[]> };
+      };
+      eq: () => { order: () => MockQueryResult<[]> };
+    };
+    insert: () => { select: () => MockQueryResult<[]> };
+    update: () => { eq: () => MockQueryResult<[]> };
+  };
+  channel: () => {
+    on: () => {
+      subscribe: () => { unsubscribe: () => void };
+    };
+  };
+  rpc: () => Promise<{ data: null; error: null }>;
+}
+
+const mockSupabase: MockSupabaseClient = {
   from: (table: string) => ({
     select: () => ({
       order: () => ({
@@ -88,4 +112,4 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = (supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('placeholder')) 
   ? createClient(supabaseUrl, supabaseAnonKey)
-  : mockSupabase as any;
+  : mockSupabase;

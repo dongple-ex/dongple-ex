@@ -4,7 +4,15 @@ import axios from 'axios';
  * 서비스 장애 및 주요 이벤트 알림용 Slack Notifier
  */
 
-export async function sendSlackNotification(message: string, data?: any, type: 'SUCCESS' | 'ERROR' | 'INFO' = 'INFO') {
+type NotificationPayload = {
+  error?: string;
+  failed?: number;
+  total?: number;
+  success?: number;
+  details?: string;
+} & Record<string, unknown>;
+
+export async function sendSlackNotification(message: string, data?: NotificationPayload, type: 'SUCCESS' | 'ERROR' | 'INFO' = 'INFO') {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
   if (!webhookUrl) {
     console.log(`[Slack Mock] ${type}: ${message}`, data || '');
@@ -19,7 +27,6 @@ export async function sendSlackNotification(message: string, data?: any, type: '
 
   try {
     const isError = !!(data?.error || (data?.failed && data.failed > 0));
-    const statusEmoji = isError ? '🔴' : '🟢';
     
     const payload = {
       text: type === 'SUCCESS' ? `✅ *[동플 허브] 작업 성공: ${message}*` : type === 'ERROR' ? `🚨 *[동플 허브] 장애 발생: ${message}*` : `ℹ️ *[동플 허브] 정보 알림: ${message}*`,

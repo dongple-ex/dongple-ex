@@ -9,6 +9,11 @@ const OLAT = 38.0;
 const XO = 43; 
 const YO = 136; 
 
+interface WeatherApiItem {
+    category: string;
+    fcstValue: string;
+}
+
 function convertToGrid(lat: number, lng: number) {
     const DEGRAD = Math.PI / 180.0;
     const re = RE / GRID;
@@ -83,12 +88,12 @@ export async function GET(request: NextRequest) {
         }
 
         const data = await res.json();
-        const items = data.response?.body?.items?.item || [];
+        const items: WeatherApiItem[] = data.response?.body?.items?.item || [];
 
         // 온도(T1H), 하늘상태(SKY), 강수형태(PTY)
         let t1h = "22", sky = "1", pty = "0";
 
-        items.forEach((it: any) => {
+        items.forEach((it) => {
             if (it.category === 'T1H') t1h = it.fcstValue;
             if (it.category === 'SKY') sky = it.fcstValue;
             if (it.category === 'PTY') pty = it.fcstValue;

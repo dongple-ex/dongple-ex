@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { 
     Heart, MessageSquare, Share2, ShieldCheck, 
-    Star, Activity, Clock, User as UserIcon,
-    Shield
+    Star, Activity, Clock, User as UserIcon
 } from "lucide-react";
 import { Post, fetchComments, likePost } from "@/services/postService";
 
@@ -14,15 +13,26 @@ interface PostDetailProps {
     onUpdate?: () => void;
 }
 
+interface CommentItem {
+    content: string;
+    created_at: string;
+    is_anonymous?: boolean;
+}
+
+interface OfficialPost extends Post {
+    is_official?: boolean;
+}
+
 export default function PostDetail({ post, onUpdate }: PostDetailProps) {
-    const [comments, setComments] = useState<any[]>([]);
+    const officialPost = post as OfficialPost;
+    const [comments, setComments] = useState<CommentItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [localLikes, setLocalLikes] = useState(post.likes_count);
     const [isLiked, setIsLiked] = useState(false);
 
     useEffect(() => {
         // 공식 데이터(TourAPI)이거나 ID가 없는 경우 댓글 조회를 건너뜁니다.
-        if (!post.id || (post as any).is_official) {
+        if (!post.id || officialPost.is_official) {
             setIsLoading(false);
             return;
         }
@@ -39,7 +49,7 @@ export default function PostDetail({ post, onUpdate }: PostDetailProps) {
             }
         };
         loadComments();
-    }, [post.id, (post as any).is_official]);
+    }, [officialPost.is_official, post.id]);
 
     const handleLike = async () => {
         try {

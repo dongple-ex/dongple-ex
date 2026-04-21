@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
+import { getStatusTheme } from "@/lib/statusTheme";
 
 /**
  * 실시간 제보 상태 마커
@@ -12,7 +14,7 @@ interface StatusMarkerProps {
 }
 
 export function StatusMarker({ status, isRequest, isSelected }: StatusMarkerProps) {
-    const statusColorClass = isRequest ? 'bg-orange-500' : status === '여유' ? 'bg-green-500' : status === '보통' ? 'bg-blue-500' : 'bg-red-500';
+    const theme = getStatusTheme(status, isRequest);
     
     return (
         <motion.div 
@@ -21,7 +23,7 @@ export function StatusMarker({ status, isRequest, isSelected }: StatusMarkerProp
             className={`flex flex-col items-center transform -translate-x-1/2 -translate-y-full cursor-pointer transition-all duration-300 ${isSelected ? 'z-50' : 'hover:scale-110 z-10'}`}
         >
             <div className="px-3 py-1.5 ring-1 ring-black/5 shadow-2xl rounded-2xl text-white text-[12px] font-black flex items-center bg-white/90 backdrop-blur-xl border border-white/40">
-                <div className={`w-2.5 h-2.5 rounded-full mr-2 ${statusColorClass} ${isSelected ? 'animate-ping' : 'animate-pulse'} shadow-sm`}></div>
+                <div className={`w-2.5 h-2.5 rounded-full mr-2 ${theme.indicator} ${isSelected ? 'animate-ping' : 'animate-pulse'} shadow-sm`}></div>
                 <span className="text-foreground font-black">{isRequest ? '요청' : status}</span>
             </div>
             <div className="w-2 h-2 bg-white/90 rotate-45 -translate-y-1 shadow-sm border-r border-b border-black/5"></div>
@@ -62,9 +64,11 @@ export function ClickTargetMarker({ address, onReport }: ClickTargetMarkerProps)
             </motion.div>
             {/* 마커 본체: 바운싱하는 동플 아이콘 */}
             <div className="w-10 h-10 bg-white rounded-full border-2 border-secondary/20 shadow-2xl flex items-center justify-center animate-bounce overflow-hidden relative">
-                <img 
+                <Image 
                     src="/favicon-marker.png" 
                     alt="동플 선택" 
+                    width={40}
+                    height={40}
                     className="w-full h-full object-cover p-1.5"
                 />
                 {/* 링 효과 */}

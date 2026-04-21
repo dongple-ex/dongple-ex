@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { ArrowRight, LucideIcon } from "lucide-react";
 import NewsCard from "./NewsCard";
 import { Post, fetchPostsByCategory } from "@/services/postService";
@@ -11,6 +10,10 @@ interface CategorizedNewsCarouselProps {
     category: string;
     icon: LucideIcon;
     color?: string;
+}
+
+interface MockPost extends Post {
+    image_url?: string;
 }
 
 export default function CategorizedNewsCarousel({ title, category, icon: Icon, color = "text-accent" }: CategorizedNewsCarouselProps) {
@@ -75,7 +78,7 @@ export default function CategorizedNewsCarousel({ title, category, icon: Icon, c
 }
 
 // UI 확인을 위한 목 데이터 생성기
-function generateMockNews(category: string, count: number): any[] {
+function generateMockNews(category: string, count: number): MockPost[] {
     const newsTemplates: Record<string, string[]> = {
         "날씨": ["오늘 오후 갑작스러운 소나기 주의하세요!", "이번 주말 나들이 가기 딱 좋은 날씨입니다.", "내일 오전 미세먼지 농도 '나쁨', 마스크 챙기세요."],
         "카페": ["동네에 새로 생긴 디저트 카페, 분위기 너무 좋네요.", "오늘만 커피 1+1 이벤트 하는 카페 공유합니다!", "재택근무하기 좋은 조용한 카페 추천."],

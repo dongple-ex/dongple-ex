@@ -1,13 +1,18 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { MessageSquare, Heart, Share2, ShieldCheck, Star, Activity, ExternalLink, LayoutList } from "lucide-react";
 import { Post, likePost } from "@/services/postService";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useState } from "react";
 
+interface CardItem extends Post {
+    image_url?: string;
+}
+
 interface NewsCardProps {
-    item: Post | any;
+    item: CardItem;
     isRss?: boolean;
     onUpdate?: () => void;
 }
@@ -68,14 +73,19 @@ export default function NewsCard({ item, isRss, onUpdate }: NewsCardProps) {
             {/* ... rest unchanged ... */}
             <div className="h-64 bg-gradient-to-br from-foreground/5 to-foreground/10 relative overflow-hidden">
                 {item.image_url ? (
-                    <motion.img 
+                    <motion.div
                         initial={{ scale: 1.1 }}
                         whileHover={{ scale: 1.2 }}
                         transition={{ duration: 0.8 }}
-                        src={item.image_url} 
-                        alt={item.title} 
-                        className="w-full h-full object-cover" 
-                    />
+                        className="w-full h-full"
+                    >
+                        <Image
+                            src={item.image_url}
+                            alt={item.title || "동네 소식 이미지"}
+                            fill
+                            className="w-full h-full object-cover"
+                        />
+                    </motion.div>
                 ) : (
                     <div className="w-full h-full flex items-center justify-center opacity-20">
                         <LayoutList size={48} />
@@ -139,4 +149,3 @@ export default function NewsCard({ item, isRss, onUpdate }: NewsCardProps) {
         </motion.div>
     );
 }
-

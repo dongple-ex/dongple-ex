@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { 
-    ArrowLeft, Calendar, MapPin, BadgeCheck, Search, Filter, 
+    ArrowLeft, Calendar, MapPin, BadgeCheck, Search,
     PartyPopper, Trophy, Music, Ghost 
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { fetchOfficialEvents, OfficialEvent } from "@/services/eventService";
 import { useUIStore } from "@/lib/store/uiStore";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 const CATEGORIES = [
     { id: "all", label: "전체", icon: PartyPopper },
@@ -130,9 +131,10 @@ export default function EventsPage() {
                                 {/* Event Image (P2-2: 실제 이미지 렌더링 및 Fallback) */}
                                 <div className="relative h-44 bg-gray-100 overflow-hidden">
                                     {event.thumbnail_url ? (
-                                        <img 
+                                        <Image 
                                             src={event.thumbnail_url} 
                                             alt={event.title}
+                                            fill
                                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                             onError={(e) => {
                                                 (e.target as HTMLImageElement).style.display = 'none';

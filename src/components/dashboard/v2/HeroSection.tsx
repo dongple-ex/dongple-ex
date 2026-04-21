@@ -1,120 +1,87 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Users, PartyPopper, ArrowRight, Store, CloudSun } from "lucide-react";
+import { motion } from "framer-motion";
+import { MapPinned, Plus, ShieldCheck, ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 
-const slides = [
-  {
-    id: 1,
-    badge: "30,000+ 이웃들이 기록 중",
-    icon: <Users size={14} className="text-[#A67C52]" />,
-    title: <>동플 바로!<br /><span className="bg-gradient-to-r from-[#A67C52] to-[#D7CCC8] bg-clip-text text-transparent">우리 동네 순간</span>을 기록하세요</>,
-    desc: "지금 이 순간, 우리 동네에서 무슨 일이?\n가장 빠르고 정확한 동네 브리핑을 만나보세요.",
-    cta: "지금 바로 시작하기",
-    href: "/map",
-    color: "bg-[#795548]"
-  },
-  {
-    id: 2,
-    badge: "동네 사장님들의 핫한 소식",
-    icon: <Store size={14} className="text-green-400" />,
-    title: <>지금 내 주변<br /><span className="bg-gradient-to-r from-green-400 to-emerald-200 bg-clip-text text-transparent">맛집과 할인 정보</span></>,
-    desc: "우리 동네 단골 가게의 오늘 소식,\n놓치지 말고 확인해 보세요!",
-    cta: "동네 가게 둘러보기",
-    href: "/map?q=만석공원 맛집",
-    color: "bg-[#2E7D32]"
-  },
-  {
-    id: 3,
-    badge: "오늘의 우리 동네 테마",
-    icon: <CloudSun size={14} className="text-blue-400" />,
-    title: <>맑은 하늘 아래,<br /><span className="bg-gradient-to-r from-blue-400 to-sky-200 bg-clip-text text-transparent">함께 산책할까요?</span></>,
-    desc: "만석공원 이번 주말 인기 산책 코스,\n이웃들이 추천하는 장소를 확인하세요.",
-    cta: "산책 코스 보기",
-    href: "/map?q=만석공원",
-    color: "bg-blue-600"
-  }
-];
-
 export default function HeroSection() {
-  const [current, setCurrent] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % slides.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
-
   return (
-    <section className="relative px-6 pt-12 pb-24 overflow-hidden bg-background text-foreground rounded-b-[40px] shadow-2xl h-[480px] transition-colors duration-500">
-      {/* Dynamic Background Orbs */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={current}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.15 }}
-          exit={{ opacity: 0 }}
-          className={`absolute inset-0 transition-colors duration-1000 dark:opacity-20`}
-        >
-          <div className={`absolute top-[-10%] left-[-10%] w-64 h-64 ${slides[current].color} rounded-full blur-[100px]`} />
-          <div className={`absolute bottom-[-10%] right-[-10%] w-64 h-64 ${slides[(current + 1) % slides.length].color} rounded-full blur-[100px]`} />
-        </motion.div>
-      </AnimatePresence>
+    <section className="relative overflow-hidden rounded-b-[34px] bg-background px-6 pb-12 pt-9 text-foreground shadow-2xl transition-colors duration-500">
+      <div className="absolute inset-0 opacity-90">
+        <div className="absolute left-[-12%] top-[-10%] h-72 w-72 rounded-full bg-[#2E7D32]/12 blur-[100px]" />
+        <div className="absolute right-[-18%] top-[5%] h-72 w-72 rounded-full bg-[#A67C52]/16 blur-[110px]" />
+        <div className="absolute bottom-[-20%] left-[20%] h-64 w-64 rounded-full bg-[#1F5AA6]/12 blur-[110px]" />
+      </div>
 
-      <div className="relative z-10 flex flex-col items-center text-center">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={current}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="flex flex-col items-center"
-          >
-            <div className="flex items-center space-x-2 px-3 py-1.5 bg-foreground/5 backdrop-blur-md rounded-full border border-foreground/10 mb-6">
-              {slides[current].icon}
-              <span className="text-[11px] font-bold tracking-tight text-foreground/80">
-                {slides[current].badge}
-              </span>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-10 mx-auto max-w-md"
+      >
+        <div className="mb-4 inline-flex items-center space-x-2 rounded-full border border-foreground/10 bg-white/70 px-3 py-1.5 backdrop-blur-md">
+          <Sparkles size={14} className="text-[#A67C52]" />
+          <span className="text-[11px] font-bold tracking-tight text-foreground/80">
+            지금 우리 동네 상황과 공식 소식을 함께 확인
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          <h1 className="text-[28px] font-black leading-[1.15] tracking-tight md:text-[34px]">
+            지금 우리 동네 상황을
+            <br />
+            <span className="bg-gradient-to-r from-[#2E7D32] via-[#1F5AA6] to-[#A67C52] bg-clip-text text-transparent">
+              지도에서 바로 확인하세요
+            </span>
+          </h1>
+
+          <p className="max-w-[320px] text-[13px] font-medium leading-relaxed text-foreground/65 whitespace-pre-line">
+            이웃이 올린 실시간 제보와 공식 이벤트를 한 화면에서 보고,
+            지금 있는 자리에서 바로 공유하고 신뢰를 확인할 수 있습니다.
+          </p>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
+          <Link href="/map" className="flex-1">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="group flex w-full items-center justify-center space-x-2 rounded-2xl bg-gradient-to-br from-[#1F2A37] to-[#3E2723] px-5 py-3.5 text-[14px] font-bold text-white shadow-xl"
+            >
+              <MapPinned size={18} />
+              <span>지도에서 보기</span>
+              <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+            </motion.button>
+          </Link>
+          <Link href="/map?mode=share" className="flex-1">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex w-full items-center justify-center space-x-2 rounded-2xl border border-[#2E7D32]/20 bg-white/80 px-5 py-3.5 text-[14px] font-bold text-[#1F5F2A] shadow-sm backdrop-blur-md"
+            >
+              <Plus size={18} />
+              <span>상황 공유하기</span>
+            </motion.button>
+          </Link>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <div className="rounded-2xl border border-foreground/8 bg-white/70 p-3.5 backdrop-blur-md">
+            <p className="text-[11px] font-black uppercase tracking-wider text-[#A67C52]">핵심 흐름</p>
+            <p className="mt-1 text-[13px] font-bold text-foreground">상황 확인 → 제보 → 신뢰 판단</p>
+          </div>
+          <div className="rounded-2xl border border-foreground/8 bg-white/70 p-3.5 backdrop-blur-md">
+            <p className="text-[11px] font-black uppercase tracking-wider text-[#2E7D32]">지도 중심</p>
+            <p className="mt-1 text-[13px] font-bold text-foreground">위치 맥락에서 탐색과 공유</p>
+          </div>
+          <div className="rounded-2xl border border-foreground/8 bg-white/70 p-3.5 backdrop-blur-md">
+            <div className="flex items-center space-x-2">
+              <ShieldCheck size={16} className="text-[#1F5AA6]" />
+              <p className="text-[11px] font-black uppercase tracking-wider text-[#1F5AA6]">신뢰 축적</p>
             </div>
-
-            <h1 className="text-3xl md:text-4xl font-black mb-4 leading-[1.2] tracking-tight text-foreground">
-              {slides[current].title}
-            </h1>
-
-            <p className="text-sm text-foreground/60 mb-8 max-w-[280px] leading-relaxed font-medium whitespace-pre-line">
-              {slides[current].desc}
-            </p>
-
-            <Link href={slides[current].href}>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="group relative flex items-center space-x-2 bg-gradient-to-br from-foreground to-[#3E2723] dark:from-[#1D1616] dark:to-black px-8 py-4 rounded-2xl font-bold shadow-xl border border-white/10 text-white transition-all"
-              >
-                <PartyPopper size={20} className="text-white" />
-                <span>{slides[current].cta}</span>
-                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-              </motion.button>
-            </Link>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* Interactive Indicators */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex space-x-2">
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setCurrent(i)}
-            className={`transition-all duration-300 rounded-full ${
-              i === current ? 'w-6 h-1.5 bg-foreground' : 'w-1.5 h-1.5 bg-foreground/30'
-            }`}
-          />
-        ))}
-      </div>
+            <p className="mt-1 text-[13px] font-bold text-foreground">이웃 인증과 업데이트로 품질 강화</p>
+          </div>
+        </div>
+      </motion.div>
     </section>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { OfficialEvent } from "@/services/eventService";
 import { BadgeCheck, Calendar, MapPin } from "lucide-react";
 
@@ -16,9 +17,10 @@ export default function EventSummaryCard({ event, onClick }: EventSummaryCardPro
         >
             <div className="relative h-28 bg-gray-50 rounded-2xl overflow-hidden mb-3">
                 {event.thumbnail_url ? (
-                    <img 
+                    <Image 
                         src={event.thumbnail_url} 
                         alt={event.title}
+                        fill
                         className="w-full h-full object-cover"
                     />
                 ) : (

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { MapPin, Search, Bell, ArrowLeft, SlidersHorizontal, X } from "lucide-react";
 import { useLocationStore } from "@/lib/store/locationStore";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getVillageWeather, WeatherData } from "@/services/api";
 

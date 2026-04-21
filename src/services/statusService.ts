@@ -1,5 +1,16 @@
 import { supabase } from "@/lib/supabase";
 
+interface LiveStatusHistoryItem {
+    status: string;
+    status_color: string;
+    text: string;
+    time: string;
+}
+
+type GroupedLiveStatus = LiveStatus & {
+    history: LiveStatusHistoryItem[];
+};
+
 export interface LiveStatus {
     id: string;
     place_name: string;
@@ -33,7 +44,7 @@ export async function fetchLiveStatus() {
     
     // 장소 기준 최신순 그룹화 및 history 병합
     const items = data as LiveStatus[];
-    const grouped = new Map<string, any>();
+    const grouped = new Map<string, GroupedLiveStatus>();
 
     for (const item of items) {
         if (!grouped.has(item.place_name)) {
@@ -99,10 +110,7 @@ export async function verifyStatusWithTrust(statusId: string, userId: string) {
     }
 }
 
-/**
- * 실시간 구독 설정 (Broadcast)
- */
-export function subscribeLiveUpdates(onUpdate: (payload: any) => void) {
+export function subscribeLiveUpdates(onUpdate: (payload: unknown) => void) {
     return supabase
         .channel('live_status_changes')
         .on('postgres_changes', {

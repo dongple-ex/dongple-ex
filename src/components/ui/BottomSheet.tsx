@@ -1,15 +1,33 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState, useRef, useImperativeHandle, forwardRef } from "react";
+import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, BadgeCheck, CheckCircle2, ShieldCheck, User as UserIcon, Camera, AlertTriangle, Heart, Flag } from "lucide-react";
+import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower } from "lucide-react";
 import { reportContent, ReportReason } from "@/services/moderationService";
 
 
 import LiveStatusCreateForm from "@/components/forms/LiveStatusCreateForm";
+import { saveAlbumMemory } from "@/lib/albumMemory";
 import { createPost, createComment, fetchComments, likePost, reportPost } from "@/services/postService";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useUIStore } from "@/lib/store/uiStore";
+import { SHAREABLE_STATUS_OPTIONS } from "@/lib/statusTheme";
+
+type CommentItem = {
+  id: string;
+  content: string;
+  public_id?: string;
+  is_anonymous?: boolean;
+};
+
+type CommentAddedEvent = CustomEvent<{ postId?: string }>;
+
+type LiveDetailHistoryItem = {
+  status: string;
+  status_color: string;
+  text: string;
+  time: string;
+};
 
 export default function BottomSheet() {
   const { isBottomSheetOpen, bottomSheetContent, bottomSheetData, closeBottomSheet } = useUIStore();
@@ -18,11 +36,11 @@ export default function BottomSheet() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
   
-  // WriteForm 연동을 위한 상태 및 Ref
+  // WriteForm ?곕룞???꾪븳 ?곹깭 諛?Ref
   const writeFormRef = useRef<{ submit: () => void } | null>(null);
   const [canSubmit, setCanSubmit] = useState(false);
 
-  // 드래그 높이 조절을 위한 상태 및 Ref
+  // ?쒕옒洹??믪씠 議곗젅???꾪븳 ?곹깭 諛?Ref
   const [sheetHeight, setSheetHeight] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
@@ -49,17 +67,17 @@ export default function BottomSheet() {
         window.dispatchEvent(new CustomEvent('comment-added', { detail: { postId: bottomSheetData.id } }));
     } catch (error) {
         console.error("Comment failed:", error);
-        alert("댓글 등록에 실패했습니다.");
+        alert("?볤? ?깅줉???ㅽ뙣?덉뒿?덈떎.");
     } finally {
         setIsSubmitting(false);
     }
   };
 
-  // 콘텐츠 변경 시 초기 높이 설정
+  // 肄섑뀗痢?蹂寃???珥덇린 ?믪씠 ?ㅼ젙
   useEffect(() => {
     if (isBottomSheetOpen) {
       if (bottomSheetContent === "postDetail") setSheetHeight(85);
-      else if (bottomSheetContent === "write") setSheetHeight(90);
+      else if (bottomSheetContent === "write" || bottomSheetContent === "recordHub") setSheetHeight(90);
       else setSheetHeight(50);
     }
   }, [isBottomSheetOpen, bottomSheetContent]);
@@ -74,7 +92,7 @@ export default function BottomSheet() {
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging) return;
     const deltaVH = ((e.clientY - startY.current) / window.innerHeight) * 100;
-    let newHeight = Math.max(20, Math.min(95, startHeight.current - deltaVH));
+    const newHeight = Math.max(20, Math.min(95, startHeight.current - deltaVH));
     setSheetHeight(newHeight);
   };
 
@@ -85,7 +103,7 @@ export default function BottomSheet() {
     // Snap points
     if (sheetHeight > 75) setSheetHeight(92);
     else if (sheetHeight > 35) setSheetHeight(50);
-    else if (sheetHeight < 25) closeBottomSheet(); // 너무 낮으면 닫기
+    else if (sheetHeight < 25) closeBottomSheet(); // ?덈Т ??쑝硫??リ린
     else setSheetHeight(24);
   };
 
@@ -139,13 +157,14 @@ export default function BottomSheet() {
 
                   {/* Center: Title */}
                   <h3 className="text-lg font-black text-foreground absolute left-1/2 -translate-x-1/2">
-                    {bottomSheetContent === "write" ? "소식 글쓰기" : 
-                     bottomSheetContent === "postDetail" ? "소식 상세보기" : 
-                     bottomSheetContent === "liveCreate" ? "상황 제보" :
-                     bottomSheetContent === "liveReply" ? "상황 알려주기" :
-                     bottomSheetContent === "liveDetail" ? "상황 정보" :
-                     bottomSheetContent === "contentReport" ? "부적절한 정보 신고" :
-                     "상세 정보"}
+                    {bottomSheetContent === "write" ? "?뚯떇 湲?곌린" : 
+                     bottomSheetContent === "recordHub" ? "湲곕줉?섍린" :
+                     bottomSheetContent === "postDetail" ? "?뚯떇 ?곸꽭蹂닿린" : 
+                     bottomSheetContent === "liveCreate" ? "?곹솴 ?쒕낫" :
+                     bottomSheetContent === "liveReply" ? "?곹솴 ?뚮젮二쇨린" :
+                     bottomSheetContent === "liveDetail" ? "?곹솴 ?뺣낫" :
+                     bottomSheetContent === "contentReport" ? "遺?곸젅???뺣낫 ?좉퀬" :
+                     "?곸꽭 ?뺣낫"}
                   </h3>
 
                   {/* Right Action: Submit (Write mode only) */}
@@ -157,7 +176,7 @@ export default function BottomSheet() {
                         canSubmit ? "text-secondary hover:bg-secondary/5" : "text-gray-300"
                       }`}
                     >
-                      등록
+                      ?깅줉
                     </button>
                   ) : (
                     <div className="w-10" /> /* Spacer if no right action */
@@ -167,6 +186,7 @@ export default function BottomSheet() {
                 {/* Dynamic Content */}
                 <div className="overflow-y-auto p-6 flex-1 overscroll-contain pb-32 flex flex-col">
                   {bottomSheetContent === "write" && <WriteForm ref={writeFormRef} onStateChange={setCanSubmit} />}
+                  {bottomSheetContent === "recordHub" && <RecordHub />}
                   {bottomSheetContent === "postDetail" && <PostDetailView />}
                   {bottomSheetContent === "liveCreate" && <LiveCreateForm />}
                   {bottomSheetContent === "liveReply" && <LiveReplyForm />}
@@ -181,7 +201,7 @@ export default function BottomSheet() {
                         type="text" 
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
-                        placeholder="이웃에게 따뜻한 댓글을 남겨보세요." 
+                        placeholder="?댁썐?먭쾶 ?곕쑜???볤????④꺼蹂댁꽭??" 
                         className="flex-1 bg-nav-bg rounded-[20px] px-5 py-3 text-[14px] font-medium outline-none focus:ring-2 focus:ring-secondary/20 transition-all text-foreground" 
                       />
                       <button 
@@ -189,7 +209,7 @@ export default function BottomSheet() {
                         disabled={isSubmitting || !commentText.trim()}
                         className="bg-secondary text-white px-6 py-3 rounded-[20px] text-[14px] font-black shadow-lg disabled:opacity-50 transition-all active:scale-95 whitespace-nowrap"
                       >
-                        {isSubmitting ? "..." : "등록"}
+                        {isSubmitting ? "..." : "?깅줉"}
                       </button>
                   </div>
                 )}
@@ -203,34 +223,33 @@ export default function BottomSheet() {
 }
 
 
-const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: boolean) => void }>((props, ref) => {
+const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: boolean) => void; showInlineSubmit?: boolean }>(({ onStateChange, showInlineSubmit = false }, ref) => {
     const { closeBottomSheet } = useUIStore();
     const { userId, publicId, profile, isAnonymous, toggleAnonymous, initAuth } = useAuthStore();
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [postType, setPostType] = useState("동네질문");
     const [category, setCategory] = useState("기타");
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
 
-    // 부모에게 현재 내용을 전달하여 등록 버튼 활성화 여부 결정
+    // 遺紐⑥뿉寃??꾩옱 ?댁슜???꾨떖?섏뿬 ?깅줉 踰꾪듉 ?쒖꽦???щ? 寃곗젙
     useEffect(() => {
-        props.onStateChange(content.trim().length > 0);
-    }, [content]);
+        onStateChange(content.trim().length > 0);
+    }, [content, onStateChange]);
 
-    // 부모가 호출할 함수 노출
+    // 遺紐④? ?몄텧???⑥닔 ?몄텧
     useImperativeHandle(ref, () => ({
         submit: handleSubmit
     }));
 
     useEffect(() => {
         if (!userId) initAuth();
-    }, []);
+    }, [initAuth, userId]);
 
     const postTypes = ["동네질문", "동네가게", "같이해요", "정보공유"];
     const categories = [
-        "날씨/교통", "부동산/이사", "학교/교육", "공공기관", "병원/약국", 
-        "경로당/공원", "카페/만화방", "독서실/학습", "놀이터", "기타"
+        "교통", "부동산/이사", "학교/교육", "공공기관", "병원/약국", 
+        "산책로/공원", "카페/맛집", "독서/학습", "데이트", "기타"
     ];
 
     const handleSubmit = async () => {
@@ -239,9 +258,8 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
             return;
         }
 
-        setIsSubmitting(true);
         try {
-            await createPost({
+            const createdPost = await createPost({
                 title: title.trim() || undefined,
                 content,
                 post_type: postType,
@@ -249,7 +267,17 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 user_id: userId,
                 public_id: publicId,
                 is_anonymous: isAnonymous,
-                score: postType === "정보공유" ? 0.6 : 0.5 // 지침서 기준 초기 점수
+                score: postType === "정보공유" ? 0.6 : 0.5 // 吏移⑥꽌 湲곗? 珥덇린 ?먯닔
+            });
+            saveAlbumMemory({
+                sourceId: createdPost.id,
+                type: "post",
+                title: createdPost.title || `${postType} 기록`,
+                subtitle: postType,
+                description: content.trim(),
+                locationLabel: createdPost.title || category,
+                category,
+                createdAt: createdPost.created_at,
             });
             setIsSuccess(true);
             setTimeout(() => {
@@ -258,8 +286,6 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
         } catch (error) {
             console.error("등록 실패:", error);
             alert("알 수 없는 오류로 등록에 실패했습니다.");
-        } finally {
-            setIsSubmitting(false);
         }
     };
 
@@ -269,14 +295,14 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center animate-bounce">
                     <CheckCircle2 size={32} className="text-secondary" />
                 </div>
-                <p className="text-lg font-bold text-foreground">동네 소식이 등록되었습니다!</p>
+                <p className="text-lg font-bold text-foreground">동네 소식이 등록됐습니다.</p>
                 <p className="text-sm text-gray-400">이웃들이 곧 소식을 확인하게 될 거예요.</p>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-full bg-card-bg">
+        <div className={`flex flex-col bg-card-bg ${showInlineSubmit ? "pb-3" : "h-full"}`}>
             <div className="space-y-4 mb-4">
                 <div>
                     <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider ml-1 mb-2 block">글 종류</label>
@@ -298,7 +324,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 </div>
 
                 <div>
-                    <label className="text-[11px] font-black text-secondary uppercase tracking-wider ml-1 mb-2 block">관심 주제</label>
+                    <label className="text-[11px] font-black text-secondary uppercase tracking-wider ml-1 mb-2 block">관련 주제</label>
                     <div className="flex overflow-x-auto pb-1 space-x-2 no-scrollbar">
                         {categories.map((cat) => (
                             <button
@@ -317,7 +343,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col space-y-1 min-h-[200px]">
+            <div className={`flex flex-col space-y-1 ${showInlineSubmit ? "min-h-[140px]" : "min-h-[200px] flex-1"}`}>
                 <input
                     type="text"
                     value={title}
@@ -328,13 +354,15 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder="우리 동네 이웃들과 나눌 소식을 적어보세요."
-                    className="w-full text-[15px] py-4 flex-1 resize-none outline-none placeholder:text-gray-300 bg-transparent leading-relaxed text-foreground"
+                    placeholder="우리 동네 이웃과 나누고 싶은 소식을 적어보세요."
+                    className={`w-full text-[15px] py-4 resize-none outline-none placeholder:text-gray-300 bg-transparent leading-relaxed text-foreground ${
+                        showInlineSubmit ? "min-h-[180px]" : "flex-1"
+                    }`}
                 />
             </div>
 
-            {/* 작성자 옵션 레이어 */}
-            <div className="bg-nav-bg/80 rounded-2xl p-4 my-2 border border-border flex items-center justify-between">
+            {/* ?묒꽦???듭뀡 ?덉씠??*/}
+            <div className={`bg-nav-bg/80 rounded-2xl p-4 border border-border flex items-center justify-between ${showInlineSubmit ? "mt-4" : "my-2"}`}>
                 <div className="flex items-center space-x-3">
                     <div className={`p-2 rounded-xl ${isAnonymous ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-secondary/10 text-secondary'}`}>
                         {isAnonymous ? <ShieldCheck size={20} /> : <UserIcon size={20} />}
@@ -357,21 +385,96 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                     {isAnonymous ? "닉네임으로 전환" : "익명으로 전환"}
                 </button>
             </div>
+
+            {showInlineSubmit && (
+                <button
+                    onClick={handleSubmit}
+                    disabled={!content.trim()}
+                    className="mt-3 w-full rounded-2xl bg-secondary py-4 text-[15px] font-black text-white shadow-lg shadow-secondary/20 transition-all disabled:opacity-40"
+                >
+                    소식 등록하기
+                </button>
+            )}
         </div>
     );
 });
+
+WriteForm.displayName = "WriteForm";
+
+function RecordHub() {
+    const { bottomSheetData, closeBottomSheet } = useUIStore();
+    const defaultTab = bottomSheetData?.defaultTab === "post" ? "post" : "status";
+    const [activeTab, setActiveTab] = useState<"status" | "post">(defaultTab);
+
+    useEffect(() => {
+        setActiveTab(bottomSheetData?.defaultTab === "post" ? "post" : "status");
+    }, [bottomSheetData?.defaultTab]);
+
+    return (
+        <div className="flex flex-col gap-3">
+            <div className="rounded-[24px] border border-border bg-nav-bg/70 p-1.5">
+                <div className="grid grid-cols-2 gap-2">
+                    <button
+                        onClick={() => setActiveTab("status")}
+                        className={`flex items-center justify-center space-x-2 rounded-[18px] px-4 py-2.5 text-[13px] font-black transition-all ${
+                            activeTab === "status"
+                                ? "bg-secondary text-white shadow-lg shadow-secondary/20"
+                                : "bg-transparent text-foreground/45"
+                        }`}
+                    >
+                        <RadioTower size={16} />
+                        <span>상황공유</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("post")}
+                        className={`flex items-center justify-center space-x-2 rounded-[18px] px-4 py-2.5 text-[13px] font-black transition-all ${
+                            activeTab === "post"
+                                ? "bg-[#795548] text-white shadow-lg shadow-[#795548]/20"
+                                : "bg-transparent text-foreground/45"
+                        }`}
+                    >
+                        <LayoutList size={16} />
+                        <span>소식 작성</span>
+                    </button>
+                </div>
+            </div>
+
+            <div className="rounded-[28px] border border-border bg-card-bg p-4 shadow-sm">
+                <div className="mb-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-secondary">
+                        {activeTab === "status" ? "Realtime Share" : "Community Post"}
+                    </p>
+                    <h4 className="mt-1 text-[17px] font-black text-foreground">
+                        {activeTab === "status" ? "지금 이 순간의 상황을 빠르게 공유" : "동네 소식을 게시글로 남기기"}
+                    </h4>
+                    <p className="mt-1.5 text-[12px] font-medium leading-relaxed text-foreground/55">
+                        {activeTab === "status"
+                            ? "혼잡도, 대기, 현장 분위기처럼 즉시성이 중요한 정보는 상황공유로 등록합니다."
+                            : "경험, 추천, 질문, 생활 정보처럼 맥락이 필요한 내용은 소식 작성으로 남깁니다."}
+                    </p>
+                </div>
+
+                {activeTab === "status" ? (
+                    <LiveStatusCreateForm mode="share" onSuccess={closeBottomSheet} compact />
+                ) : (
+                    <WriteForm onStateChange={() => {}} showInlineSubmit />
+                )}
+            </div>
+        </div>
+    );
+}
 
 function PostDetailView() {
     const { bottomSheetData, openBottomSheet } = useUIStore();
     const { userId } = useAuthStore();
     const isOfficial = bottomSheetData?.is_official;
-    const [comments, setComments] = useState<any[]>([]);
+    const [comments, setComments] = useState<CommentItem[]>([]);
     const [likes, setLikes] = useState(bottomSheetData?.likes_count || 0);
     const [isLiked, setIsLiked] = useState(false);
     const [loadingComments, setLoadingComments] = useState(false);
     const [isReported, setIsReported] = useState(false);
 
-    const loadComments = async () => {
+    const loadComments = useCallback(async () => {
         if (!bottomSheetData?.id || isOfficial) return;
         setLoadingComments(true);
         try {
@@ -382,22 +485,23 @@ function PostDetailView() {
         } finally {
             setLoadingComments(false);
         }
-    };
+    }, [bottomSheetData?.id, isOfficial]);
 
     useEffect(() => {
         loadComments();
 
-        const handleCommentRefresh = (e: any) => {
-            if (e.detail?.postId === bottomSheetData?.id) {
+        const handleCommentRefresh = (event: Event) => {
+            const customEvent = event as CommentAddedEvent;
+            if (customEvent.detail?.postId === bottomSheetData?.id) {
                 loadComments();
             }
         };
 
         window.addEventListener('comment-added', handleCommentRefresh);
         return () => window.removeEventListener('comment-added', handleCommentRefresh);
-    }, [bottomSheetData?.id]);
+    }, [bottomSheetData?.id, isOfficial, loadComments]);
 
-    const handleLike = async (e: React.MouseEvent) => {
+    const handleLike = async () => {
         if (!userId || isOfficial) return;
         const newIsLiked = !isLiked;
         setIsLiked(newIsLiked);
@@ -414,12 +518,12 @@ function PostDetailView() {
 
     const handleReport = async () => {
         if (!userId || isReported) return;
-        if (!confirm("이 게시글을 신고하시겠습니까? 동플 클린 가이드에 따라 검토됩니다.")) return;
+        if (!confirm("??寃뚯떆湲???좉퀬?섏떆寃좎뒿?덇퉴? ?숉뵆 ?대┛ 媛?대뱶???곕씪 寃?좊맗?덈떎.")) return;
 
         setIsReported(true);
         try {
             await reportPost(bottomSheetData.id, userId);
-            alert("신고가 접수되었습니다. 신뢰도가 낮은 게시물은 자동으로 숨김 처리됩니다.");
+            alert("?좉퀬媛 ?묒닔?섏뿀?듬땲?? ?좊ː?꾧? ??? 寃뚯떆臾쇱? ?먮룞?쇰줈 ?④? 泥섎━?⑸땲??");
         } catch (error) {
             console.error("Report failed:", error);
             setIsReported(false);
@@ -482,13 +586,13 @@ function PostDetailView() {
                     <div className="w-6 h-6 bg-secondary rounded-lg flex items-center justify-center">
                         <span className="text-white font-black text-[10px]">공</span>
                     </div>
-                    <div className="text-foreground font-black opacity-80">한국관광공사 제공</div>
+                    <div className="text-foreground font-black opacity-80">수원관광공사 제공</div>
                 </div>
             ) : (
                 <div className="flex items-center space-x-2 mt-4 text-[13px] font-medium text-foreground/60">
                     <div className="w-8 h-8 bg-secondary/10 rounded-full shrink-0 flex items-center justify-center">
                         <span className="text-secondary font-bold text-xs">
-                            {(bottomSheetData?.public_id || "정").substring(0, 1)}
+                            {(bottomSheetData?.public_id || "동").substring(0, 1)}
                         </span>
                     </div>
                     <div className="text-foreground opacity-80">
@@ -503,20 +607,20 @@ function PostDetailView() {
             
             {!isOfficial && (
                 <div className="pt-2 pb-8">
-                    <h3 className="font-bold text-foreground mb-4 text-sm">댓글 {comments.length}</h3>
+                    <h3 className="font-bold text-foreground mb-4 text-sm">?볤? {comments.length}</h3>
                     {loadingComments ? (
                         <div className="flex justify-center py-8">
                             <div className="w-6 h-6 border-2 border-secondary/30 border-t-secondary rounded-full animate-spin"></div>
                         </div>
                     ) : comments.length > 0 ? (
                         <div className="space-y-5">
-                            {comments.map((comment: any) => (
+                            {comments.map((comment) => (
                                 <div key={comment.id} className="flex space-x-3 items-start animate-fade-in">
                                     <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center ${
                                         comment.is_anonymous ? 'bg-indigo-50 text-indigo-500' : 'bg-secondary/10 text-secondary'
                                     }`}>
                                         <span className="font-bold text-[10px]">
-                                            {(comment.public_id || "익").substring(0, 2)}
+                                            {(comment.public_id || "동네").substring(0, 2)}
                                         </span>
                                     </div>
                                     <div className="bg-nav-bg rounded-2xl rounded-tl-none p-3.5 flex-1 border border-border/50">
@@ -531,8 +635,8 @@ function PostDetailView() {
                         </div>
                     ) : (
                         <div className="py-12 text-center text-gray-300 border-2 border-dashed border-border rounded-[32px]">
-                            <p className="text-[13px] font-bold">아직 댓글이 없습니다.</p>
-                            <p className="text-[11px] mt-1 opacity-60">첫 댓글을 남겨 이웃과 소통해보세요!</p>
+                            <p className="text-[13px] font-bold">?꾩쭅 ?볤????놁뒿?덈떎.</p>
+                            <p className="text-[11px] mt-1 opacity-60">泥??볤????④꺼 ?댁썐怨??뚰넻?대낫?몄슂!</p>
                         </div>
                     )}
                 </div>
@@ -563,14 +667,8 @@ function LiveCreateForm() {
 function LiveReplyForm() {
     const { bottomSheetData, closeBottomSheet } = useUIStore();
     const mode = bottomSheetData?.mode || "reply";
-    const [selectedStatus, setSelectedStatus] = useState(bottomSheetData?.defaultStatus || "보통");
+    const [selectedStatus, setSelectedStatus] = useState(bottomSheetData?.defaultStatus || "蹂댄넻");
     const [replyText, setReplyText] = useState("");
-
-    const statusOptions = [
-        { label: "여유", color: "bg-green-100 text-green-700 hover:bg-green-200 border-green-200" },
-        { label: "보통", color: "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-200" },
-        { label: "혼잡", color: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200" }
-    ];
 
     const handleSubmit = () => {
         if (mode === "reply" && !replyText.trim()) return;
@@ -586,16 +684,16 @@ function LiveReplyForm() {
     return (
         <div className="space-y-4">
             <p className="text-[13px] text-gray-400 mb-2 font-medium">
-                {mode === "reply" ? "이웃들에게 현재 상황을 정확하게 알려주세요." : "이전 사용자의 정보와 다르다면 알맞은 상태를 선택해주세요."}
+                {mode === "reply" ? "?댁썐?ㅼ뿉寃??꾩옱 ?곹솴???뺥솗?섍쾶 ?뚮젮二쇱꽭??" : "?댁쟾 ?ъ슜?먯쓽 ?뺣낫? ?ㅻⅤ?ㅻ㈃ ?뚮쭪? ?곹깭瑜??좏깮?댁＜?몄슂."}
             </p>
             <div className="flex gap-2">
-                {statusOptions.map((opt) => (
+                {SHAREABLE_STATUS_OPTIONS.map((opt) => (
                     <button
                         key={opt.label}
                         onClick={() => setSelectedStatus(opt.label)}
                         className={`flex-1 py-2.5 text-[14px] font-bold border rounded-xl transition-all ${
                             selectedStatus === opt.label 
-                                ? `${opt.color} ring-2 ring-offset-1` 
+                                ? `${opt.tone} ${opt.hover} ${opt.border} ring-2 ring-offset-1 ${opt.ring}` 
                                 : "bg-card-bg text-gray-400 border-border hover:bg-nav-bg"
                         }`}
                     >
@@ -605,7 +703,7 @@ function LiveReplyForm() {
             </div>
             <textarea 
                 className="w-full min-h-[120px] p-3.5 text-[14px] bg-nav-bg border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary/50 resize-none placeholder-gray-400 mt-2 text-foreground"
-                placeholder={mode === "reply" ? "예: 지금 대기인원 10명 정도 있어요." : "어떤 점이 달라졌는지 이웃들에게 남겨주세요 (선택)"}
+                placeholder={mode === "reply" ? "?? 吏湲??湲곗씤??10紐??뺣룄 ?덉뼱??" : "?대뼡 ?먯씠 ?щ씪議뚮뒗吏 ?댁썐?ㅼ뿉寃??④꺼二쇱꽭??(?좏깮)"}
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
             />
@@ -614,7 +712,7 @@ function LiveReplyForm() {
                 disabled={mode === "reply" && !replyText.trim()}
                 className="w-full py-4 text-[15px] font-bold text-white bg-secondary rounded-xl hover:bg-[#1B5E20] disabled:bg-gray-300 dark:disabled:bg-gray-700 transition-colors mt-2 shadow-md"
             >
-                이웃에게 공유하기
+                ?댁썐?먭쾶 怨듭쑀?섍린
             </button>
         </div>
     );
@@ -630,7 +728,7 @@ function LiveDetailView() {
         <div className="space-y-4 pt-1">
             <div className="flex items-center space-x-2 mb-6">
                 <span className={`text-[18px] font-extrabold ${detailItem.status_color || 'text-foreground'}`}>
-                    {detailItem.is_request ? "답변 대기 중" : detailItem.status}
+                    {detailItem.is_request ? "도움 대기중" : detailItem.status}
                 </span>
                 {!detailItem.is_request && (
                     <div className="flex items-center text-[12px] font-bold text-gray-400 bg-nav-bg px-2.5 py-1 rounded-full border border-border">
@@ -642,7 +740,7 @@ function LiveDetailView() {
             <div className="bg-nav-bg/50 rounded-xl p-4 text-[14px] border border-border min-h-[120px] pb-6">
                 {detailItem.history && detailItem.history.length > 0 ? (
                     <div className="space-y-5">
-                        {detailItem.history.map((hist: any, idx: number, arr: any[]) => (
+                        {detailItem.history.map((hist: LiveDetailHistoryItem, idx: number, arr: LiveDetailHistoryItem[]) => (
                             <div key={idx} className="flex flex-col space-y-1.5 relative">
                                 {idx !== arr.length - 1 && (
                                     <div className="absolute left-1.5 top-5 bottom-[-20px] w-0.5 bg-border"></div>
@@ -660,7 +758,7 @@ function LiveDetailView() {
                     </div>
                 ) : (
                     <div className="text-gray-400 italic text-center text-[13px] flex h-full items-center justify-center py-6">
-                        이웃이 남긴 상태 코멘트 히스토리가 없습니다.
+                        ?댁썐???④릿 ?곹깭 肄붾찘???덉뒪?좊━媛 ?놁뒿?덈떎.
                     </div>
                 )}
             </div>
@@ -671,7 +769,7 @@ function LiveDetailView() {
                     className="flex items-center space-x-1.5 px-3 py-2 text-gray-300 hover:text-red-400/80 transition-all text-[11px] font-bold"
                 >
                     <AlertTriangle size={14} />
-                    <span>정보가 잘못되었나요? 신고하기</span>
+                    <span>?뺣낫媛 ?섎せ?섏뿀?섏슂? ?좉퀬?섍린</span>
                 </button>
             </div>
         </div>
@@ -685,7 +783,7 @@ function ReportView() {
     const [submitting, setSubmitting] = useState(false);
     const [done, setDone] = useState(false);
 
-    const reasons: ReportReason[] = ["허위 정보", "광고/홍보", "욕설/비하", "기타"];
+    const reasons: ReportReason[] = ["?덉쐞 ?뺣낫", "愿묎퀬/?띾낫", "?뺤꽕/鍮꾪븯", "湲고?"];
 
     const handleReport = async () => {
         if (!reason || !userId || !bottomSheetData?.targetId) return;
@@ -699,7 +797,7 @@ function ReportView() {
             }, 2000);
         } catch (error) {
             console.error("Report failed:", error);
-            alert("신고 처리에 실패했습니다. 다시 시도해주세요.");
+            alert("?좉퀬 泥섎━???ㅽ뙣?덉뒿?덈떎. ?ㅼ떆 ?쒕룄?댁＜?몄슂.");
         } finally {
             setSubmitting(false);
         }
@@ -711,8 +809,8 @@ function ReportView() {
                 <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
                     <CheckCircle2 size={32} className="text-red-500" />
                 </div>
-                <p className="text-lg font-bold text-foreground">신고가 접수되었습니다.</p>
-                <p className="text-sm text-gray-400 text-center">깨끗한 동네를 위해 제보해주셔서 감사합니다.<br/>운영 정책에 따라 신속히 조치하겠습니다.</p>
+                <p className="text-lg font-bold text-foreground">?좉퀬媛 ?묒닔?섏뿀?듬땲??</p>
+                <p className="text-sm text-gray-400 text-center">源⑤걮???숇꽕瑜??꾪빐 ?쒕낫?댁＜?붿꽌 媛먯궗?⑸땲??<br/>?댁쁺 ?뺤콉???곕씪 ?좎냽??議곗튂?섍쿋?듬땲??</p>
             </div>
         );
     }
@@ -720,12 +818,12 @@ function ReportView() {
     return (
         <div className="space-y-6">
             <p className="text-[14px] text-gray-500 leading-relaxed font-medium">
-                해당 정보를 신고하시겠습니까?<br/>
-                신고된 정보는 동네 이웃들에게 노출이 제한될 수 있습니다.
+                ?대떦 ?뺣낫瑜??좉퀬?섏떆寃좎뒿?덇퉴?<br/>
+                ?좉퀬???뺣낫???숇꽕 ?댁썐?ㅼ뿉寃??몄텧???쒗븳?????덉뒿?덈떎.
             </p>
             
             <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider ml-1">신고 사유 선택</label>
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider ml-1">?좉퀬 ?ъ쑀 ?좏깮</label>
                 <div className="grid grid-cols-2 gap-2">
                     {reasons.map((r) => (
                         <button
@@ -748,15 +846,16 @@ function ReportView() {
                 disabled={!reason || submitting}
                 className="w-full py-4 bg-red-500 text-white rounded-2xl font-black text-[15px] shadow-lg shadow-red-500/20 disabled:opacity-50 active:scale-[0.98] transition-all"
             >
-                {submitting ? "요청 중..." : "동네를 위해 신고하기"}
+                {submitting ? "?붿껌 以?.." : "?숇꽕瑜??꾪빐 ?좉퀬?섍린"}
             </button>
 
             <button 
                 onClick={closeBottomSheet}
                 className="w-full py-3 text-[13px] font-bold text-gray-400 hover:text-gray-600 transition-colors"
             >
-                취소
+                痍⑥냼
             </button>
         </div>
     );
 }
+

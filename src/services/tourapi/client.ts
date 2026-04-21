@@ -34,7 +34,7 @@ const tourApiClient = axios.create({
 export async function fetchWithCache<T>(
   cacheKey: string,
   apiEndpoint: string,
-  params: any = {},
+  params: Record<string, string | number | boolean> = {},
   ttlSeconds: number = 86400 // 기본 24시간
 ): Promise<T | null> {
   // 1. Redis 캐시 확인

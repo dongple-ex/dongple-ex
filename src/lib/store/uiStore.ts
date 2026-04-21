@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 
-export type BottomSheetContent = "write" | "postDetail" | "liveCreate" | "liveReply" | "liveDetail" | "contentReport" | null;
+export type BottomSheetContent = "write" | "recordHub" | "postDetail" | "liveCreate" | "liveReply" | "liveDetail" | "contentReport" | null;
+
+export type BottomSheetData = Record<string, unknown> | null;
 
 interface UIState {
   isBottomSheetOpen: boolean;
   bottomSheetContent: BottomSheetContent;
-  bottomSheetData: any;
-  openBottomSheet: (content: BottomSheetContent, data?: any) => void;
+  bottomSheetData: BottomSheetData;
+  openBottomSheet: (content: BottomSheetContent, data?: BottomSheetData) => void;
   closeBottomSheet: () => void;
 }
 

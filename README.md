@@ -1,8 +1,22 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a [Next.js](https://nextjs.org) project for Dongple, a neighborhood tourism and realtime local-sharing service.
 
 ## Getting Started
 
-First, run the development server:
+First, configure environment variables:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Required keys:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID`
+- `NAVER_CLIENT_SECRET`
+- `TOURAPI_KEY`
+
+Then run the development server:
 
 ```bash
 npm run dev
@@ -14,9 +28,15 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open your configured local port, typically [http://localhost:3001](http://localhost:3001), with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Main public-data integration points:
+
+- `src/app/api/tour/events/route.ts`
+- `src/services/eventService.ts`
+- `src/features/events/components/OfficialEventSection.tsx`
+- `src/app/events/page.tsx`
+- `src/app/map/page.tsx`
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

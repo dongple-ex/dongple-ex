@@ -8,7 +8,7 @@ export default function NaverScript() {
         return null;
     }
 
-    const NAVER_SDK_URL = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${clientId}&submodules=geocoder`;
+    const NAVER_SDK_URL = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${clientId}&submodules=geocoder,transcoord`;
     
     console.log('Naver Maps SDK URL:', NAVER_SDK_URL);
 
