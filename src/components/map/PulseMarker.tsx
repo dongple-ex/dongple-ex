@@ -89,6 +89,9 @@ export default function PulseMarker({
                     </div>
                 </div>
 
+                {/* Bottom Pointer attached to Label */}
+                <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-secondary -mt-0.5" />
+
                 {onReport && (
                     <button
                         type="button"
@@ -96,15 +99,12 @@ export default function PulseMarker({
                             event.stopPropagation();
                             onReport();
                         }}
-                        className="mt-1 inline-flex items-center rounded-full bg-foreground px-2.5 py-1 text-[10px] font-black text-background shadow-lg transition-transform active:scale-95"
+                        className="mt-2 inline-flex items-center rounded-full bg-foreground px-2.5 py-1 text-[10px] font-black text-background shadow-lg transition-transform active:scale-95 hover:bg-foreground/80"
                     >
                         <Plus size={11} className="mr-1" />
                         현장 공유하기
                     </button>
                 )}
-
-                {/* Bottom Pointer */}
-                <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-secondary -mt-0.5" />
             </motion.div>
         </div>
     );

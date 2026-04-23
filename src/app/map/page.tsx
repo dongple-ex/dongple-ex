@@ -108,7 +108,15 @@ function MapContent() {
     const clearRenderedMarkers = useCallback(() => {
         markersRef.current.forEach(({ marker, root }) => {
             marker?.setMap?.(null);
-            root?.unmount?.();
+            if (root) {
+                setTimeout(() => {
+                    try {
+                        root.unmount();
+                    } catch (e) {
+                        console.error("Marker root unmount error:", e);
+                    }
+                }, 0);
+            }
         });
         markersRef.current = [];
     }, []);
