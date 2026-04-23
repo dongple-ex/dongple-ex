@@ -1,15 +1,27 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, Plus } from "lucide-react";
 
 interface PulseMarkerProps {
     title: string;
     category: string;
+    statusLabel?: string;
+    updatedAgo?: string;
+    statusIndicatorClass?: string;
     onClick?: () => void;
+    onReport?: () => void;
 }
 
-export default function PulseMarker({ title, category, onClick }: PulseMarkerProps) {
+export default function PulseMarker({
+    title,
+    category,
+    statusLabel,
+    updatedAgo,
+    statusIndicatorClass = "bg-secondary",
+    onClick,
+    onReport,
+}: PulseMarkerProps) {
     return (
         <div 
             className="relative flex flex-col items-center cursor-pointer group"
@@ -63,8 +75,33 @@ export default function PulseMarker({ title, category, onClick }: PulseMarkerPro
                     <div className="flex flex-col items-center">
                         <span className="text-[9px] font-black opacity-70 uppercase tracking-tighter mb-0.5">{category}</span>
                         <span className="text-[13px] font-black">{title}</span>
+                        {statusLabel ? (
+                            <span className="mt-1 flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-black">
+                                <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${statusIndicatorClass}`} />
+                                {statusLabel}
+                                {updatedAgo ? <span className="ml-1 opacity-70">· {updatedAgo}</span> : null}
+                            </span>
+                        ) : (
+                            <span className="mt-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-black opacity-80">
+                                현장 상태 대기
+                            </span>
+                        )}
                     </div>
                 </div>
+
+                {onReport && (
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onReport();
+                        }}
+                        className="mt-1 inline-flex items-center rounded-full bg-foreground px-2.5 py-1 text-[10px] font-black text-background shadow-lg transition-transform active:scale-95"
+                    >
+                        <Plus size={11} className="mr-1" />
+                        현장 공유하기
+                    </button>
+                )}
 
                 {/* Bottom Pointer */}
                 <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-secondary -mt-0.5" />

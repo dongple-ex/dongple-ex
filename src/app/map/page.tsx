@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, Suspense, useCallback } from "react";
-import { fetchLiveStatus, LiveStatus, subscribeLiveUpdates } from "@/services/statusService";
+import { fetchLiveStatus, getEventStatusSummary, LiveStatus, subscribeLiveUpdates } from "@/services/statusService";
 import { getAddressFromCoords, getCoordsFromAddress, searchPlaces } from "@/services/api";
 import { fetchOfficialEvents } from "@/services/eventService";
 import { createRoot } from "react-dom/client";
@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useLocationStore } from "@/lib/store/locationStore";
 import { 
-    Home, Trees, Dumbbell, Coffee, ShoppingBag, Store, ParkingCircle, HeartPulse, Building2 
+    Home, Trees, Coffee, Store, PartyPopper
 } from "lucide-react";
 
 // New Components
@@ -45,15 +45,10 @@ type MarkerEntry = {
 
 const CATEGORIES = [
     { id: "전체", label: "전체", icon: Home },
-    { id: "기타", label: "기타", icon: Home },
+    { id: "행사", label: "행사", icon: PartyPopper },
+    { id: "카페", label: "카페", icon: Coffee },
+    { id: "식당", label: "식당", icon: Store },
     { id: "공원", label: "공원", icon: Trees },
-    { id: "운동", label: "운동", icon: Dumbbell },
-    { id: "카페/식당", label: "카페/식당", icon: Coffee },
-    { id: "마켓", label: "마켓", icon: ShoppingBag },
-    { id: "편의점", label: "편의점", icon: Store },
-    { id: "주차장", label: "주차장", icon: ParkingCircle },
-    { id: "병원/약국", label: "병원/약국", icon: HeartPulse },
-    { id: "기관", label: "기관", icon: Building2 },
 ];
 
 const createLatLng = (lat: number, lng: number) => new window.kakao.maps.LatLng(lat, lng);
@@ -293,7 +288,13 @@ function MapContent() {
 
         // 2. Live Status Markers (Shape: Balloon with status dot)
         markers
-            .filter(m => selectedCategory === "전체" || m.category === selectedCategory)
+            .filter(m => {
+                if (selectedCategory === "전체") return true;
+                if (selectedCategory === "행사") return Boolean(m.event_id || m.tourapi_content_id);
+                if (selectedCategory === "카페") return m.category === "카페" || m.category === "카페/식당";
+                if (selectedCategory === "식당") return m.category === "식당" || m.category === "카페/식당";
+                return m.category === selectedCategory;
+            })
             .forEach(m => {
             const isSelected = expandedCardId === m.id;
             const el = document.createElement('div');
@@ -339,23 +340,38 @@ function MapContent() {
         });
 
         // 3. Official Event Markers (Shape: Circular Pulse)
-        officialEvents.forEach(festival => {
+        if (selectedCategory !== "카페" && selectedCategory !== "식당" && selectedCategory !== "공원") {
+            officialEvents.forEach(festival => {
             const el = document.createElement('div');
             const root = createRoot(el);
+            const statusSummary = getEventStatusSummary(festival, markers);
 
             root.render(
                 <PulseMarker 
                     title={festival.title} 
-                    category={festival.category_code} 
+                    category="행사"
+                    statusLabel={statusSummary?.label}
+                    updatedAgo={statusSummary?.updatedAgo}
+                    statusIndicatorClass={statusSummary?.indicatorClass}
                     onClick={() => {
                         openGlobalBottomSheet("postDetail", {
                             title: festival.title,
-                            content: `${festival.address}\n일시: ${festival.event_start_date} ~ ${festival.event_end_date}\n${festival.description}`,
+                            content: `${festival.address}\n일시: ${festival.event_start_date} ~ ${festival.event_end_date}\n\n${statusSummary ? `[현장 상태]\n${statusSummary.label} (${statusSummary.updatedAgo})\n${statusSummary.latestMessage || "최근 현장 공유가 있습니다."}\n\n` : "[현장 상태]\n아직 공유된 현장 상태가 없습니다.\n지도에서 바로 현장 상황을 공유해 주세요.\n\n"}${festival.description}`,
                             is_official: true
                         });
                         setSheetHeight(50);
                         setClickedLatLng(null);
                         mapRef.current.panTo(createLatLng(festival.lat, festival.lng));
+                    }}
+                    onReport={() => {
+                        openGlobalBottomSheet("liveCreate", {
+                            mode: "share",
+                            eventId: festival.id,
+                            defaultPlaceName: festival.title,
+                            address: festival.address,
+                            latitude: festival.lat,
+                            longitude: festival.lng,
+                        });
                     }}
                 />
             );
@@ -369,6 +385,7 @@ function MapContent() {
             });
             markersRef.current.push({ marker, root });
         });
+        }
     }, [clickedAddress, clickedLatLng, expandedCardId, markers, officialEvents, selectedCategory, clearRenderedMarkers, handleOpenCreateAt, openGlobalBottomSheet]);
 
     useEffect(() => {

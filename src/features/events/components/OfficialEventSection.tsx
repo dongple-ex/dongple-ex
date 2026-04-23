@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { fetchOfficialEvents, OfficialEvent } from "@/services/eventService";
-import { useUIStore } from "@/lib/store/uiStore";
+import { useEffect, useState } from "react";
 import { ArrowRight, PartyPopper } from "lucide-react";
 import Link from "next/link";
+
+import { useUIStore } from "@/lib/store/uiStore";
+import { fetchOfficialEvents, OfficialEvent } from "@/services/eventService";
+import { fetchLiveStatus, getEventStatusSummary, LiveStatus } from "@/services/statusService";
+
 import EventSummaryCard from "./EventSummaryCard";
 
 export default function OfficialEventSection() {
     const [events, setEvents] = useState<OfficialEvent[]>([]);
+    const [statuses, setStatuses] = useState<LiveStatus[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const openBottomSheet = useUIStore((state) => state.openBottomSheet);
 
@@ -16,51 +20,71 @@ export default function OfficialEventSection() {
         const loadEvents = async () => {
             try {
                 const data = await fetchOfficialEvents();
-                setEvents(data.slice(0, 5)); // 상위 5개만 노출
+                setEvents(data.slice(0, 5));
+
+                const liveData = await fetchLiveStatus();
+                setStatuses(liveData);
             } catch (error) {
                 console.error("Failed to load official events:", error);
             } finally {
                 setIsLoading(false);
             }
         };
+
         loadEvents();
     }, []);
 
     const handleEventClick = (event: OfficialEvent) => {
+        const period = `${event.event_start_date} ~ ${event.event_end_date}`;
+        const summary = getEventStatusSummary(event, statuses);
+        const statusBlock = summary
+            ? `[지금 상태]\n${summary.label} (${summary.updatedAgo})\n${summary.latestMessage || "최근 현장 공유가 들어왔습니다."}`
+            : "[지금 상태]\n아직 공유된 현장 상태가 없습니다.\n지도에서 바로 현장 상황을 남겨보세요.";
+
         openBottomSheet("postDetail", {
             id: event.id,
+            eventId: event.id,
+            defaultPlaceName: event.title,
+            address: event.address,
+            latitude: event.lat,
+            longitude: event.lng,
             title: event.title,
-            content: `${event.address}\n\n[축제 일정]\n${event.event_start_date} ~ ${event.event_end_date}\n\n${event.description || "상세 정보가 아직 등록되지 않았습니다."}`,
+            content: `${event.address}\n\n[행사 일정]\n${period}\n\n${statusBlock}\n\n${event.description || "행사 기본 정보는 들어와 있지만, 현장감은 아직 비어 있습니다. 첫 공유를 남겨보세요."}`,
             is_official: true,
             meta: event.meta,
             source: event.source
         });
     };
 
-    if (isLoading) return null;
-    if (events.length === 0) return null;
+    if (isLoading || events.length === 0) {
+        return null;
+    }
 
     return (
         <section className="space-y-4">
             <div className="flex items-center justify-between px-4">
                 <div className="flex items-center space-x-2">
                     <PartyPopper size={20} className="text-secondary" />
-                    <h2 className="text-lg font-black text-[#3E2723]">우리 동네 공식 소식</h2>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-secondary">지금 핫한 곳</p>
+                        <h2 className="text-lg font-black text-[#3E2723]">오늘 행사 현재 상태</h2>
+                    </div>
                 </div>
-                <Link 
-                    href="/events" 
+                <Link
+                    href="/events"
                     className="flex items-center text-[12px] font-black text-secondary hover:underline"
                 >
                     전체보기 <ArrowRight size={14} className="ml-1" />
                 </Link>
             </div>
 
-            <div className="flex overflow-x-auto pb-4 px-4 space-x-4 no-scrollbar">
+            <div className="no-scrollbar flex space-x-4 overflow-x-auto px-4 pb-4">
                 {events.map((event) => (
-                    <EventSummaryCard 
-                        key={event.id} 
-                        event={event} 
-                        onClick={() => handleEventClick(event)} 
+                    <EventSummaryCard
+                        key={event.id}
+                        event={event}
+                        statusSummary={getEventStatusSummary(event, statuses)}
+                        onClick={() => handleEventClick(event)}
                     />
                 ))}
             </div>

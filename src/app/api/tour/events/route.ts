@@ -14,6 +14,34 @@ type TourApiFestivalItem = {
   eventplace?: string;
 };
 
+const TOURAPI_PASSTHROUGH_PARAMS = [
+  "eventEndDate",
+  "areaCode",
+  "sigunguCode",
+  "lDongRegnCd",
+  "lDongSignguCd",
+  "lclsSystm1",
+  "lclsSystm2",
+  "lclsSystm3",
+  "contentTypeId",
+  "modifiedtime",
+];
+
+type TourApiPayload = {
+  response?: {
+    header?: {
+      resultCode?: string;
+      resultMsg?: string;
+    };
+    body?: {
+      items?: {
+        item?: TourApiFestivalItem | TourApiFestivalItem[];
+      };
+      totalCount?: number;
+    };
+  };
+};
+
 function toToday() {
   const now = new Date();
   const year = now.getFullYear();
@@ -37,10 +65,17 @@ function buildDescription(item: TourApiFestivalItem) {
   return parts.join("\n");
 }
 
+function pickEndpoint(baseUrl: string, keyword?: string | null) {
+  const versionSuffix = baseUrl.endsWith("Service2") ? "2" : "1";
+  return keyword?.trim()
+    ? `searchKeyword${versionSuffix}`
+    : `searchFestival${versionSuffix}`;
+}
+
 export async function GET(request: NextRequest) {
   const tourApiKey = process.env.TOURAPI_KEY || process.env.TOURAPI_SERVICE_KEY;
   const baseUrl =
-    process.env.TOURAPI_BASE_URL || "https://apis.data.go.kr/B551011/KorService1";
+    process.env.TOURAPI_BASE_URL || "https://apis.data.go.kr/B551011/KorService2";
 
   if (!tourApiKey) {
     return NextResponse.json(
@@ -53,45 +88,73 @@ export async function GET(request: NextRequest) {
   const eventStartDate = searchParams.get("eventStartDate") || toToday();
   const pageNo = Number(searchParams.get("pageNo") || "1");
   const numOfRows = Number(searchParams.get("numOfRows") || "20");
-  const areaCode = searchParams.get("areaCode");
   const keyword = searchParams.get("keyword");
+  const arrange = searchParams.get("arrange") || "C";
 
   try {
     const params = new URLSearchParams({
-      serviceKey: tourApiKey,
       MobileApp: "Dongple",
       MobileOS: "ETC",
       _type: "json",
-      arrange: "A",
+      arrange,
       pageNo: `${pageNo}`,
       numOfRows: `${numOfRows}`,
       eventStartDate,
     });
 
-    if (areaCode) {
-      params.set("areaCode", areaCode);
-    }
+    TOURAPI_PASSTHROUGH_PARAMS.forEach((key) => {
+      const value = searchParams.get(key);
+      if (value) params.set(key, value);
+    });
 
-    const endpoint = keyword?.trim() ? "searchKeyword1" : "searchFestival1";
+    const endpoint = pickEndpoint(baseUrl, keyword);
 
     if (keyword?.trim()) {
       params.set("keyword", keyword.trim());
-      params.set("contentTypeId", "15");
+      if (!params.has("contentTypeId")) {
+        params.set("contentTypeId", "15");
+      }
     }
 
-    const response = await fetch(`${baseUrl}/${endpoint}?${params.toString()}`, {
+    const requestUrl = `${baseUrl}/${endpoint}?serviceKey=${tourApiKey}&${params.toString()}`;
+    const response = await fetch(requestUrl, {
       cache: "no-store",
     });
+    const responseText = await response.text();
 
     if (!response.ok) {
-      const errorText = await response.text();
+      console.error("TourAPI request failed:", {
+        status: response.status,
+        endpoint,
+        detail: responseText.slice(0, 300),
+      });
       return NextResponse.json(
-        { error: "TourAPI request failed.", detail: errorText },
+        { error: "TourAPI request failed.", detail: responseText },
         { status: response.status },
       );
     }
 
-    const payload = await response.json();
+    let payload: TourApiPayload;
+    try {
+      payload = JSON.parse(responseText);
+    } catch {
+      console.error("TourAPI returned non-JSON response:", responseText.slice(0, 300));
+      return NextResponse.json(
+        { error: "TourAPI returned non-JSON response.", detail: responseText },
+        { status: 502 },
+      );
+    }
+
+    const resultCode = payload?.response?.header?.resultCode;
+    if (resultCode && resultCode !== "0000") {
+      const resultMsg = payload?.response?.header?.resultMsg || "Unknown TourAPI error";
+      console.error("TourAPI result error:", { resultCode, resultMsg });
+      return NextResponse.json(
+        { error: "TourAPI result error.", detail: resultMsg, resultCode },
+        { status: 502 },
+      );
+    }
+
     const rawItems = payload?.response?.body?.items?.item;
     const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
 

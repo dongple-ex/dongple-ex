@@ -19,7 +19,7 @@ export const redis = getRedisClient();
 
 // TourAPI 공통 설정
 const tourApiClient = axios.create({
-  baseURL: process.env.TOURAPI_BASE_URL,
+  baseURL: process.env.TOURAPI_BASE_URL || 'https://apis.data.go.kr/B551011/KorService2',
   params: {
     serviceKey: process.env.TOURAPI_KEY,
     MobileApp: 'Dongple',

@@ -24,7 +24,7 @@ export async function collectFestivals() {
   // 1. TourAPI에서 행사/축제 정보 조회
   const items = await fetchWithCache<FestivalItem[]>(
     cacheKey,
-    '/searchFestival1',
+    '/searchFestival2',
     {
       eventStartDate: today,
       arrange: 'A',

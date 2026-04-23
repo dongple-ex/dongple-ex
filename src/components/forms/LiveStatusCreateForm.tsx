@@ -9,6 +9,7 @@ import {
   Home,
   MapPin,
   ParkingCircle,
+  PartyPopper,
   ShoppingBag,
   Store,
   Trees,
@@ -20,6 +21,7 @@ import { SHAREABLE_STATUS_OPTIONS } from "@/lib/statusTheme";
 import { postLiveStatus } from "@/services/statusService";
 
 const CATEGORIES = [
+  { id: "행사", label: "행사", icon: PartyPopper },
   { id: "기타", label: "기타", icon: Home },
   { id: "공원", label: "공원", icon: Trees },
   { id: "운동", label: "운동", icon: Dumbbell },
@@ -33,6 +35,8 @@ const CATEGORIES = [
 
 interface LiveStatusCreateFormProps {
   mode?: "request" | "share";
+  eventId?: string | number;
+  defaultPlaceName?: string;
   currentAddress?: string;
   latitude?: number;
   longitude?: number;
@@ -42,6 +46,8 @@ interface LiveStatusCreateFormProps {
 
 export default function LiveStatusCreateForm({
   mode = "share",
+  eventId,
+  defaultPlaceName,
   currentAddress: propAddress,
   latitude: propLat,
   longitude: propLng,
@@ -53,9 +59,10 @@ export default function LiveStatusCreateForm({
   const displayAddress = propAddress || storeAddress;
   const finalLat = propLat || storeLat;
   const finalLng = propLng || storeLng;
+  const isEventShare = Boolean(eventId);
 
-  const [placeName, setPlaceName] = useState("");
-  const [category, setCategory] = useState("기타");
+  const [placeName, setPlaceName] = useState(defaultPlaceName || "");
+  const [category, setCategory] = useState(eventId ? "행사" : "기타");
   const [selectedStatus, setSelectedStatus] = useState("보통");
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,6 +104,7 @@ export default function LiveStatusCreateForm({
 
     try {
       const created = await postLiveStatus({
+        event_id: eventId ? String(eventId) : undefined,
         place_name: placeName.trim(),
         category,
         status: nextStatus,
@@ -139,9 +147,30 @@ export default function LiveStatusCreateForm({
         <IdentityHeader compact={compact} />
       </div>
 
+      {isEventShare && (
+        <div className="rounded-2xl border border-[#2E7D32]/15 bg-[#2E7D32]/5 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-[#2E7D32] p-2 text-white">
+              <PartyPopper size={18} />
+            </div>
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-widest text-[#2E7D32]">
+                행사 현장 공유
+              </p>
+              <h4 className="mt-1 text-[15px] font-black text-[#243528]">
+                이 행사의 지금 상태를 남기는 화면입니다
+              </h4>
+              <p className="mt-1 text-[12px] font-medium leading-relaxed text-gray-500">
+                붐빔, 대기, 분위기를 공유하면 행사 핀에 몇 분 전 상태로 바로 연결됩니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div>
         <label className="mb-1.5 flex items-center justify-between text-xs font-bold text-gray-700">
-          <span>장소 이름</span>
+          <span>{isEventShare ? "행사 이름" : "장소 이름"}</span>
           {displayAddress && (
             <span className="flex items-center rounded bg-green-50 px-1.5 py-0.5 text-[10px] text-[#2E7D32]">
               <MapPin size={8} className="mr-0.5" />
@@ -151,7 +180,7 @@ export default function LiveStatusCreateForm({
         </label>
         <input
           type="text"
-          placeholder="예: 행궁동 공방거리"
+          placeholder={isEventShare ? "예: 수원화성문화제" : "예: 행궁동 공방거리"}
           value={placeName}
           onChange={(event) => setPlaceName(event.target.value)}
           className={`w-full rounded-xl border border-gray-200 text-sm outline-none transition-colors ${
@@ -251,7 +280,9 @@ export default function LiveStatusCreateForm({
           placeholder={
             mode === "request"
               ? "궁금한 점이나 확인이 필요한 내용을 남겨보세요."
-              : "현장 분위기나 대기 상황처럼 함께 남기고 싶은 내용을 적어보세요."
+              : isEventShare
+                ? "예: 줄 길어요, 사람 많음, 입장은 빠른 편이에요."
+                : "현장 분위기나 대기 상황처럼 함께 남기고 싶은 내용을 적어보세요."
           }
           value={note}
           onChange={(event) => setNote(event.target.value)}
@@ -268,7 +299,13 @@ export default function LiveStatusCreateForm({
             : "bg-[#2E7D32] shadow-[#2E7D32]/20"
         } ${compact ? "py-3.5" : "py-4"}`}
       >
-        {isSubmitting ? "등록 중..." : mode === "request" ? "요청 남기기" : "상황 공유하기"}
+        {isSubmitting
+          ? "등록 중..."
+          : mode === "request"
+            ? "요청 남기기"
+            : isEventShare
+              ? "행사 현장 상태 공유하기"
+              : "상황 공유하기"}
       </button>
     </div>
   );
