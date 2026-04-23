@@ -109,6 +109,17 @@ export default function BottomSheet() {
 
   if (!mounted) return null;
 
+  const titleMap: Record<string, string> = {
+    write: "소식 글쓰기",
+    recordHub: "기록하기",
+    postDetail: "소식 상세보기",
+    liveCreate: "현장 상태 공유",
+    liveReply: "상황 알려주기",
+    liveDetail: "상황 정보",
+    contentReport: "부적절한 정보 신고",
+  };
+  const sheetTitle = bottomSheetContent ? titleMap[bottomSheetContent] || "상세 정보" : "상세 정보";
+
   return (
     <AnimatePresence>
       {isBottomSheetOpen && (
@@ -157,14 +168,7 @@ export default function BottomSheet() {
 
                   {/* Center: Title */}
                   <h3 className="text-lg font-black text-foreground absolute left-1/2 -translate-x-1/2">
-                    {bottomSheetContent === "write" ? "?뚯떇 湲?곌린" : 
-                     bottomSheetContent === "recordHub" ? "湲곕줉?섍린" :
-                     bottomSheetContent === "postDetail" ? "?뚯떇 ?곸꽭蹂닿린" : 
-                     bottomSheetContent === "liveCreate" ? "?곹솴 ?쒕낫" :
-                     bottomSheetContent === "liveReply" ? "?곹솴 ?뚮젮二쇨린" :
-                     bottomSheetContent === "liveDetail" ? "?곹솴 ?뺣낫" :
-                     bottomSheetContent === "contentReport" ? "遺?곸젅???뺣낫 ?좉퀬" :
-                     "?곸꽭 ?뺣낫"}
+                    {sheetTitle}
                   </h3>
 
                   {/* Right Action: Submit (Write mode only) */}
@@ -468,6 +472,8 @@ function PostDetailView() {
     const { bottomSheetData, openBottomSheet } = useUIStore();
     const { userId } = useAuthStore();
     const isOfficial = bottomSheetData?.is_official;
+    const officialSource = typeof bottomSheetData?.source === "string" ? bottomSheetData.source : "공식 연동";
+    const officialAddress = typeof bottomSheetData?.address === "string" ? bottomSheetData.address : undefined;
     const [comments, setComments] = useState<CommentItem[]>([]);
     const [likes, setLikes] = useState(bottomSheetData?.likes_count || 0);
     const [isLiked, setIsLiked] = useState(false);
@@ -582,11 +588,34 @@ function PostDetailView() {
             </div>
 
             {isOfficial ? (
-                <div className="flex items-center space-x-2 mt-4 text-[13px] font-medium">
+                <div className="mt-4 space-y-3">
+                    <div className="flex items-center space-x-2 text-[13px] font-medium">
                     <div className="w-6 h-6 bg-secondary rounded-lg flex items-center justify-center">
                         <span className="text-white font-black text-[10px]">공</span>
                     </div>
-                    <div className="text-foreground font-black opacity-80">수원관광공사 제공</div>
+                    <div className="text-foreground font-black opacity-80">{officialSource} 제공</div>
+                    </div>
+                    <div className="rounded-[24px] border border-secondary/15 bg-secondary/5 p-4">
+                        <p className="text-[11px] font-black uppercase tracking-wider text-secondary">행사 현장 공유</p>
+                        <p className="mt-2 text-[13px] font-medium leading-relaxed text-foreground/70">
+                            행사 정보보다 더 중요한 건 지금 현장 분위기입니다. 붐빔, 대기, 분위기를 바로 남겨보세요.
+                        </p>
+                        <button
+                            onClick={() =>
+                                openBottomSheet("liveCreate", {
+                                    mode: "share",
+                                    eventId: bottomSheetData?.eventId || bottomSheetData?.id,
+                                    defaultPlaceName: bottomSheetData?.defaultPlaceName || bottomSheetData?.title,
+                                    address: officialAddress,
+                                    latitude: bottomSheetData?.latitude,
+                                    longitude: bottomSheetData?.longitude,
+                                })
+                            }
+                            className="mt-3 inline-flex items-center justify-center rounded-2xl bg-secondary px-4 py-3 text-[13px] font-black text-white shadow-lg shadow-secondary/20"
+                        >
+                            이 행사 현장 공유하기
+                        </button>
+                    </div>
                 </div>
             ) : (
                 <div className="flex items-center space-x-2 mt-4 text-[13px] font-medium text-foreground/60">
@@ -650,14 +679,24 @@ function PostDetailView() {
 
 function LiveCreateForm() {
     const { bottomSheetData, closeBottomSheet } = useUIStore();
-    const mode = bottomSheetData?.mode || "share";
+    const data = (bottomSheetData || {}) as {
+        mode?: "request" | "share";
+        eventId?: string | number;
+        defaultPlaceName?: string;
+        address?: string;
+        latitude?: number;
+        longitude?: number;
+    };
+    const mode = data.mode || "share";
     
     return (
         <LiveStatusCreateForm 
             mode={mode}
-            currentAddress={bottomSheetData?.address}
-            latitude={bottomSheetData?.latitude}
-            longitude={bottomSheetData?.longitude}
+            eventId={data.eventId}
+            defaultPlaceName={data.defaultPlaceName}
+            currentAddress={data.address}
+            latitude={data.latitude}
+            longitude={data.longitude}
             onSuccess={closeBottomSheet}
         />
     );

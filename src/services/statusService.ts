@@ -13,6 +13,7 @@ type GroupedLiveStatus = LiveStatus & {
 
 export interface LiveStatus {
     id: string;
+    event_id?: string | null;
     place_name: string;
     category: string;
     status: string;
@@ -27,6 +28,110 @@ export interface LiveStatus {
     is_hidden: boolean; // 노출 여부
     created_at: string;
     expires_at: string;
+}
+
+export interface EventStatusSummary {
+    level: string;
+    label: string;
+    colorClass: string;
+    indicatorClass: string;
+    updatedAgo: string;
+    reportCount: number;
+    topTags: string[];
+    latestMessage?: string;
+}
+
+type EventLike = {
+    id: string | number;
+    title: string;
+};
+
+const STATUS_ORDER: Record<string, number> = {
+    "한산": 0,
+    "여유": 0,
+    "보통": 1,
+    "붐빔": 2,
+    "혼잡": 2,
+};
+
+function formatUpdatedAgo(value: string) {
+    const diffMs = Date.now() - new Date(value).getTime();
+    const diffMin = Math.max(0, Math.floor(diffMs / 60000));
+    if (diffMin < 1) return "방금 전";
+    if (diffMin < 60) return `${diffMin}분 전`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour}시간 전`;
+    return `${Math.floor(diffHour / 24)}일 전`;
+}
+
+function normalizeStatus(status: string) {
+    if (status === "여유") return "한산";
+    if (status === "혼잡") return "붐빔";
+    return status || "보통";
+}
+
+function getStatusClasses(level: string) {
+    if (level === "붐빔") {
+        return {
+            colorClass: "bg-red-500 text-white border-red-500",
+            indicatorClass: "bg-red-500",
+        };
+    }
+    if (level === "한산") {
+        return {
+            colorClass: "bg-green-500 text-white border-green-500",
+            indicatorClass: "bg-green-500",
+        };
+    }
+    return {
+        colorClass: "bg-yellow-400 text-[#3E2723] border-yellow-400",
+        indicatorClass: "bg-yellow-400",
+    };
+}
+
+function isStatusLinkedToEvent(status: LiveStatus, event: EventLike) {
+    const eventId = String(event.id);
+    const eventTitle = event.title.trim();
+    const placeName = status.place_name?.trim() || "";
+
+    return (
+        String(status.event_id || "") === eventId ||
+        String(status.tourapi_content_id || "") === eventId ||
+        placeName === eventTitle ||
+        placeName.includes(eventTitle) ||
+        eventTitle.includes(placeName)
+    );
+}
+
+export function getEventStatusSummary(
+    event: EventLike,
+    statuses: LiveStatus[],
+): EventStatusSummary | null {
+    const linkedStatuses = statuses
+        .filter((status) => !status.is_request && isStatusLinkedToEvent(status, event))
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    if (linkedStatuses.length === 0) return null;
+
+    const latest = linkedStatuses[0];
+    const statusScores = linkedStatuses.map((status) => STATUS_ORDER[normalizeStatus(status.status)] ?? 1);
+    const averageScore = statusScores.reduce((sum, score) => sum + score, 0) / statusScores.length;
+    const level = averageScore >= 1.5 ? "붐빔" : averageScore <= 0.5 ? "한산" : "보통";
+    const classes = getStatusClasses(level);
+    const topTags = linkedStatuses
+        .map((status) => status.message?.trim())
+        .filter(Boolean)
+        .slice(0, 2) as string[];
+
+    return {
+        level,
+        label: `지금 ${level}`,
+        updatedAgo: formatUpdatedAgo(latest.created_at),
+        reportCount: linkedStatuses.length,
+        topTags,
+        latestMessage: latest.message,
+        ...classes,
+    };
 }
 
 /**
@@ -55,6 +160,7 @@ export async function fetchLiveStatus() {
         }
         
         const root = grouped.get(item.place_name);
+        if (!root) continue;
         root.history.push({
             status: item.status,
             status_color: item.status_color,

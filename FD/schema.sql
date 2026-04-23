@@ -4,6 +4,7 @@
 -- 1. 실시간 동네 상황 테이블
 CREATE TABLE IF NOT EXISTS public.live_status (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id TEXT, -- TourAPI/events 기준 행사 연결 ID
     place_name TEXT NOT NULL,
     category TEXT NOT NULL,
     status TEXT NOT NULL, -- 여유, 보통, 혼잡
@@ -17,6 +18,9 @@ CREATE TABLE IF NOT EXISTS public.live_status (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '2 hours')
 );
+
+ALTER TABLE public.live_status ADD COLUMN IF NOT EXISTS event_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_live_status_event_id ON public.live_status USING btree (event_id);
 
 -- 2. 상황 인증 내역 테이블
 CREATE TABLE IF NOT EXISTS public.status_verifications (
