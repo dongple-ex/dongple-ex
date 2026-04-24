@@ -159,6 +159,81 @@ export async function searchPlaces(query: string): Promise<SearchPlaceResult[]> 
 }
 
 /**
+ * 좌표 기준 가장 가까운 상호/장소 정보 가져오기 (POI Reverse Search)
+ */
+export async function getNearestPlace(lat: number, lng: number): Promise<SearchPlaceResult | null> {
+    if (!isKakaoServicesReady()) return null;
+
+    const ps = new window.kakao.maps.services.Places();
+    const location = new window.kakao.maps.LatLng(lat, lng);
+    
+    // 탐색할 카카오 장소 카테고리 목록
+    const categories = ['FD6', 'CE7', 'CS2', 'CT1', 'AT4', 'PO3', 'PK6', 'MT1'];
+    
+    const searchCategory = (category: string): Promise<SearchPlaceResult | null> => {
+        return new Promise((resolve) => {
+            ps.categorySearch(category, (results: KakaoPlaceResult[], status: KakaoStatus) => {
+                if (status === window.kakao.maps.services.Status.OK && results.length > 0) {
+                    console.log(`[getNearestPlace] Category ${category} found:`, results[0].place_name);
+                    resolve({
+                        title: results[0].place_name,
+                        mapx: results[0].x,
+                        mapy: results[0].y,
+                        roadAddress: results[0].road_address_name,
+                        address: results[0].address_name,
+                        category: results[0].category_name,
+                    });
+                } else {
+                    resolve(null);
+                }
+            }, { location, radius: 100, sort: window.kakao.maps.services.SortBy.DISTANCE });
+        });
+    };
+
+    try {
+        console.log(`[getNearestPlace] Starting search at ${lat}, ${lng}`);
+        // 1단계: 카테고리 기반 검색 (정확도 높음)
+        const catResults = await Promise.all(categories.map(cat => searchCategory(cat)));
+        const validResults = catResults.filter((r): r is SearchPlaceResult => r !== null);
+        
+        if (validResults.length > 0) {
+            const nearest = validResults.reduce((prev, curr) => {
+                const distPrev = Math.pow(parseFloat(prev.mapy) - lat, 2) + Math.pow(parseFloat(prev.mapx) - lng, 2);
+                const distCurr = Math.pow(parseFloat(curr.mapy) - lat, 2) + Math.pow(parseFloat(curr.mapx) - lng, 2);
+                return distCurr < distPrev ? curr : prev;
+            });
+            console.log(`[getNearestPlace] Final Nearest:`, nearest.title);
+            return nearest;
+        }
+
+        // 2단계: 키워드 기반 범용 검색 (카테고리에 없는 경우)
+        return new Promise((resolve) => {
+            ps.keywordSearch('가게', (results: KakaoPlaceResult[], status: KakaoStatus) => {
+                if (status === window.kakao.maps.services.Status.OK && results.length > 0) {
+                    const item = results[0];
+                    console.log(`[getNearestPlace] Keyword search found:`, item.place_name);
+                    resolve({
+                        title: item.place_name,
+                        mapx: item.x,
+                        mapy: item.y,
+                        roadAddress: item.road_address_name,
+                        address: item.address_name,
+                        category: item.category_name,
+                    });
+                } else {
+                    console.log(`[getNearestPlace] No POI found around ${lat}, ${lng}`);
+                    resolve(null);
+                }
+            }, { location, radius: 100, sort: window.kakao.maps.services.SortBy.DISTANCE });
+        });
+    } catch (err) {
+        console.error("POI 탐색 중 오류:", err);
+        return null;
+    }
+}
+
+
+/**
  * 주소를 좌표로 변환 (Geocoding) - 검색 기능용
  */
 export async function getCoordsFromAddress(address: string): Promise<{ lat: number, lng: number } | null> {
