@@ -9,6 +9,7 @@ interface PulseMarkerProps {
     statusLabel?: string;
     updatedAgo?: string;
     statusIndicatorClass?: string;
+    isSelected?: boolean;
     onClick?: () => void;
     onReport?: () => void;
 }
@@ -19,13 +20,19 @@ export default function PulseMarker({
     statusLabel,
     updatedAgo,
     statusIndicatorClass = "bg-secondary",
+    isSelected = false,
     onClick,
     onReport,
 }: PulseMarkerProps) {
     return (
         <div 
-            className="relative flex flex-col items-center cursor-pointer group"
-            onClick={onClick}
+            className={`relative flex flex-col items-center cursor-pointer group transition-all duration-300 pointer-events-auto ${isSelected ? 'z-50 scale-110' : 'z-10'}`}
+            onClick={(e) => {
+                e.stopPropagation();
+                onClick?.();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
         >
             {/* Pulse Animation Outer Ring (Constant) */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14">
@@ -92,18 +99,20 @@ export default function PulseMarker({
                 {/* Bottom Pointer attached to Label */}
                 <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-secondary -mt-0.5" />
 
-                {onReport && (
-                    <button
+                {onReport && isSelected && (
+                    <motion.button
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
                         type="button"
                         onClick={(event) => {
                             event.stopPropagation();
                             onReport();
                         }}
-                        className="mt-2 inline-flex items-center rounded-full bg-foreground px-2.5 py-1 text-[10px] font-black text-background shadow-lg transition-transform active:scale-95 hover:bg-foreground/80"
+                        className="mt-2 inline-flex items-center rounded-full bg-foreground px-3 py-1.5 text-[11px] font-black text-background shadow-lg transition-transform active:scale-95 hover:bg-foreground/80"
                     >
-                        <Plus size={11} className="mr-1" />
+                        <Plus size={12} className="mr-1" />
                         현장 공유하기
-                    </button>
+                    </motion.button>
                 )}
             </motion.div>
         </div>

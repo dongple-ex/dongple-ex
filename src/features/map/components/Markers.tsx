@@ -36,10 +36,11 @@ export function StatusMarker({ status, isRequest, isSelected }: StatusMarkerProp
  */
 interface ClickTargetMarkerProps {
     address: string;
+    placeName?: string;
     onReport: () => void;
 }
 
-export function ClickTargetMarker({ address, onReport }: ClickTargetMarkerProps) {
+export function ClickTargetMarker({ address, placeName, onReport }: ClickTargetMarkerProps) {
     return (
         <div className="relative flex flex-col items-center group pointer-events-auto">
             <motion.div 
@@ -48,8 +49,11 @@ export function ClickTargetMarker({ address, onReport }: ClickTargetMarkerProps)
                 className="absolute -top-16 bg-card-bg px-4 py-2.5 rounded-2xl shadow-2xl border border-secondary/20 whitespace-nowrap flex items-center space-x-3 translate-y-2"
             >
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-secondary uppercase tracking-tighter">선택한 위치</span>
-                    <span className="text-[12px] font-black text-foreground max-w-[120px] truncate">{address || '주소 확인 중...'}</span>
+                    <span className="text-[9px] font-black text-secondary uppercase tracking-tighter">{placeName ? "선택한 장소" : "선택한 위치"}</span>
+                    <span className="text-[13px] font-black text-foreground max-w-[150px] truncate">{placeName || address || '주소 확인 중...'}</span>
+                    {placeName && (
+                        <span className="text-[10px] text-gray-400 font-medium truncate max-w-[150px]">{address}</span>
+                    )}
                 </div>
                 <button 
                     onClick={(e) => { 

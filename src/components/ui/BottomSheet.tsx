@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -76,7 +76,7 @@ export default function BottomSheet() {
   // 肄섑뀗痢?蹂寃???珥덇린 ?믪씠 ?ㅼ젙
   useEffect(() => {
     if (isBottomSheetOpen) {
-      if (bottomSheetContent === "postDetail") setSheetHeight(85);
+      if (bottomSheetContent === "postDetail" || bottomSheetContent === "liveCreate") setSheetHeight(85);
       else if (bottomSheetContent === "write" || bottomSheetContent === "recordHub") setSheetHeight(90);
       else setSheetHeight(50);
     }
