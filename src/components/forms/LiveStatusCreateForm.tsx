@@ -132,6 +132,7 @@ export default function LiveStatusCreateForm({
         createdAt: created.created_at,
       });
 
+      alert("성공적으로 공유되었습니다.");
       onSuccess?.();
     } catch (error) {
       console.error("상황 공유 등록 실패:", error);

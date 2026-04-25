@@ -27,7 +27,7 @@ export default function HeroSection() {
 
         <div className="space-y-4">
           <h1 className="text-[28px] font-black leading-[1.15] tracking-tight md:text-[34px]">
-            지금 어디가 살아있는지
+            지금 어디가 생생한지,
             <br />
             <span className="bg-gradient-to-r from-[#2E7D32] via-[#1F5AA6] to-[#A67C52] bg-clip-text text-transparent">
               지도에서 바로 확인하세요

@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower } from "lucide-react";
 import { reportContent, ReportReason } from "@/services/moderationService";
 
-
 import LiveStatusCreateForm from "@/components/forms/LiveStatusCreateForm";
 import { saveAlbumMemory } from "@/lib/albumMemory";
 import { createPost, createComment, fetchComments, likePost, reportPost } from "@/services/postService";
@@ -36,11 +35,9 @@ export default function BottomSheet() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
   
-  // WriteForm ?곕룞???꾪븳 ?곹깭 諛?Ref
   const writeFormRef = useRef<{ submit: () => void } | null>(null);
   const [canSubmit, setCanSubmit] = useState(false);
 
-  // ?쒕옒洹??믪씠 議곗젅???꾪븳 ?곹깭 諛?Ref
   const [sheetHeight, setSheetHeight] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
@@ -63,17 +60,15 @@ export default function BottomSheet() {
             is_anonymous: isAnonymous
         });
         setCommentText("");
-        // Dispatch event to refresh PostDetailView
         window.dispatchEvent(new CustomEvent('comment-added', { detail: { postId: bottomSheetData.id } }));
     } catch (error) {
         console.error("Comment failed:", error);
-        alert("?볤? ?깅줉???ㅽ뙣?덉뒿?덈떎.");
+        alert("댓글 등록에 실패했습니다.");
     } finally {
         setIsSubmitting(false);
     }
   };
 
-  // 肄섑뀗痢?蹂寃???珥덇린 ?믪씠 ?ㅼ젙
   useEffect(() => {
     if (isBottomSheetOpen) {
       if (bottomSheetContent === "postDetail" || bottomSheetContent === "liveCreate") setSheetHeight(85);
@@ -100,10 +95,9 @@ export default function BottomSheet() {
     setIsDragging(false);
     e.currentTarget.releasePointerCapture(e.pointerId);
     
-    // Snap points
     if (sheetHeight > 75) setSheetHeight(92);
     else if (sheetHeight > 35) setSheetHeight(50);
-    else if (sheetHeight < 25) closeBottomSheet(); // ?덈Т ??쑝硫??リ린
+    else if (sheetHeight < 25) closeBottomSheet();
     else setSheetHeight(24);
   };
 
@@ -124,7 +118,6 @@ export default function BottomSheet() {
     <AnimatePresence>
       {isBottomSheetOpen && (
         <>
-          {/* Dimmed Background */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -134,7 +127,6 @@ export default function BottomSheet() {
             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
           />
 
-          {/* Bottom Sheet wrapper for fixed positioning */}
           <div className="fixed inset-x-0 bottom-0 z-[100] flex justify-center pointer-events-none">
             <motion.div
               initial={{ y: "100%" }}
@@ -149,7 +141,6 @@ export default function BottomSheet() {
                 }`}
                 style={{ height: `${sheetHeight}vh` }}
               >
-                {/* Visual drag handle - Enabled with pointer events */}
                 <div 
                     className="flex justify-center pt-4 pb-2 cursor-ns-resize w-full bg-card-bg rounded-t-[40px] touch-none"
                     onPointerDown={handlePointerDown}
@@ -159,19 +150,15 @@ export default function BottomSheet() {
                   <div className="w-12 h-1.5 bg-border rounded-full" />
                 </div>
 
-                {/* Header */}
                 <div className="flex items-center justify-between px-6 py-2 border-b border-border sticky top-0 bg-card-bg z-10 shrink-0 min-h-[56px]">
-                  {/* Left Action: Close */}
                   <button onClick={closeBottomSheet} className="p-2 -ml-2 text-gray-400 hover:text-gray-600 rounded-full transition-colors">
                     <X size={24} />
                   </button>
 
-                  {/* Center: Title */}
                   <h3 className="text-lg font-black text-foreground absolute left-1/2 -translate-x-1/2">
                     {sheetTitle}
                   </h3>
 
-                  {/* Right Action: Submit (Write mode only) */}
                   {bottomSheetContent === "write" ? (
                     <button 
                       onClick={() => writeFormRef.current?.submit()}
@@ -180,14 +167,13 @@ export default function BottomSheet() {
                         canSubmit ? "text-secondary hover:bg-secondary/5" : "text-gray-300"
                       }`}
                     >
-                      ?깅줉
+                      등록
                     </button>
                   ) : (
-                    <div className="w-10" /> /* Spacer if no right action */
+                    <div className="w-10" />
                   )}
                 </div>
 
-                {/* Dynamic Content */}
                 <div className="overflow-y-auto p-6 flex-1 overscroll-contain pb-32 flex flex-col">
                   {bottomSheetContent === "write" && <WriteForm ref={writeFormRef} onStateChange={setCanSubmit} />}
                   {bottomSheetContent === "recordHub" && <RecordHub />}
@@ -198,14 +184,13 @@ export default function BottomSheet() {
                   {bottomSheetContent === "contentReport" && <ReportView />}
                 </div>
 
-                {/* Sticky Bottom Actions for Post Detail */}
                 {bottomSheetContent === "postDetail" && (
                   <div className="absolute bottom-0 left-0 right-0 border-t border-border p-4 px-6 flex items-center space-x-3 bg-card-bg/80 backdrop-blur-xl z-20 pb-8 shadow-[0_-8px_30px_rgba(0,0,0,0.05)]">
                       <input 
                         type="text" 
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
-                        placeholder="?댁썐?먭쾶 ?곕쑜???볤????④꺼蹂댁꽭??" 
+                        placeholder="이웃에게 따뜻한 댓글을 남겨보세요" 
                         className="flex-1 bg-nav-bg rounded-[20px] px-5 py-3 text-[14px] font-medium outline-none focus:ring-2 focus:ring-secondary/20 transition-all text-foreground" 
                       />
                       <button 
@@ -213,7 +198,7 @@ export default function BottomSheet() {
                         disabled={isSubmitting || !commentText.trim()}
                         className="bg-secondary text-white px-6 py-3 rounded-[20px] text-[14px] font-black shadow-lg disabled:opacity-50 transition-all active:scale-95 whitespace-nowrap"
                       >
-                        {isSubmitting ? "..." : "?깅줉"}
+                        {isSubmitting ? "..." : "등록"}
                       </button>
                   </div>
                 )}
@@ -236,12 +221,10 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
     const [category, setCategory] = useState("기타");
     const [isSuccess, setIsSuccess] = useState(false);
 
-    // 遺紐⑥뿉寃??꾩옱 ?댁슜???꾨떖?섏뿬 ?깅줉 踰꾪듉 ?쒖꽦???щ? 寃곗젙
     useEffect(() => {
         onStateChange(content.trim().length > 0);
     }, [content, onStateChange]);
 
-    // 遺紐④? ?몄텧???⑥닔 ?몄텧
     useImperativeHandle(ref, () => ({
         submit: handleSubmit
     }));
@@ -271,7 +254,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 user_id: userId,
                 public_id: publicId,
                 is_anonymous: isAnonymous,
-                score: postType === "정보공유" ? 0.6 : 0.5 // 吏移⑥꽌 湲곗? 珥덇린 ?먯닔
+                score: postType === "정보공유" ? 0.6 : 0.5
             });
             saveAlbumMemory({
                 sourceId: createdPost.id,
@@ -365,7 +348,6 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 />
             </div>
 
-            {/* ?묒꽦???듭뀡 ?덉씠??*/}
             <div className={`bg-nav-bg/80 rounded-2xl p-4 border border-border flex items-center justify-between ${showInlineSubmit ? "mt-4" : "my-2"}`}>
                 <div className="flex items-center space-x-3">
                     <div className={`p-2 rounded-xl ${isAnonymous ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-secondary/10 text-secondary'}`}>
@@ -524,12 +506,12 @@ function PostDetailView() {
 
     const handleReport = async () => {
         if (!userId || isReported) return;
-        if (!confirm("??寃뚯떆湲???좉퀬?섏떆寃좎뒿?덇퉴? ?숉뵆 ?대┛ 媛?대뱶???곕씪 寃?좊맗?덈떎.")) return;
+        if (!confirm("이 게시글을 신고하시겠습니까? 동플 클린 가이드에 따라 검토됩니다.")) return;
 
         setIsReported(true);
         try {
             await reportPost(bottomSheetData.id, userId);
-            alert("?좉퀬媛 ?묒닔?섏뿀?듬땲?? ?좊ː?꾧? ??? 寃뚯떆臾쇱? ?먮룞?쇰줈 ?④? 泥섎━?⑸땲??");
+            alert("신고가 접수되었습니다. 신뢰도가 낮은 게시물은 자동으로 숨김 처리됩니다.");
         } catch (error) {
             console.error("Report failed:", error);
             setIsReported(false);
@@ -636,7 +618,7 @@ function PostDetailView() {
             
             {!isOfficial && (
                 <div className="pt-2 pb-8">
-                    <h3 className="font-bold text-foreground mb-4 text-sm">?볤? {comments.length}</h3>
+                    <h3 className="font-bold text-foreground mb-4 text-sm">댓글 {comments.length}</h3>
                     {loadingComments ? (
                         <div className="flex justify-center py-8">
                             <div className="w-6 h-6 border-2 border-secondary/30 border-t-secondary rounded-full animate-spin"></div>
@@ -664,8 +646,8 @@ function PostDetailView() {
                         </div>
                     ) : (
                         <div className="py-12 text-center text-gray-300 border-2 border-dashed border-border rounded-[32px]">
-                            <p className="text-[13px] font-bold">?꾩쭅 ?볤????놁뒿?덈떎.</p>
-                            <p className="text-[11px] mt-1 opacity-60">泥??볤????④꺼 ?댁썐怨??뚰넻?대낫?몄슂!</p>
+                            <p className="text-[13px] font-bold">아직 댓글이 없습니다.</p>
+                            <p className="text-[11px] mt-1 opacity-60">첫 댓글을 남겨 이웃과 소통해보세요!</p>
                         </div>
                     )}
                 </div>
@@ -706,7 +688,7 @@ function LiveCreateForm() {
 function LiveReplyForm() {
     const { bottomSheetData, closeBottomSheet } = useUIStore();
     const mode = bottomSheetData?.mode || "reply";
-    const [selectedStatus, setSelectedStatus] = useState(bottomSheetData?.defaultStatus || "蹂댄넻");
+    const [selectedStatus, setSelectedStatus] = useState(bottomSheetData?.defaultStatus || "보통");
     const [replyText, setReplyText] = useState("");
 
     const handleSubmit = () => {
@@ -716,6 +698,7 @@ function LiveReplyForm() {
                 selectedStatus,
                 replyText
             });
+            alert("성공적으로 공유되었습니다.");
         }
         closeBottomSheet();
     };
@@ -723,7 +706,7 @@ function LiveReplyForm() {
     return (
         <div className="space-y-4">
             <p className="text-[13px] text-gray-400 mb-2 font-medium">
-                {mode === "reply" ? "?댁썐?ㅼ뿉寃??꾩옱 ?곹솴???뺥솗?섍쾶 ?뚮젮二쇱꽭??" : "?댁쟾 ?ъ슜?먯쓽 ?뺣낫? ?ㅻⅤ?ㅻ㈃ ?뚮쭪? ?곹깭瑜??좏깮?댁＜?몄슂."}
+                {mode === "reply" ? "이웃들에게 현재 상황을 정확하게 알려주세요" : "이전 사용자의 정보와 다르다면 알맞은 상태를 선택해주세요."}
             </p>
             <div className="flex gap-2">
                 {SHAREABLE_STATUS_OPTIONS.map((opt) => (
@@ -742,7 +725,7 @@ function LiveReplyForm() {
             </div>
             <textarea 
                 className="w-full min-h-[120px] p-3.5 text-[14px] bg-nav-bg border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary/50 resize-none placeholder-gray-400 mt-2 text-foreground"
-                placeholder={mode === "reply" ? "?? 吏湲??湲곗씤??10紐??뺣룄 ?덉뼱??" : "?대뼡 ?먯씠 ?щ씪議뚮뒗吏 ?댁썐?ㅼ뿉寃??④꺼二쇱꽭??(?좏깮)"}
+                placeholder={mode === "reply" ? "예: 지금 대기인데 10명 정도 있어요" : "어떤 점이 달라졌는지 이웃들에게 남겨주세요 (선택)"}
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
             />
@@ -751,7 +734,7 @@ function LiveReplyForm() {
                 disabled={mode === "reply" && !replyText.trim()}
                 className="w-full py-4 text-[15px] font-bold text-white bg-secondary rounded-xl hover:bg-[#1B5E20] disabled:bg-gray-300 dark:disabled:bg-gray-700 transition-colors mt-2 shadow-md"
             >
-                ?댁썐?먭쾶 怨듭쑀?섍린
+                이웃에게 공유하기
             </button>
         </div>
     );
@@ -797,7 +780,7 @@ function LiveDetailView() {
                     </div>
                 ) : (
                     <div className="text-gray-400 italic text-center text-[13px] flex h-full items-center justify-center py-6">
-                        ?댁썐???④릿 ?곹깭 肄붾찘???덉뒪?좊━媛 ?놁뒿?덈떎.
+                        이웃이 남긴 상태 코멘트 히스토리가 없습니다.
                     </div>
                 )}
             </div>
@@ -808,7 +791,7 @@ function LiveDetailView() {
                     className="flex items-center space-x-1.5 px-3 py-2 text-gray-300 hover:text-red-400/80 transition-all text-[11px] font-bold"
                 >
                     <AlertTriangle size={14} />
-                    <span>?뺣낫媛 ?섎せ?섏뿀?섏슂? ?좉퀬?섍린</span>
+                    <span>정보가 잘못되었나요? 신고하기</span>
                 </button>
             </div>
         </div>
@@ -822,7 +805,7 @@ function ReportView() {
     const [submitting, setSubmitting] = useState(false);
     const [done, setDone] = useState(false);
 
-    const reasons: ReportReason[] = ["?덉쐞 ?뺣낫", "愿묎퀬/?띾낫", "?뺤꽕/鍮꾪븯", "湲고?"];
+    const reasons: ReportReason[] = ["허위 정보", "광고/홍보", "욕설/비하", "기타"];
 
     const handleReport = async () => {
         if (!reason || !userId || !bottomSheetData?.targetId) return;
@@ -836,7 +819,7 @@ function ReportView() {
             }, 2000);
         } catch (error) {
             console.error("Report failed:", error);
-            alert("?좉퀬 泥섎━???ㅽ뙣?덉뒿?덈떎. ?ㅼ떆 ?쒕룄?댁＜?몄슂.");
+            alert("신고 처리 중 실패했습니다. 다시 시도해주세요.");
         } finally {
             setSubmitting(false);
         }
@@ -848,8 +831,8 @@ function ReportView() {
                 <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
                     <CheckCircle2 size={32} className="text-red-500" />
                 </div>
-                <p className="text-lg font-bold text-foreground">?좉퀬媛 ?묒닔?섏뿀?듬땲??</p>
-                <p className="text-sm text-gray-400 text-center">源⑤걮???숇꽕瑜??꾪빐 ?쒕낫?댁＜?붿꽌 媛먯궗?⑸땲??<br/>?댁쁺 ?뺤콉???곕씪 ?좎냽??議곗튂?섍쿋?듬땲??</p>
+                <p className="text-lg font-bold text-foreground">신고가 접수되었습니다.</p>
+                <p className="text-sm text-gray-400 text-center">깨끗한 동네를 위해 제보해주셔서 감사합니다.<br/>운영 정책에 따라 신속히 조치하겠습니다.</p>
             </div>
         );
     }
@@ -857,12 +840,12 @@ function ReportView() {
     return (
         <div className="space-y-6">
             <p className="text-[14px] text-gray-500 leading-relaxed font-medium">
-                ?대떦 ?뺣낫瑜??좉퀬?섏떆寃좎뒿?덇퉴?<br/>
-                ?좉퀬???뺣낫???숇꽕 ?댁썐?ㅼ뿉寃??몄텧???쒗븳?????덉뒿?덈떎.
+                해당 정보를 신고하시겠습니까?<br/>
+                신고된 정보는 동네 이웃들에게 노출이 제한될 수 있습니다.
             </p>
             
             <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider ml-1">?좉퀬 ?ъ쑀 ?좏깮</label>
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider ml-1">신고 사유 선택</label>
                 <div className="grid grid-cols-2 gap-2">
                     {reasons.map((r) => (
                         <button
@@ -885,16 +868,15 @@ function ReportView() {
                 disabled={!reason || submitting}
                 className="w-full py-4 bg-red-500 text-white rounded-2xl font-black text-[15px] shadow-lg shadow-red-500/20 disabled:opacity-50 active:scale-[0.98] transition-all"
             >
-                {submitting ? "?붿껌 以?.." : "?숇꽕瑜??꾪빐 ?좉퀬?섍린"}
+                {submitting ? "요청 중..." : "동네를 위해 신고하기"}
             </button>
 
             <button 
                 onClick={closeBottomSheet}
                 className="w-full py-3 text-[13px] font-bold text-gray-400 hover:text-gray-600 transition-colors"
             >
-                痍⑥냼
+                취소
             </button>
         </div>
     );
 }
-
