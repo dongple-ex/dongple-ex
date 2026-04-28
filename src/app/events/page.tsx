@@ -97,7 +97,7 @@ export default function EventsPage() {
                     >
                         <ArrowLeft size={24} />
                     </button>
-                    <h1 className="absolute left-1/2 -translate-x-1/2 text-xl font-black text-foreground">행사 상태</h1>
+                    <h1 className="absolute left-1/2 -translate-x-1/2 text-xl font-black text-foreground">인기 지역 보기</h1>
                     <div className="w-10" />
                 </div>
 
@@ -107,7 +107,7 @@ export default function EventsPage() {
                             OFFICIAL EVENTS
                         </span>
                         <h2 className="text-2xl font-black tracking-tight text-foreground">
-                            오늘 어디가 가장 살아있는지 보기
+                            오늘 즐길거리 보고 가보자고!
                         </h2>
                     </div>
 
@@ -127,11 +127,10 @@ export default function EventsPage() {
                             <button
                                 key={cat.id}
                                 onClick={() => setActiveTab(cat.id)}
-                                className={`flex items-center space-x-1.5 rounded-xl px-4 py-2.5 text-xs font-black whitespace-nowrap transition-all ${
-                                    activeTab === cat.id
-                                        ? "bg-foreground text-white shadow-lg"
-                                        : "border border-gray-100 bg-white text-gray-500 hover:bg-gray-50"
-                                }`}
+                                className={`flex items-center space-x-1.5 rounded-xl px-4 py-2.5 text-xs font-black whitespace-nowrap transition-all ${activeTab === cat.id
+                                    ? "bg-foreground text-white shadow-lg"
+                                    : "border border-gray-100 bg-white text-gray-500 hover:bg-gray-50"
+                                    }`}
                             >
                                 <cat.icon size={14} />
                                 <span>{cat.label}</span>
@@ -179,9 +178,8 @@ export default function EventsPage() {
                                         ) : null}
 
                                         <div
-                                            className={`fallback-icon flex h-full w-full items-center justify-center text-gray-200 ${
-                                                event.thumbnail_url ? "hidden" : ""
-                                            }`}
+                                            className={`fallback-icon flex h-full w-full items-center justify-center text-gray-200 ${event.thumbnail_url ? "hidden" : ""
+                                                }`}
                                         >
                                             <Ghost size={48} />
                                         </div>
@@ -195,11 +193,10 @@ export default function EventsPage() {
                                                     {formatDday(event.event_start_date)}
                                                 </span>
                                                 <span
-                                                    className={`rounded-full px-3 py-1 text-[10px] font-black backdrop-blur-md ${
-                                                        summary
-                                                            ? summary.colorClass
-                                                            : "border border-white/30 bg-white/15 text-white"
-                                                    }`}
+                                                    className={`rounded-full px-3 py-1 text-[10px] font-black backdrop-blur-md ${summary
+                                                        ? summary.colorClass
+                                                        : "border border-white/30 bg-white/15 text-white"
+                                                        }`}
                                                 >
                                                     {summary ? `${summary.label} ${summary.updatedAgo}` : "현장 상태 대기"}
                                                 </span>

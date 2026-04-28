@@ -9,10 +9,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import CategorizedNewsCarousel from "@/components/news/CategorizedNewsCarousel";
+import { useLocationStore } from "@/lib/store/locationStore";
 
 function NewsContent() {
     const searchParams = useSearchParams();
     const targetCat = searchParams.get("cat");
+    const { regionName } = useLocationStore();
 
     useEffect(() => {
         if (targetCat) {
@@ -36,7 +38,7 @@ function NewsContent() {
                     </Link>
                     <div>
                         <h1 className="text-xl font-black text-foreground">동네 소식들</h1>
-                        <p className="text-[11px] font-bold text-accent">수원시 정자동 기준</p>
+                        <p className="text-[11px] font-bold text-accent">{regionName} 기준</p>
                     </div>
                 </div>
             </header>
@@ -82,40 +84,40 @@ function NewsContent() {
             {/* Categorized Carousels */}
             <div className="space-y-4">
                 <CategorizedNewsCarousel
-                    title="날씨 소식"
-                    category="날씨"
-                    icon={CloudSun}
-                    color="text-blue-500"
+                    title="우리동네 축제"
+                    category="15"
+                    icon={Landmark}
+                    color="text-purple-500"
                 />
                 <CategorizedNewsCarousel
-                    title="동네 카페"
-                    category="카페"
-                    icon={Coffee}
-                    color="text-amber-500"
-                />
-                <CategorizedNewsCarousel
-                    title="이사/생활"
-                    category="이사"
+                    title="동네 문화/예술"
+                    category="14"
                     icon={Building2}
                     color="text-orange-500"
                 />
                 <CategorizedNewsCarousel
-                    title="우리동네 가게"
-                    category="가게"
+                    title="우리동네 맛집"
+                    category="39"
+                    icon={Coffee}
+                    color="text-amber-500"
+                />
+                <CategorizedNewsCarousel
+                    title="동네 쇼핑/가게"
+                    category="38"
                     icon={Store}
                     color="text-green-500"
                 />
                 <CategorizedNewsCarousel
-                    title="건강/의료"
-                    category="병원"
+                    title="레포츠/활동"
+                    category="28"
                     icon={HeartPulse}
                     color="text-red-500"
                 />
                 <CategorizedNewsCarousel
-                    title="공공 소식"
-                    category="공공"
-                    icon={Landmark}
-                    color="text-purple-500"
+                    title="추천 관광지"
+                    category="12"
+                    icon={CloudSun}
+                    color="text-blue-500"
                 />
             </div>
         </div>

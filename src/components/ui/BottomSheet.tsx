@@ -164,7 +164,7 @@ export default function BottomSheet() {
                       onClick={() => writeFormRef.current?.submit()}
                       disabled={!canSubmit}
                       className={`text-[15px] font-black px-4 py-2 rounded-xl transition-all ${
-                        canSubmit ? "text-secondary hover:bg-secondary/5" : "text-gray-300"
+                        canSubmit ? "text-[#795548] hover:bg-[#795548]/5" : "text-gray-300"
                       }`}
                     >
                       등록
@@ -319,7 +319,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                                 onClick={() => setCategory(cat)}
                                 className={`px-4 py-2 text-[12px] font-bold rounded-xl border transition-all whitespace-nowrap ${
                                     category === cat 
-                                    ? "border-secondary bg-secondary/10 text-secondary font-black" 
+                                    ? "border-[#795548] bg-[#795548]/10 text-[#795548] font-black" 
                                     : "border-border text-gray-400 bg-nav-bg hover:border-gray-300"
                                 }`}
                             >
@@ -350,7 +350,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
 
             <div className={`bg-nav-bg/80 rounded-2xl p-4 border border-border flex items-center justify-between ${showInlineSubmit ? "mt-4" : "my-2"}`}>
                 <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-xl ${isAnonymous ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-secondary/10 text-secondary'}`}>
+                    <div className={`p-2 rounded-xl ${isAnonymous ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-[#795548]/10 text-[#795548]'}`}>
                         {isAnonymous ? <ShieldCheck size={20} /> : <UserIcon size={20} />}
                     </div>
                     <div>
@@ -365,7 +365,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                     className={`px-3 py-1.5 rounded-lg text-[11px] font-black transition-all ${
                         isAnonymous 
                         ? "bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300" 
-                        : "bg-secondary text-white hover:bg-[#1B5E20]"
+                        : "bg-[#795548] text-white hover:bg-[#5D4037]"
                     }`}
                 >
                     {isAnonymous ? "닉네임으로 전환" : "익명으로 전환"}
@@ -376,7 +376,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 <button
                     onClick={handleSubmit}
                     disabled={!content.trim()}
-                    className="mt-3 w-full rounded-2xl bg-secondary py-4 text-[15px] font-black text-white shadow-lg shadow-secondary/20 transition-all disabled:opacity-40"
+                    className="mt-3 w-full rounded-2xl bg-[#795548] py-4 text-[15px] font-black text-white shadow-lg shadow-[#795548]/20 transition-all disabled:opacity-40"
                 >
                     소식 등록하기
                 </button>
@@ -427,7 +427,7 @@ function RecordHub() {
 
             <div className="rounded-[28px] border border-border bg-card-bg p-4 shadow-sm">
                 <div className="mb-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-secondary">
+                    <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${activeTab === "status" ? "text-secondary" : "text-[#795548]"}`}>
                         {activeTab === "status" ? "Realtime Share" : "Community Post"}
                     </p>
                     <h4 className="mt-1 text-[17px] font-black text-foreground">

@@ -173,10 +173,14 @@ export default function LiveStatusCreateForm({
         <label className="mb-1.5 flex items-center justify-between text-xs font-bold text-gray-700">
           <span>{isEventShare ? "행사 이름" : "장소 이름"}</span>
           {displayAddress && (
-            <span className="flex items-center rounded bg-green-50 px-1.5 py-0.5 text-[10px] text-[#2E7D32]">
+            <button 
+              type="button"
+              onClick={() => setPlaceName(displayAddress)}
+              className="flex items-center rounded bg-green-50 px-1.5 py-0.5 text-[10px] text-[#2E7D32] hover:bg-green-100 transition-colors cursor-pointer"
+            >
               <MapPin size={8} className="mr-0.5" />
               현재 위치 기준
-            </span>
+            </button>
           )}
         </label>
         <input
