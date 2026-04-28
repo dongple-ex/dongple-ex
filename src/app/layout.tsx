@@ -4,6 +4,7 @@ import "./globals.css";
 import GlobalModalProvider from "@/components/ui/GlobalModalProvider";
 import KakaoScript from "@/components/map/KakaoScript";
 import NavigationWrapper from "@/components/layout/NavigationWrapper";
+import ThemeProvider from "@/components/ui/ThemeProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -50,13 +51,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className={`${inter.className} bg-gray-50`}>
+      <body className={inter.className}>
         <KakaoScript />
+        <ThemeProvider>
         <GlobalModalProvider>
           <NavigationWrapper>
             {children}
           </NavigationWrapper>
         </GlobalModalProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

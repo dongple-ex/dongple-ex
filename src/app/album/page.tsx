@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
+  ArrowRight,
   Clock3,
   Footprints,
   Heart,
@@ -14,8 +15,14 @@ import {
   Route,
   Share2,
   Star,
+  Settings,
+  Globe,
+  User,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store/authStore";
+import { useUIStore } from "@/lib/store/uiStore";
 import {
   AlbumMemory,
   getAlbumMemories,
@@ -43,6 +50,7 @@ const formatTime = (value: string) =>
 export default function JourneyAlbumPage() {
   const router = useRouter();
   const { publicId, profile, initAuth } = useAuthStore();
+  const { theme, toggleTheme } = useUIStore();
   const [memories, setMemories] = useState<AlbumMemory[]>([]);
   const [activeFilter, setActiveFilter] = useState<AlbumFilter>("all");
 
@@ -119,13 +127,13 @@ export default function JourneyAlbumPage() {
 
       <main className="mx-auto flex max-w-md flex-col gap-6 px-5 py-6">
         <section className="overflow-hidden rounded-[32px] border border-border bg-card-bg shadow-sm">
-          <div className="bg-gradient-to-br from-[#D9F7DF] via-white to-[#E5F4FF] px-6 py-6">
+          <div className="bg-gradient-to-br from-secondary/10 via-card-bg to-accent/5 px-6 py-6 transition-colors duration-500">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-secondary">
                   Journey Summary
                 </p>
-                <h2 className="mt-2 text-[24px] font-black leading-tight">
+                <h2 className="mt-2 text-[24px] font-black leading-tight text-foreground">
                   {(profile?.nickname || `익명 ${publicId || "이웃"}`) + "님의"}
                   <br />
                   다시 꺼내보는 동네 기록
@@ -135,7 +143,7 @@ export default function JourneyAlbumPage() {
                   돌아볼 수 있어요.
                 </p>
               </div>
-              <div className="rounded-2xl bg-white/80 p-3 text-secondary shadow-sm">
+              <div className="rounded-2xl bg-foreground/5 p-3 text-secondary shadow-sm">
                 <Footprints size={24} />
               </div>
             </div>
@@ -160,7 +168,7 @@ export default function JourneyAlbumPage() {
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-secondary">
                 Best Memory
               </p>
-              <h3 className="mt-1 text-[20px] font-black">좋았던 곳 다시 보기</h3>
+              <h3 className="mt-1 text-[20px] font-black text-foreground">좋았던 곳 다시 보기</h3>
             </div>
             <Star size={20} className="text-accent" />
           </div>
@@ -181,7 +189,7 @@ export default function JourneyAlbumPage() {
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-secondary">
                 Favorites
               </p>
-              <h3 className="mt-1 text-[20px] font-black">다시 가고 싶은 장소</h3>
+              <h3 className="mt-1 text-[20px] font-black text-foreground">다시 가고 싶은 장소</h3>
             </div>
             <Heart size={18} className="text-secondary" />
           </div>
@@ -210,7 +218,7 @@ export default function JourneyAlbumPage() {
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-secondary">
                 Memory Cards
               </p>
-              <h3 className="mt-1 text-[20px] font-black">앨범으로 모아둔 기록</h3>
+              <h3 className="mt-1 text-[20px] font-black text-foreground">앨범으로 모아둔 기록</h3>
             </div>
             <MapPinned size={18} className="text-secondary" />
           </div>
@@ -223,7 +231,7 @@ export default function JourneyAlbumPage() {
                 onClick={() => setActiveFilter(filter.key)}
                 className={`rounded-full px-3.5 py-2 text-[12px] font-black transition-all ${
                   activeFilter === filter.key
-                    ? "bg-foreground text-white shadow-md"
+                    ? "bg-foreground text-background shadow-md"
                     : "bg-nav-bg text-foreground/55 hover:bg-foreground/5"
                 }`}
               >
@@ -262,7 +270,7 @@ export default function JourneyAlbumPage() {
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-secondary">
                 Footprints
               </p>
-              <h3 className="mt-1 text-[20px] font-black">나의 발자취</h3>
+              <h3 className="mt-1 text-[20px] font-black text-foreground">나의 발자취</h3>
             </div>
             <Route size={18} className="text-secondary" />
           </div>
@@ -345,6 +353,36 @@ export default function JourneyAlbumPage() {
             </Link>
           </div>
         </section>
+        <section className="rounded-[32px] border border-border bg-card-bg p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-secondary">
+                Settings
+              </p>
+              <h3 className="mt-1 text-[20px] font-black text-foreground">앱 설정</h3>
+            </div>
+            <Settings size={20} className="text-secondary" />
+          </div>
+
+          <div className="space-y-2">
+            <SettingItem 
+              icon={theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+              label="테마 설정"
+              value={theme === 'light' ? "라이트 모드" : "다크 모드"}
+              onClick={toggleTheme}
+            />
+            <SettingItem 
+              icon={<Globe size={18} />}
+              label="언어 설정"
+              value="한국어"
+            />
+            <SettingItem 
+              icon={<User size={18} />}
+              label="계정 인증"
+              value={profile ? "인증됨" : "비인증"}
+            />
+          </div>
+        </section>
       </main>
     </div>
   );
@@ -373,9 +411,27 @@ function MemoryHero({ memory }: { memory: AlbumMemory }) {
   );
 }
 
+function SettingItem({ icon, label, value, onClick }: { icon: React.ReactNode; label: string; value: string; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex w-full items-center justify-between rounded-2xl bg-foreground/5 p-4 transition-all hover:bg-foreground/10 active:scale-95"
+    >
+      <div className="flex items-center gap-3">
+        <div className="text-secondary">{icon}</div>
+        <span className="text-[14px] font-bold text-foreground">{label}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[13px] font-medium text-foreground/40">{value}</span>
+        <ArrowRight size={14} className="text-foreground/20" />
+      </div>
+    </button>
+  );
+}
+
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-white/80 px-3 py-3 text-center shadow-sm">
+    <div className="rounded-2xl bg-card-bg/80 px-3 py-3 text-center shadow-sm">
       <p className="text-[10px] font-bold text-foreground/45">{label}</p>
       <p className="mt-1 text-[14px] font-black text-foreground">{value}</p>
     </div>
@@ -384,7 +440,7 @@ function SummaryStat({ label, value }: { label: string; value: string }) {
 
 function InsightCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card-bg/70 px-4 py-3 shadow-sm">
       <p className="text-[11px] font-bold text-foreground/45">{label}</p>
       <p className="mt-1 text-[15px] font-black text-foreground">{value}</p>
     </div>
@@ -399,7 +455,7 @@ function MemoryListCard({
   onFavoriteToggle: () => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-[24px] border border-border bg-white shadow-sm">
+    <div className="overflow-hidden rounded-[24px] border border-border bg-card-bg shadow-sm">
       <div className="flex gap-3 p-3">
         <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[20px]">
           <Image src={memory.image} alt={memory.title} fill className="object-cover" />
@@ -416,7 +472,7 @@ function MemoryListCard({
               type="button"
               onClick={onFavoriteToggle}
               className={`rounded-full p-2 transition-colors ${
-                memory.favorite ? "bg-secondary/10 text-secondary" : "bg-gray-100 text-gray-400"
+                memory.favorite ? "bg-secondary/10 text-secondary" : "bg-foreground/5 text-foreground/40"
               }`}
             >
               <Heart size={16} fill={memory.favorite ? "currentColor" : "none"} />
@@ -439,7 +495,7 @@ function MemoryListCard({
 
 function EmptyBlock({ title, description }: { title: string; description: string }) {
   return (
-    <div className="mt-4 rounded-[24px] border border-dashed border-border bg-nav-bg/60 px-4 py-5">
+    <div className="mt-4 rounded-[24px] border border-dashed border-border bg-foreground/5 px-4 py-5">
       <p className="text-[15px] font-black text-foreground">{title}</p>
       <p className="mt-1 text-[13px] leading-relaxed text-foreground/55">{description}</p>
     </div>

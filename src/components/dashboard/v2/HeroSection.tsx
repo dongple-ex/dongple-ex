@@ -18,7 +18,7 @@ export default function HeroSection() {
         animate={{ opacity: 1, y: 0 }}
         className="relative z-10 mx-auto max-w-md"
       >
-        <div className="mb-4 inline-flex items-center space-x-2 rounded-full border border-foreground/10 bg-white/70 px-3 py-1.5 backdrop-blur-md">
+        <div className="mb-4 inline-flex items-center space-x-2 rounded-full border border-foreground/10 bg-card-bg/70 px-3 py-1.5 backdrop-blur-md">
           <Sparkles size={14} className="text-[#A67C52]" />
           <span className="text-[11px] font-bold tracking-tight text-foreground/80">
             행사와 일상의 지금 상태를 한 화면에서 확인
@@ -29,7 +29,7 @@ export default function HeroSection() {
           <h1 className="text-[28px] font-black leading-[1.15] tracking-tight md:text-[34px]">
             지금 어디가 생생한지,
             <br />
-            <span className="bg-gradient-to-r from-[#2E7D32] via-[#1F5AA6] to-[#A67C52] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-secondary via-[#1F5AA6] to-[#A67C52] bg-clip-text text-transparent">
               지도에서 바로 확인하세요
             </span>
           </h1>
@@ -57,7 +57,7 @@ export default function HeroSection() {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex w-full items-center justify-center space-x-2 rounded-2xl border border-[#2E7D32]/20 bg-white/80 px-5 py-3.5 text-[14px] font-bold text-[#1F5F2A] shadow-sm backdrop-blur-md"
+              className="flex w-full items-center justify-center space-x-2 rounded-2xl border border-secondary/20 bg-card-bg/80 px-5 py-3.5 text-[14px] font-bold text-secondary shadow-sm backdrop-blur-md"
             >
               <Plus size={18} />
               <span>현장 공유하기</span>
@@ -66,15 +66,15 @@ export default function HeroSection() {
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-          <div className="rounded-2xl border border-foreground/8 bg-white/70 p-3.5 backdrop-blur-md">
+          <div className="rounded-2xl border border-foreground/8 bg-card-bg/70 p-3.5 backdrop-blur-md">
             <p className="text-[11px] font-black uppercase tracking-wider text-[#A67C52]">핵심 흐름</p>
             <p className="mt-1 text-[13px] font-bold text-foreground">상태 확인 후 바로 결정</p>
           </div>
-          <div className="rounded-2xl border border-foreground/8 bg-white/70 p-3.5 backdrop-blur-md">
-            <p className="text-[11px] font-black uppercase tracking-wider text-[#2E7D32]">행사 + 일상</p>
+          <div className="rounded-2xl border border-foreground/8 bg-card-bg/70 p-3.5 backdrop-blur-md">
+            <p className="text-[11px] font-black uppercase tracking-wider text-secondary">행사 + 일상</p>
             <p className="mt-1 text-[13px] font-bold text-foreground">행사로 들어오고 일상에서 반복 사용</p>
           </div>
-          <div className="rounded-2xl border border-foreground/8 bg-white/70 p-3.5 backdrop-blur-md">
+          <div className="rounded-2xl border border-foreground/8 bg-card-bg/70 p-3.5 backdrop-blur-md">
             <div className="flex items-center space-x-2">
               <ShieldCheck size={16} className="text-[#1F5AA6]" />
               <p className="text-[11px] font-black uppercase tracking-wider text-[#1F5AA6]">정확한 공유</p>

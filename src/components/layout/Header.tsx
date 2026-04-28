@@ -57,16 +57,16 @@ export default function Header({
         <header className="sticky top-0 w-full max-w-inherit bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 h-14 flex items-center justify-between z-50">
             {isSearchMode ? (
                 <div className="flex items-center w-full space-x-3">
-                    {showBackButton && (
+                    {showBackButton ? (
                         <button
                             onClick={handleBack}
                             className="p-1 -ml-1 text-gray-700 hover:text-[#2E7D32] transition-colors"
                         >
                             <ArrowLeft size={24} />
                         </button>
-                    ) || (
-                            <MapPin size={20} className="text-[#2E7D32]" />
-                        )}
+                    ) : (
+                        <MapPin size={20} className="text-[#2E7D32]" />
+                    )}
 
                     <div className="flex-1 relative group">
                         <input

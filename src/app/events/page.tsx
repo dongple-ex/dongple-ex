@@ -88,12 +88,12 @@ export default function EventsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8F9FA] pb-24">
-            <div className="sticky top-0 z-30 border-b border-gray-100 bg-white/80 px-5 pb-5 pt-12 backdrop-blur-xl">
+        <div className="min-h-screen bg-background pb-24">
+            <div className="sticky top-0 z-30 border-b border-border bg-background/80 px-5 pb-5 pt-12 backdrop-blur-xl">
                 <div className="mb-6 flex items-center justify-between">
                     <button
                         onClick={() => router.back()}
-                        className="p-2 -ml-2 text-gray-400 transition-colors hover:text-foreground"
+                        className="p-2 -ml-2 text-foreground/40 transition-colors hover:text-foreground"
                     >
                         <ArrowLeft size={24} />
                     </button>
@@ -117,9 +117,9 @@ export default function EventsPage() {
                             placeholder="행사 이름이나 위치를 검색해보세요"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-12 w-full rounded-2xl border-none bg-gray-100 pl-11 pr-4 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-secondary/20"
+                            className="h-12 w-full rounded-2xl border-none bg-foreground/5 pl-11 pr-4 text-sm font-bold text-foreground outline-none transition-all focus:ring-2 focus:ring-secondary/20 placeholder:text-foreground/30"
                         />
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/30" size={18} />
                     </div>
 
                     <div className="flex space-x-2 overflow-x-auto py-1 no-scrollbar">
@@ -128,8 +128,8 @@ export default function EventsPage() {
                                 key={cat.id}
                                 onClick={() => setActiveTab(cat.id)}
                                 className={`flex items-center space-x-1.5 rounded-xl px-4 py-2.5 text-xs font-black whitespace-nowrap transition-all ${activeTab === cat.id
-                                    ? "bg-foreground text-white shadow-lg"
-                                    : "border border-gray-100 bg-white text-gray-500 hover:bg-gray-50"
+                                    ? "bg-foreground text-background shadow-lg"
+                                    : "border border-border bg-card-bg text-foreground/50 hover:bg-foreground/5"
                                     }`}
                             >
                                 <cat.icon size={14} />
@@ -144,7 +144,7 @@ export default function EventsPage() {
                 {isLoading ? (
                     <div className="space-y-4">
                         {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-56 animate-pulse rounded-[32px] bg-gray-200" />
+                            <div key={i} className="h-56 animate-pulse rounded-[32px] bg-foreground/5" />
                         ))}
                     </div>
                 ) : filteredEvents.length > 0 ? (
@@ -159,9 +159,9 @@ export default function EventsPage() {
                                     transition={{ delay: idx * 0.05 }}
                                     key={event.id}
                                     onClick={() => handleEventClick(event)}
-                                    className="group cursor-pointer overflow-hidden rounded-[32px] border border-gray-100 bg-white shadow-sm transition-all hover:border-secondary/20 hover:shadow-xl"
+                                    className="group cursor-pointer overflow-hidden rounded-[32px] border border-border bg-card-bg shadow-sm transition-all hover:border-secondary/20 hover:shadow-xl"
                                 >
-                                    <div className="relative h-44 overflow-hidden bg-gray-100">
+                                    <div className="relative h-44 overflow-hidden bg-foreground/5">
                                         {event.thumbnail_url ? (
                                             <Image
                                                 src={event.thumbnail_url}
@@ -178,7 +178,7 @@ export default function EventsPage() {
                                         ) : null}
 
                                         <div
-                                            className={`fallback-icon flex h-full w-full items-center justify-center text-gray-200 ${event.thumbnail_url ? "hidden" : ""
+                                            className={`fallback-icon flex h-full w-full items-center justify-center text-foreground/20 ${event.thumbnail_url ? "hidden" : ""
                                                 }`}
                                         >
                                             <Ghost size={48} />
@@ -213,17 +213,17 @@ export default function EventsPage() {
                                         </div>
 
                                         {summary?.latestMessage && (
-                                            <div className="mb-3 line-clamp-1 rounded-2xl bg-gray-50 px-4 py-3 text-[12px] font-bold text-gray-500">
+                                            <div className="mb-3 line-clamp-1 rounded-2xl bg-foreground/5 px-4 py-3 text-[12px] font-bold text-foreground/50">
                                                 {summary.latestMessage}
                                             </div>
                                         )}
 
                                         <div className="space-y-2">
-                                            <div className="flex items-center text-[12px] font-bold text-gray-400">
+                                            <div className="flex items-center text-[12px] font-bold text-foreground/40">
                                                 <Calendar size={14} className="mr-2" />
                                                 <span>{event.event_start_date} ~ {event.event_end_date}</span>
                                             </div>
-                                            <div className="flex items-center text-[12px] font-bold text-gray-400">
+                                            <div className="flex items-center text-[12px] font-bold text-foreground/40">
                                                 <MapPin size={14} className="mr-2" />
                                                 <span className="line-clamp-1">{event.address}</span>
                                             </div>
@@ -235,11 +235,11 @@ export default function EventsPage() {
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 text-gray-300">
+                        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-foreground/5 text-foreground/20">
                             <Search size={32} />
                         </div>
-                        <p className="font-black text-gray-400">조건에 맞는 행사를 찾지 못했어요.</p>
-                        <p className="mt-1 text-sm text-gray-300">다른 검색어나 카테고리로 다시 찾아보세요.</p>
+                        <p className="font-black text-foreground/40">조건에 맞는 행사를 찾지 못했어요.</p>
+                        <p className="mt-1 text-sm text-foreground/30">다른 검색어나 카테고리로 다시 찾아보세요.</p>
                     </div>
                 )}
             </div>

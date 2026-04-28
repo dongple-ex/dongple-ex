@@ -67,7 +67,7 @@ export default function OfficialEventSection() {
                     <PartyPopper size={20} className="text-secondary" />
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-secondary">지금 핫한 곳</p>
-                        <h2 className="text-lg font-black text-[#3E2723]">오늘 행사 현재 상태</h2>
+                        <h2 className="text-lg font-black text-foreground">오늘 행사 현재 상태</h2>
                     </div>
                 </div>
                 <Link

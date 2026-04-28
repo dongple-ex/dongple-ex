@@ -149,19 +149,19 @@ export default function LiveStatusCreateForm({
       </div>
 
       {isEventShare && (
-        <div className="rounded-2xl border border-[#2E7D32]/15 bg-[#2E7D32]/5 p-4">
+        <div className="rounded-2xl border border-secondary/15 bg-secondary/5 p-4">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-[#2E7D32] p-2 text-white">
+            <div className="rounded-xl bg-secondary p-2 text-white">
               <PartyPopper size={18} />
             </div>
             <div>
-              <p className="text-[11px] font-black uppercase tracking-widest text-[#2E7D32]">
+              <p className="text-[11px] font-black uppercase tracking-widest text-secondary">
                 행사 현장 공유
               </p>
-              <h4 className="mt-1 text-[15px] font-black text-[#243528]">
+              <h4 className="mt-1 text-[15px] font-black text-foreground">
                 이 행사의 지금 상태를 남기는 화면입니다
               </h4>
-              <p className="mt-1 text-[12px] font-medium leading-relaxed text-gray-500">
+              <p className="mt-1 text-[12px] font-medium leading-relaxed text-foreground/50">
                 붐빔, 대기, 분위기를 공유하면 행사 핀에 몇 분 전 상태로 바로 연결됩니다.
               </p>
             </div>
@@ -170,13 +170,13 @@ export default function LiveStatusCreateForm({
       )}
 
       <div>
-        <label className="mb-1.5 flex items-center justify-between text-xs font-bold text-gray-700">
+        <label className="mb-1.5 flex items-center justify-between text-xs font-bold text-foreground/70">
           <span>{isEventShare ? "행사 이름" : "장소 이름"}</span>
           {displayAddress && (
             <button 
               type="button"
               onClick={() => setPlaceName(displayAddress)}
-              className="flex items-center rounded bg-green-50 px-1.5 py-0.5 text-[10px] text-[#2E7D32] hover:bg-green-100 transition-colors cursor-pointer"
+              className="flex items-center rounded bg-secondary/10 px-1.5 py-0.5 text-[10px] text-secondary hover:bg-secondary/20 transition-colors cursor-pointer"
             >
               <MapPin size={8} className="mr-0.5" />
               현재 위치 기준
@@ -188,23 +188,23 @@ export default function LiveStatusCreateForm({
           placeholder={isEventShare ? "예: 수원화성문화제" : "예: 행궁동 공방거리"}
           value={placeName}
           onChange={(event) => setPlaceName(event.target.value)}
-          className={`w-full rounded-xl border border-gray-200 text-sm outline-none transition-colors ${
+          className={`w-full rounded-xl border border-border bg-card-bg text-foreground text-sm outline-none transition-colors ${
             compact ? "p-3" : "p-3.5"
           } ${
             mode === "request"
               ? "focus:border-[#5D4037] focus:ring-2 focus:ring-[#5D4037]/20"
-              : "focus:border-[#2E7D32] focus:ring-2 focus:ring-[#2E7D32]/20"
+              : "focus:border-secondary focus:ring-2 focus:ring-secondary/20"
           }`}
         />
         {displayAddress && (
-          <p className="ml-1 mt-1.5 text-[10px] text-gray-400">
-            현재 주소: <span className="underline decoration-gray-200">{displayAddress}</span>
+          <p className="ml-1 mt-1.5 text-[10px] text-foreground/40">
+            현재 주소: <span className="underline decoration-border">{displayAddress}</span>
           </p>
         )}
       </div>
 
       <div>
-        <label className={`block text-xs font-bold text-gray-700 ${compact ? "mb-2" : "mb-2.5"}`}>
+        <label className={`block text-xs font-bold text-foreground/70 ${compact ? "mb-2" : "mb-2.5"}`}>
           장소 카테고리
         </label>
         <div
@@ -213,7 +213,7 @@ export default function LiveStatusCreateForm({
           onMouseLeave={onDragEnd}
           onMouseUp={onDragEnd}
           onMouseMove={onDragMove}
-          className={`-mx-4 flex select-none space-x-2 overflow-x-auto px-4 active:cursor-grabbing [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:h-[3px] ${
+          className={`-mx-4 flex select-none space-x-2 overflow-x-auto px-4 active:cursor-grabbing [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:h-[3px] ${
             compact ? "pb-2" : "pb-4"
           }`}
         >
@@ -226,17 +226,17 @@ export default function LiveStatusCreateForm({
                 key={item.id}
                 type="button"
                 onClick={() => setCategory(item.id)}
-                className={`flex flex-shrink-0 items-center space-x-1.5 rounded-full border border-gray-200 text-xs font-bold whitespace-nowrap transition-all duration-200 ${
+                className={`flex flex-shrink-0 items-center space-x-1.5 rounded-full border border-border text-xs font-bold whitespace-nowrap transition-all duration-200 ${
                   compact ? "px-3.5 py-2" : "px-4 py-2.5"
                 } ${
                   isSelected
                     ? mode === "request"
                       ? "scale-105 border-[#5D4037] bg-[#5D4037] text-white shadow-md"
-                      : "scale-105 border-[#2E7D32] bg-[#2E7D32] text-white shadow-md"
-                    : "bg-white text-gray-600 hover:bg-gray-50"
+                      : "scale-105 border-secondary bg-secondary text-white shadow-md"
+                    : "bg-card-bg text-foreground/60 hover:bg-foreground/5"
                 }`}
               >
-                <Icon size={14} className={isSelected ? "text-white" : "text-gray-400"} />
+                <Icon size={14} className={isSelected ? "text-white" : "text-foreground/40"} />
                 <span>{item.label}</span>
               </button>
             );
@@ -246,7 +246,7 @@ export default function LiveStatusCreateForm({
 
       {mode === "share" && (
         <div>
-          <label className={`block text-xs font-bold text-gray-700 ${compact ? "mb-2" : "mb-2.5"}`}>
+          <label className={`block text-xs font-bold text-foreground/70 ${compact ? "mb-2" : "mb-2.5"}`}>
             현재 현장 상태
           </label>
           <div className="flex space-x-2">
@@ -259,8 +259,8 @@ export default function LiveStatusCreateForm({
                   compact ? "py-2.5" : "py-3"
                 } ${
                   selectedStatus === option.label
-                    ? `${option.tone} ${option.hover} ${option.border} ring-2 ring-offset-1 ${option.ring}`
-                    : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                    ? `${option.tone} ${option.hover} ${option.border} ring-2 ring-offset-1 dark:ring-offset-background ${option.ring}`
+                    : "border-border bg-card-bg text-foreground/50 hover:bg-foreground/5"
                 }`}
               >
                 {option.label}
@@ -271,16 +271,16 @@ export default function LiveStatusCreateForm({
       )}
 
       <div>
-        <label className="mb-1.5 block text-xs font-bold text-gray-700">
+        <label className="mb-1.5 block text-xs font-bold text-foreground/70">
           {mode === "request" ? "추가 요청 메모" : "상세 메모"}
         </label>
         <textarea
-          className={`w-full resize-none rounded-xl border border-gray-200 text-sm outline-none transition-colors ${
+          className={`w-full resize-none rounded-xl border border-border bg-card-bg text-foreground text-sm outline-none transition-colors ${
             compact ? "min-h-[84px] p-3.5" : "min-h-[100px] p-4"
           } ${
             mode === "request"
               ? "focus:border-[#5D4037] focus:ring-2 focus:ring-[#5D4037]/20"
-              : "focus:border-[#2E7D32] focus:ring-2 focus:ring-[#2E7D32]/20"
+              : "focus:border-secondary focus:ring-2 focus:ring-secondary/20"
           }`}
           placeholder={
             mode === "request"
@@ -301,7 +301,7 @@ export default function LiveStatusCreateForm({
         className={`w-full rounded-2xl text-sm font-black text-white shadow-lg transition-all disabled:opacity-50 ${
           mode === "request"
             ? "bg-[#5D4037] shadow-[#5D4037]/20"
-            : "bg-[#2E7D32] shadow-[#2E7D32]/20"
+            : "bg-secondary shadow-secondary/20"
         } ${compact ? "py-3.5" : "py-4"}`}
       >
         {isSubmitting

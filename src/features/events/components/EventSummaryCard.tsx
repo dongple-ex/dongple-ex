@@ -16,9 +16,9 @@ export default function EventSummaryCard({ event, statusSummary, onClick }: Even
     return (
         <div
             onClick={onClick}
-            className="w-[240px] flex-shrink-0 cursor-pointer rounded-3xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:shadow-md active:scale-95"
+            className="w-[240px] flex-shrink-0 cursor-pointer rounded-3xl border border-border bg-card-bg p-4 shadow-sm transition-all hover:shadow-md active:scale-95"
         >
-            <div className="relative mb-3 h-28 overflow-hidden rounded-2xl bg-gray-50">
+            <div className="relative mb-3 h-28 overflow-hidden rounded-2xl bg-foreground/5">
                 {event.thumbnail_url ? (
                     <Image
                         src={event.thumbnail_url}
@@ -27,12 +27,12 @@ export default function EventSummaryCard({ event, statusSummary, onClick }: Even
                         className="h-full w-full object-cover"
                     />
                 ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-200">
+                    <div className="flex h-full w-full items-center justify-center bg-foreground/5 text-foreground/20">
                         <MapPin size={24} />
                     </div>
                 )}
 
-                <div className="absolute left-2 top-2 flex items-center space-x-1.5 rounded-lg bg-white/90 px-2 py-1 shadow-sm backdrop-blur-md">
+                <div className="absolute left-2 top-2 flex items-center space-x-1.5 rounded-lg bg-card-bg/90 px-2 py-1 shadow-sm backdrop-blur-md">
                     <span className="text-[9px] font-black text-secondary">공식</span>
                     <BadgeCheck size={10} className="text-secondary" />
                 </div>
@@ -52,17 +52,17 @@ export default function EventSummaryCard({ event, statusSummary, onClick }: Even
 
             <div className="space-y-1.5">
                 {statusSummary?.latestMessage && (
-                    <div className="line-clamp-1 rounded-xl bg-gray-50 px-3 py-2 text-[11px] font-bold text-gray-500">
+                    <div className="line-clamp-1 rounded-xl bg-foreground/5 px-3 py-2 text-[11px] font-bold text-foreground/50">
                         {statusSummary.latestMessage}
                     </div>
                 )}
 
-                <div className="flex items-center text-[11px] font-bold text-gray-400">
+                <div className="flex items-center text-[11px] font-bold text-foreground/40">
                     <Calendar size={12} className="mr-1.5 shrink-0" />
                     <span className="truncate">{event.event_start_date}</span>
                 </div>
 
-                <div className="flex items-center text-[11px] font-bold text-gray-400">
+                <div className="flex items-center text-[11px] font-bold text-foreground/40">
                     <MapPin size={12} className="mr-1.5 shrink-0" />
                     <span className="truncate">{event.address}</span>
                 </div>

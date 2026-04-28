@@ -38,7 +38,7 @@ export default function BottomNavV2() {
                 >
                   <Plus size={30} />
                 </motion.button>
-                <span className="mt-6 text-[10px] font-bold text-gray-500">{item.label}</span>
+                <span className="mt-6 text-[10px] font-bold text-foreground/40">{item.label}</span>
               </div>
             );
           }
@@ -49,15 +49,15 @@ export default function BottomNavV2() {
               href={item.path || "#"}
               className="flex flex-1 flex-col items-center justify-center space-y-1"
             >
-              <Icon size={22} className={`transition-colors ${isActive ? "text-[#A67C52]" : "text-gray-500"}`} />
+              <Icon size={22} className={`transition-colors ${isActive ? "text-accent" : "text-foreground/40"}`} />
               <span
                 className={`text-[10px] font-black tracking-tight transition-colors ${
-                  isActive ? "text-[#A67C52]" : "text-gray-500"
+                  isActive ? "text-accent" : "text-foreground/40"
                 }`}
               >
                 {item.label}
               </span>
-              {isActive && <motion.div layoutId="navTab" className="h-1 w-1 rounded-full bg-[#A67C52]" />}
+              {isActive && <motion.div layoutId="navTab" className="h-1 w-1 rounded-full bg-accent" />}
             </Link>
           );
         })}
