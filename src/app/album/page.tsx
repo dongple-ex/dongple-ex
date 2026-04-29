@@ -117,7 +117,7 @@ export default function JourneyAlbumPage() {
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-secondary">
               Memory Archive
             </p>
-            <h1 className="mt-1 text-lg font-black">나의 동플</h1>
+            <h1 className="mt-1 text-lg font-black">내발문자</h1>
           </div>
           <button className="p-2 -mr-2 text-secondary transition-transform active:scale-95">
             <Share2 size={22} />
@@ -318,7 +318,7 @@ export default function JourneyAlbumPage() {
           ) : (
             <EmptyBlock
               title="아직 발자취가 비어 있어요."
-              description="첫 기록을 남기면 동플이 시간순으로 발자취를 쌓아드립니다."
+              description="첫 기록을 남기면 내발문자가 시간순으로 발자취를 쌓아드립니다."
             />
           )}
         </section>
@@ -333,7 +333,7 @@ export default function JourneyAlbumPage() {
             다음에도 다시 찾을 수 있게
           </h3>
           <p className="mt-3 text-[13px] leading-relaxed text-white/80">
-            동플은 실시간 제보를 보는 데서 끝나지 않고, 사용자만의 관광 기억과 동네 경험을 계속
+            내발문자는 실시간 제보를 보는 데서 끝나지 않고, 사용자만의 관광 기억과 동네 경험을 계속
             이어주는 기록 서비스로 확장됩니다.
           </p>
           <div className="mt-5 flex gap-3">

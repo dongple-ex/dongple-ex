@@ -62,7 +62,7 @@ export default function Home() {
                                 지금 가장 핫한 곳을 바로 확인하기
                             </h2>
                             <p className="mt-2.5 max-w-[320px] text-[13px] font-medium leading-relaxed text-foreground/60">
-                                동플은 행사와 일상 장소의 지금 상태를 먼저 보여주고,
+                                내발문자는 당신이 머문 장소의 지금 상태를 기록하고 보여주며,
                                 그다음에 공유와 판단으로 이어지게 설계했습니다.
                             </p>
                         </div>

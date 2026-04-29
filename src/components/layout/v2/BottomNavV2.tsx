@@ -15,7 +15,7 @@ export default function BottomNavV2() {
     { icon: Search, label: "지도", path: "/map" },
     { icon: Plus, label: "기록", isCenter: true },
     { icon: LayoutList, label: "소식", path: "/news" },
-    { icon: ImageIcon, label: "나의 동플", path: "/album" },
+    { icon: ImageIcon, label: "내발문자", path: "/album" },
   ];
 
   return (

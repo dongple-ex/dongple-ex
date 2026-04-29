@@ -506,7 +506,7 @@ function PostDetailView() {
 
     const handleReport = async () => {
         if (!userId || isReported) return;
-        if (!confirm("이 게시글을 신고하시겠습니까? 동플 클린 가이드에 따라 검토됩니다.")) return;
+        if (!confirm("이 게시글을 신고하시겠습니까? 내발문자 클린 가이드에 따라 검토됩니다.")) return;
 
         setIsReported(true);
         try {
