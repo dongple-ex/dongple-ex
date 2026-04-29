@@ -38,7 +38,6 @@ export const metadata: Metadata = {
     description: "내 주변의 실시간 소식을 가장 빠르게 확인하세요.",
     images: ['/logo.png'],
   },
-  },
 };
 
 export default function RootLayout({
