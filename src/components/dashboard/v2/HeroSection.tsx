@@ -21,13 +21,13 @@ export default function HeroSection() {
         <div className="mb-4 inline-flex items-center space-x-2 rounded-full border border-foreground/10 bg-card-bg/70 px-3 py-1.5 backdrop-blur-md">
           <Sparkles size={14} className="text-[#A67C52]" />
           <span className="text-[11px] font-bold tracking-tight text-foreground/80">
-            행사와 일상의 지금 상태를 한 화면에서 확인
+            내 발자국이 머문 자리 내말문자
           </span>
         </div>
 
         <div className="space-y-4">
           <h1 className="text-[28px] font-black leading-[1.15] tracking-tight md:text-[34px]">
-            지금 어디가 생생한지,
+            행사와 일상의 지금 상태를,
             <br />
             <span className="bg-gradient-to-r from-secondary via-[#1F5AA6] to-[#A67C52] bg-clip-text text-transparent">
               지도에서 바로 확인하세요
