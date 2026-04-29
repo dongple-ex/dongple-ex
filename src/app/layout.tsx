@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     siteName: '내발문자 (Dongple)',
     images: [
       {
-        url: '/og-image.png',
+        url: '/logo.png',
         width: 1200,
         height: 630,
         alt: '내발문자 서비스 메인 이미지',
@@ -36,11 +36,8 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: "내발문자 – 내 발자국이 머문 자리",
     description: "내 주변의 실시간 소식을 가장 빠르게 확인하세요.",
-    images: ['/og-image.png'],
+    images: ['/logo.png'],
   },
-  icons: {
-    icon: '/icon.png',
-    apple: '/apple-icon.png',
   },
 };
 

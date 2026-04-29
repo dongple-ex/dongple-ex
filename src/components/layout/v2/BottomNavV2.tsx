@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Home, Image as ImageIcon, LayoutList, Plus, Search } from "lucide-react";
+import { Home, Footprints, LayoutList, Plus, Search } from "lucide-react";
 import { useUIStore } from "@/lib/store/uiStore";
 
 export default function BottomNavV2() {
@@ -12,10 +12,10 @@ export default function BottomNavV2() {
 
   const navItems = [
     { icon: Home, label: "홈", path: "/" },
-    { icon: Search, label: "지도", path: "/map" },
-    { icon: Plus, label: "기록", isCenter: true },
     { icon: LayoutList, label: "소식", path: "/news" },
-    { icon: ImageIcon, label: "내발문자", path: "/album" },
+    { icon: Plus, label: "기록", isCenter: true },
+    { icon: Search, label: "지도", path: "/map" },
+    { icon: Footprints, label: "내발문자", path: "/album" },
   ];
 
   return (

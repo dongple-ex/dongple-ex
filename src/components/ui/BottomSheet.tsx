@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower } from "lucide-react";
+import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower, MapPin, Search, Navigation } from "lucide-react";
 import { reportContent, ReportReason } from "@/services/moderationService";
 
 import LiveStatusCreateForm from "@/components/forms/LiveStatusCreateForm";
@@ -10,7 +10,9 @@ import { saveAlbumMemory } from "@/lib/albumMemory";
 import { createPost, createComment, fetchComments, likePost, reportPost } from "@/services/postService";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useUIStore } from "@/lib/store/uiStore";
+import { useLocationStore } from "@/lib/store/locationStore";
 import { SHAREABLE_STATUS_OPTIONS } from "@/lib/statusTheme";
+import { searchPlaces, getAddressFromCoords } from "@/services/api";
 
 type CommentItem = {
   id: string;
@@ -111,6 +113,7 @@ export default function BottomSheet() {
     liveReply: "상황 알려주기",
     liveDetail: "상황 정보",
     contentReport: "부적절한 정보 신고",
+    locationSearch: "지역 설정",
   };
   const sheetTitle = bottomSheetContent ? titleMap[bottomSheetContent] || "상세 정보" : "상세 정보";
 
@@ -182,6 +185,7 @@ export default function BottomSheet() {
                   {bottomSheetContent === "liveReply" && <LiveReplyForm />}
                   {bottomSheetContent === "liveDetail" && <LiveDetailView />}
                   {bottomSheetContent === "contentReport" && <ReportView />}
+                  {bottomSheetContent === "locationSearch" && <LocationSearchView />}
                 </div>
 
                 {bottomSheetContent === "postDetail" && (
@@ -300,7 +304,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                                 onClick={() => setPostType(type)}
                                 className={`px-4 py-2 text-[12px] font-bold rounded-xl border transition-all whitespace-nowrap ${
                                     postType === type 
-                                    ? "border-foreground bg-foreground text-card-bg shadow-md font-black" 
+                                    ? "border-foreground bg-foreground text-background shadow-md font-black" 
                                     : "border-border text-gray-500 bg-nav-bg hover:bg-gray-100 dark:hover:bg-gray-800"
                                 }`}
                             >
@@ -793,6 +797,135 @@ function LiveDetailView() {
                     <AlertTriangle size={14} />
                     <span>정보가 잘못되었나요? 신고하기</span>
                 </button>
+            </div>
+        </div>
+    );
+}
+
+function LocationSearchView() {
+    const { regionName, setLocation, fetchLocation, isLoading: isLocating } = useLocationStore();
+    const { closeBottomSheet } = useUIStore();
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+
+    const handleSearch = async () => {
+        if (!query.trim()) return;
+        setIsSearching(true);
+        try {
+            const data = await searchPlaces(query);
+            setResults(data);
+        } catch (error) {
+            console.error("Location search failed:", error);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const handleSelectLocation = async (item: any) => {
+        const lat = parseFloat(item.mapy);
+        const lng = parseFloat(item.mapx);
+        
+        try {
+            // 상세 주소 및 지역명(동 단위) 가져오기
+            const addrResult = await getAddressFromCoords(lat, lng);
+            setLocation(lat, lng, addrResult.fullAddress, addrResult.regionName);
+            closeBottomSheet();
+        } catch (error) {
+            console.error("Failed to set selected location:", error);
+            // 폴백: 장소 이름이라도 사용
+            setLocation(lat, lng, item.roadAddress || item.address, item.title);
+            closeBottomSheet();
+        }
+    };
+
+    const handleCurrentLocation = async () => {
+        await fetchLocation();
+        closeBottomSheet();
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="space-y-2">
+                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">현재 설정된 지역</p>
+                <div className="flex items-center justify-between bg-nav-bg p-4 rounded-2xl border border-border">
+                    <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-secondary/10 rounded-full flex items-center justify-center text-secondary">
+                            <MapPin size={20} />
+                        </div>
+                        <div>
+                            <p className="text-[15px] font-black text-foreground">{regionName}</p>
+                            <p className="text-[11px] text-gray-400">동네 소식을 이곳 기준으로 보여드려요</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-3">
+                <p className="text-[11px] font-black text-secondary uppercase tracking-widest ml-1">동네 검색하기</p>
+                <div className="relative group">
+                    <input
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                        placeholder="동 이름이나 장소를 입력해보세요 (예: 정자동)"
+                        className="w-full h-14 bg-nav-bg rounded-2xl pl-12 pr-4 text-[14px] font-bold border border-border focus:border-secondary focus:ring-4 focus:ring-secondary/5 outline-none transition-all placeholder:text-gray-300"
+                    />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-secondary transition-colors" size={20} />
+                    <button 
+                        onClick={handleSearch}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 h-8 px-3 bg-secondary text-white rounded-lg text-[11px] font-black shadow-sm"
+                    >
+                        검색
+                    </button>
+                </div>
+            </div>
+
+            <button
+                onClick={handleCurrentLocation}
+                disabled={isLocating}
+                className="w-full py-4 flex items-center justify-center space-x-2 bg-foreground/5 rounded-2xl text-[14px] font-black text-foreground hover:bg-foreground/10 transition-all"
+            >
+                <Navigation size={18} className={isLocating ? "animate-spin" : ""} />
+                <span>{isLocating ? "위치 찾는 중..." : "현재 위치로 설정하기"}</span>
+            </button>
+
+            <div className="space-y-3">
+                {isSearching ? (
+                    <div className="flex justify-center py-10">
+                        <div className="w-6 h-6 border-2 border-secondary/30 border-t-secondary rounded-full animate-spin"></div>
+                    </div>
+                ) : results.length > 0 ? (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar pb-10">
+                        {results.map((item, idx) => (
+                            <div
+                                key={idx}
+                                onClick={() => handleSelectLocation(item)}
+                                className="p-4 bg-card-bg border border-border rounded-2xl hover:border-secondary hover:bg-secondary/5 transition-all cursor-pointer group"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0 mr-4">
+                                        <h5 className="text-[14px] font-black text-foreground group-hover:text-secondary transition-colors truncate">
+                                            {item.title}
+                                        </h5>
+                                        <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                                            {item.roadAddress || item.address}
+                                        </p>
+                                    </div>
+                                    <div className="shrink-0 w-8 h-8 rounded-full bg-foreground/5 flex items-center justify-center text-gray-300 group-hover:bg-secondary/20 group-hover:text-secondary transition-all">
+                                        <ArrowLeft className="rotate-180" size={14} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : query && !isSearching ? (
+                    <div className="py-10 text-center">
+                        <p className="text-[13px] font-bold text-gray-300">검색 결과가 없습니다.</p>
+                        <p className="text-[11px] text-gray-400 mt-1">지역명이나 랜드마크를 입력해보세요.</p>
+                    </div>
+                ) : null}
             </div>
         </div>
     );

@@ -45,6 +45,11 @@ body {
   @apply antialiased transition-colors duration-300;
 }
 
+input, textarea, select {
+  color: inherit;
+  background-color: transparent;
+}
+
 @layer components {
   .glass-card {
     @apply bg-card-bg backdrop-blur-2xl border border-border shadow-2xl;

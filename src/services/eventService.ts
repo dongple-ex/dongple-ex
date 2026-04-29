@@ -40,9 +40,15 @@ interface TourApiEventsResponse {
     items?: OfficialEvent[];
 }
 
-async function fetchTourApiEvents(): Promise<OfficialEvent[]> {
+async function fetchTourApiEvents(keyword?: string, category?: string): Promise<OfficialEvent[]> {
     try {
-        const response = await fetch('/api/tour/events?numOfRows=30', {
+        const params = new URLSearchParams({
+            numOfRows: '100'
+        });
+        if (keyword) params.set('keyword', keyword);
+        if (category && category !== 'all') params.set('contentTypeId', category);
+
+        const response = await fetch(`/api/tour/events?${params.toString()}`, {
             cache: 'no-store'
         });
 
@@ -66,16 +72,26 @@ function mapDbEvents(data: OfficialEventRow[]) {
     }));
 }
 
-export async function fetchOfficialEvents(): Promise<OfficialEvent[]> {
+export async function fetchOfficialEvents(keyword?: string, category?: string): Promise<OfficialEvent[]> {
     try {
-        const liveEvents = await fetchTourApiEvents();
+        const liveEvents = await fetchTourApiEvents(keyword, category);
         if (liveEvents.length > 0) {
             return liveEvents;
         }
 
-        const { data, error } = await supabase
+        let queryBuilder = supabase
             .from('events')
-            .select('*, events_ext(*)')
+            .select('*, events_ext(*)');
+
+        if (keyword) {
+            queryBuilder = queryBuilder.or(`title.ilike.%${keyword}%,address.ilike.%${keyword}%`);
+        }
+        
+        if (category && category !== 'all') {
+            queryBuilder = queryBuilder.eq('category_code', category);
+        }
+
+        const { data, error } = await queryBuilder
             .order('trust_score', { ascending: false });
 
         if (error) {

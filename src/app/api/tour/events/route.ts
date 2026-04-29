@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
   const pageNo = Number(searchParams.get("pageNo") || "1");
   const numOfRows = Number(searchParams.get("numOfRows") || "20");
   const keyword = searchParams.get("keyword");
-  const arrange = searchParams.get("arrange") || "C";
+  const arrange = searchParams.get("arrange") || "A";
 
   try {
     const params = new URLSearchParams({
@@ -104,15 +104,22 @@ export async function GET(request: NextRequest) {
 
     TOURAPI_PASSTHROUGH_PARAMS.forEach((key) => {
       const value = searchParams.get(key);
-      if (value) params.set(key, value);
+      if (value) {
+        // searchFestival은 contentTypeId를 받지 않음
+        if (key === "contentTypeId" && endpoint.startsWith("searchFestival")) return;
+        params.set(key, value);
+      }
     });
 
     const endpoint = pickEndpoint(baseUrl, keyword);
 
     if (keyword?.trim()) {
       params.set("keyword", keyword.trim());
-      if (!params.has("contentTypeId")) {
-        params.set("contentTypeId", "15");
+      // 클라이언트에서 contentTypeId를 명시적으로 보낸 경우에만 설정
+      // (전체 탭인 경우 모든 타입을 검색할 수 있도록)
+      const ctId = searchParams.get("contentTypeId");
+      if (ctId && ctId !== 'all') {
+        params.set("contentTypeId", ctId);
       }
     }
 
@@ -121,6 +128,7 @@ export async function GET(request: NextRequest) {
       cache: "no-store",
     });
     const responseText = await response.text();
+    console.log(`[TourAPI] ${endpoint} fetch successful: ${responseText.length} bytes`);
 
     if (!response.ok) {
       console.error("TourAPI request failed:", {
@@ -158,11 +166,13 @@ export async function GET(request: NextRequest) {
     const rawItems = payload?.response?.body?.items?.item;
     const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
 
+    const requestedCategory = searchParams.get("contentTypeId");
     const normalized = items
       .map((item: TourApiFestivalItem) => ({
         id: item.contentid || `${item.title}-${item.eventstartdate}`,
         title: item.title || "이름 없는 행사",
-        category_code: "15",
+        // 데이터 자체의 contentTypeId가 있으면 사용, 없으면 요청한 카테고리 사용
+        category_code: item.contenttypeid || (endpoint.startsWith("searchFestival") ? "15" : requestedCategory || "15"),
         description: buildDescription(item),
         lat: Number(item.mapy || 0),
         lng: Number(item.mapx || 0),

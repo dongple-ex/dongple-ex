@@ -36,35 +36,51 @@ export default function EventsPage() {
     const [activeTab, setActiveTab] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
 
+    const loadEvents = async (query?: string, category?: string) => {
+        setIsLoading(true);
+        try {
+            const [eventData, liveData] = await Promise.all([
+                fetchOfficialEvents(query, category),
+                fetchLiveStatus()
+            ]);
+
+            // 서버에서 이미 카테고리 필터링을 해서 보냈으므로, 
+            // 클라이언트에서는 'all'이 아닐 때만 보조적으로 확인
+            const finalEvents = category && category !== "all" 
+                ? eventData.filter(e => String(e.category_code) === String(category))
+                : eventData;
+
+            setEvents(finalEvents);
+            setStatuses(liveData);
+        } catch (error) {
+            console.error("Failed to load events:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // 검색어 및 카테고리 변경 통합 효과 (디바운스 포함)
     useEffect(() => {
-        const loadEvents = async () => {
-            setIsLoading(true);
-            try {
-                const [eventData, liveData] = await Promise.all([
-                    fetchOfficialEvents(),
-                    fetchLiveStatus()
-                ]);
+        const delay = searchQuery ? 500 : 0;
+        const timer = setTimeout(() => {
+            loadEvents(searchQuery, activeTab);
+        }, delay);
 
-                setEvents(eventData);
-                setStatuses(liveData);
-            } catch (error) {
-                console.error("Failed to load events:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+        return () => clearTimeout(timer);
+    }, [searchQuery, activeTab]);
 
-        loadEvents();
-    }, []);
+    const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+            loadEvents(searchQuery, activeTab);
+        }
+    };
 
-    const filteredEvents = events.filter((event) => {
-        const matchesTab = activeTab === "all" || event.category_code === activeTab;
-        const matchesSearch =
-            event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            event.address.toLowerCase().includes(searchQuery.toLowerCase());
+    const clearSearch = () => {
+        setSearchQuery("");
+        loadEvents("", activeTab);
+    };
 
-        return matchesTab && matchesSearch;
-    });
+    const filteredEvents = events; 
 
     const handleEventClick = (event: OfficialEvent) => {
         const summary = getEventStatusSummary(event, statuses);
@@ -117,9 +133,18 @@ export default function EventsPage() {
                             placeholder="행사 이름이나 위치를 검색해보세요"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-12 w-full rounded-2xl border-none bg-foreground/5 pl-11 pr-4 text-sm font-bold text-foreground outline-none transition-all focus:ring-2 focus:ring-secondary/20 placeholder:text-foreground/30"
+                            onKeyDown={handleSearchKeyDown}
+                            className="h-12 w-full rounded-2xl border-none bg-foreground/[0.06] pl-11 pr-11 text-sm font-bold text-foreground outline-none transition-all focus:ring-2 focus:ring-secondary/20 placeholder:text-foreground/25"
                         />
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/30" size={18} />
+                        {searchQuery && (
+                            <button
+                                onClick={clearSearch}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-foreground/10 p-1 text-foreground/40 hover:bg-foreground/20 hover:text-foreground"
+                            >
+                                <ArrowLeft className="rotate-45" size={14} />
+                            </button>
+                        )}
                     </div>
 
                     <div className="flex space-x-2 overflow-x-auto py-1 no-scrollbar">

@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { MapPin, Search, Bell, ArrowLeft, SlidersHorizontal, X } from "lucide-react";
 import { useLocationStore } from "@/lib/store/locationStore";
+import { useUIStore } from "@/lib/store/uiStore";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { getVillageWeather, WeatherData } from "@/services/api";
 
 interface HeaderProps {
@@ -30,6 +32,7 @@ export default function Header({
     onClearSearch
 }: HeaderProps) {
     const { regionName, latitude, longitude, fetchLocation, isLoading } = useLocationStore();
+    const openBottomSheet = useUIStore((state) => state.openBottomSheet);
     const router = useRouter();
     const [weather, setWeather] = useState<WeatherData | null>(null);
 
@@ -104,18 +107,28 @@ export default function Header({
                 </div>
             ) : (
                 <>
-                    <div
-                        className="flex items-center space-x-1 font-bold text-lg text-[#3E2723] cursor-pointer hover:opacity-70 transition-opacity"
-                        onClick={() => fetchLocation()}
-                        title="위치 새로고침"
-                    >
-                        <MapPin
-                            size={20}
-                            className={`text-[#2E7D32] ${isLoading ? 'animate-pulse' : ''}`}
-                        />
-                        <span className={isLoading ? "text-gray-400" : ""}>
-                            {regionName}
-                        </span>
+                    <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 relative overflow-hidden rounded-lg">
+                            <Image 
+                                src="/logo.png" 
+                                alt="내발문자 로고" 
+                                fill
+                                className="object-contain"
+                            />
+                        </div>
+                        <div
+                            className="flex items-center space-x-1 font-bold text-lg text-[#3E2723] cursor-pointer hover:opacity-70 transition-opacity"
+                            onClick={() => openBottomSheet("locationSearch")}
+                            title="지역 검색 및 설정"
+                        >
+                            <MapPin
+                                size={18}
+                                className={`text-[#2E7D32] ${isLoading ? 'animate-pulse' : ''}`}
+                            />
+                            <span className={`text-base ${isLoading ? "text-gray-400" : ""}`}>
+                                {regionName}
+                            </span>
+                        </div>
                     </div>
                     <div className="flex items-center space-x-4">
                         {weather && (

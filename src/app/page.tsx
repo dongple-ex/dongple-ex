@@ -72,7 +72,7 @@ export default function Home() {
                     <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
                         <Link
                             href="/map"
-                            className="inline-flex items-center justify-center rounded-2xl bg-foreground px-5 py-3 text-[13px] font-black text-white"
+                            className="inline-flex items-center justify-center rounded-2xl bg-foreground px-5 py-3 text-[13px] font-black text-background"
                         >
                             지도 바로 보기
                             <ArrowRight size={16} className="ml-2" />
