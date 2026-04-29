@@ -137,7 +137,6 @@ export default function Header({
                                 <span>{weather.temp}</span>
                             </div>
                         )}
-                        <Search size={22} className="text-gray-700 cursor-pointer" />
                         <Bell size={22} className="text-gray-700 cursor-pointer" />
                     </div>
                 </>

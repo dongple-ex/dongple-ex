@@ -77,12 +77,22 @@ const isKakaoServicesReady = () =>
     typeof window !== "undefined" && Boolean(window.kakao?.maps?.services);
 
 /**
- * 카카오 지도 services API를 사용하여 좌표를 주소로 변환 (Reverse Geocoding)
+ * 카카오 SDK가 로드되었는지 확인하고, autoload=false인 경우 load()를 호출하여 대기합니다.
  */
+async function ensureKakaoReady(): Promise<boolean> {
+    if (isKakaoServicesReady()) return true;
+    if (typeof window === "undefined" || !window.kakao?.maps) return false;
+
+    return new Promise((resolve) => {
+        window.kakao.maps.load(() => {
+            resolve(isKakaoServicesReady());
+        });
+    });
+}
 export async function getAddressFromCoords(lat: number, lng: number): Promise<AddressResult> {
     const fallback: AddressResult = { fullAddress: "주소 정보 없음", regionName: "위치 확인 불가" };
     
-    if (!isKakaoServicesReady()) {
+    if (!(await ensureKakaoReady())) {
         return { fullAddress: "서비스 로드 중...", regionName: "위치 확인 중" };
     }
 
@@ -130,7 +140,7 @@ export async function getAddressFromCoords(lat: number, lng: number): Promise<Ad
  * 카카오 장소 검색 services API 호출
  */
 export async function searchPlaces(query: string): Promise<SearchPlaceResult[]> {
-    if (!isKakaoServicesReady()) {
+    if (!(await ensureKakaoReady())) {
         return [];
     }
 
@@ -162,7 +172,7 @@ export async function searchPlaces(query: string): Promise<SearchPlaceResult[]> 
  * 좌표 기준 가장 가까운 상호/장소 정보 가져오기 (POI Reverse Search)
  */
 export async function getNearestPlace(lat: number, lng: number): Promise<SearchPlaceResult | null> {
-    if (!isKakaoServicesReady()) return null;
+    if (!(await ensureKakaoReady())) return null;
 
     const ps = new window.kakao.maps.services.Places();
     const location = new window.kakao.maps.LatLng(lat, lng);
@@ -237,7 +247,7 @@ export async function getNearestPlace(lat: number, lng: number): Promise<SearchP
  * 주소를 좌표로 변환 (Geocoding) - 검색 기능용
  */
 export async function getCoordsFromAddress(address: string): Promise<{ lat: number, lng: number } | null> {
-    if (!isKakaoServicesReady()) {
+    if (!(await ensureKakaoReady())) {
         return null;
     }
 
