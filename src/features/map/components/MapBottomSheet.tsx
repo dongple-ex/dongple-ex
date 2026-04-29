@@ -39,7 +39,7 @@ export default function MapBottomSheet({
                 <div className="w-12 h-1.5 bg-foreground/10 rounded-full mb-4" />
                 <div className="w-full px-8 flex items-center justify-between">
                     <div className="flex flex-col">
-                        <span className="text-[11px] font-black text-secondary tracking-widest uppercase mb-1">DONGPLE LIVE</span>
+                        <span className="text-[11px] font-black text-secondary tracking-widest uppercase mb-1">LIVE FOOTMARK</span>
                         <h3 className="font-black text-foreground text-2xl tracking-tighter">
                             주변의 순간들 <span className="text-secondary opacity-30 ml-1">{markers.length}</span>
                         </h3>

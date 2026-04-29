@@ -66,11 +66,11 @@ export function ClickTargetMarker({ address, placeName, onReport }: ClickTargetM
                 </button>
                 <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-card-bg rotate-45 border-r border-b border-secondary/20"></div>
             </motion.div>
-            {/* 마커 본체: 바운싱하는 동플 아이콘 */}
+            {/* 마커 본체: 바운싱하는 내발문자 아이콘 */}
             <div className="w-10 h-10 bg-white rounded-full border-2 border-secondary/20 shadow-2xl flex items-center justify-center animate-bounce overflow-hidden relative">
                 <Image 
                     src="/favicon-marker.png" 
-                    alt="동플 선택" 
+                    alt="위치 선택" 
                     width={40}
                     height={40}
                     className="w-full h-full object-cover p-1.5"
