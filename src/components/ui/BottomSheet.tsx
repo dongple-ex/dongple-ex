@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower, MapPin, Search, Navigation } from "lucide-react";
+import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower, MapPin, Search, Navigation, ArrowLeft } from "lucide-react";
 import { reportContent, ReportReason } from "@/services/moderationService";
 
 import LiveStatusCreateForm from "@/components/forms/LiveStatusCreateForm";
