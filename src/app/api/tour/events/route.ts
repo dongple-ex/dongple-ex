@@ -92,6 +92,8 @@ export async function GET(request: NextRequest) {
   const arrange = searchParams.get("arrange") || "A";
 
   try {
+    const endpoint = pickEndpoint(baseUrl, keyword);
+    
     const params = new URLSearchParams({
       MobileApp: "Dongple",
       MobileOS: "ETC",
@@ -99,8 +101,12 @@ export async function GET(request: NextRequest) {
       arrange,
       pageNo: `${pageNo}`,
       numOfRows: `${numOfRows}`,
-      eventStartDate,
     });
+
+    // searchFestival만 날짜 기반 검색 지원
+    if (endpoint.startsWith("searchFestival")) {
+      params.set("eventStartDate", eventStartDate);
+    }
 
     TOURAPI_PASSTHROUGH_PARAMS.forEach((key) => {
       const value = searchParams.get(key);
@@ -110,8 +116,6 @@ export async function GET(request: NextRequest) {
         params.set(key, value);
       }
     });
-
-    const endpoint = pickEndpoint(baseUrl, keyword);
 
     if (keyword?.trim()) {
       params.set("keyword", keyword.trim());
