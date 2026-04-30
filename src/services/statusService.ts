@@ -54,7 +54,7 @@ const STATUS_ORDER: Record<string, number> = {
     "혼잡": 2,
 };
 
-function formatUpdatedAgo(value: string) {
+export function formatUpdatedAgo(value: string) {
     const diffMs = Date.now() - new Date(value).getTime();
     const diffMin = Math.max(0, Math.floor(diffMs / 60000));
     if (diffMin < 1) return "방금 전";
@@ -64,7 +64,7 @@ function formatUpdatedAgo(value: string) {
     return `${Math.floor(diffHour / 24)}일 전`;
 }
 
-function normalizeStatus(status: string) {
+export function normalizeStatus(status: string) {
     if (status === "여유") return "한산";
     if (status === "혼잡") return "붐빔";
     return status || "보통";

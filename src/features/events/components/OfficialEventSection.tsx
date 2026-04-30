@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
+import { getEventPeriodPhase, getEventStatusBlock } from "@/lib/eventPeriod";
 import { fetchOfficialEvents, OfficialEvent } from "@/services/eventService";
 import { fetchLiveStatus, getEventStatusSummary, LiveStatus } from "@/services/statusService";
 
@@ -39,10 +40,12 @@ export default function OfficialEventSection() {
 
     const handleEventClick = (event: OfficialEvent) => {
         const period = `${event.event_start_date} ~ ${event.event_end_date}`;
+        const phase = getEventPeriodPhase(event.event_start_date, event.event_end_date);
         const summary = getEventStatusSummary(event, statuses);
-        const statusBlock = summary
+        const activeStatusText = summary
             ? `[지금 상태]\n${summary.label} (${summary.updatedAgo})\n${summary.latestMessage || "최근 현장 공유가 들어왔습니다."}`
-            : "[지금 상태]\n아직 공유된 현장 상태가 없습니다.\n지도에서 바로 현장 상황을 남겨보세요.";
+            : "[지금 상태]\n아직 공유된 현장 상태가 없습니다.\n행사 현장 공유로 첫 상태를 남겨보세요.";
+        const statusBlock = getEventStatusBlock(event.event_start_date, event.event_end_date, activeStatusText);
 
         openBottomSheet("postDetail", {
             id: event.id,
@@ -51,6 +54,9 @@ export default function OfficialEventSection() {
             address: event.address,
             latitude: event.lat,
             longitude: event.lng,
+            eventStartDate: event.event_start_date,
+            eventEndDate: event.event_end_date,
+            eventPhase: phase,
             title: event.title,
             content: `${event.address}\n\n[행사 일정]\n${period}\n\n${statusBlock}\n\n${event.description || "행사 기본 정보는 들어와 있지만, 현장감은 아직 비어 있습니다. 첫 공유를 남겨보세요."}`,
             is_official: true,
@@ -86,7 +92,7 @@ export default function OfficialEventSection() {
                     <EventSummaryCard
                         key={event.id}
                         event={event}
-                        statusSummary={getEventStatusSummary(event, statuses)}
+                        statusSummary={getEventPeriodPhase(event.event_start_date, event.event_end_date) === "active" ? getEventStatusSummary(event, statuses) : null}
                         onClick={() => handleEventClick(event)}
                     />
                 ))}

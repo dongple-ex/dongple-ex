@@ -177,8 +177,9 @@ export async function getNearestPlace(lat: number, lng: number): Promise<SearchP
     const ps = new window.kakao.maps.services.Places();
     const location = new window.kakao.maps.LatLng(lat, lng);
     
-    // 탐색할 카카오 장소 카테고리 목록
+    // 탐색할 카카오 장소 카테고리 목록. 새 마커는 클릭 좌표가 주인공이므로 아주 가까운 POI만 보조 이름으로 사용한다.
     const categories = ['FD6', 'CE7', 'CS2', 'CT1', 'AT4', 'PO3', 'PK6', 'MT1'];
+    const radius = 25;
     
     const searchCategory = (category: string): Promise<SearchPlaceResult | null> => {
         return new Promise((resolve) => {
@@ -196,7 +197,7 @@ export async function getNearestPlace(lat: number, lng: number): Promise<SearchP
                 } else {
                     resolve(null);
                 }
-            }, { location, radius: 100, sort: window.kakao.maps.services.SortBy.DISTANCE });
+            }, { location, radius, sort: window.kakao.maps.services.SortBy.DISTANCE });
         });
     };
 
@@ -216,26 +217,8 @@ export async function getNearestPlace(lat: number, lng: number): Promise<SearchP
             return nearest;
         }
 
-        // 2단계: 키워드 기반 범용 검색 (카테고리에 없는 경우)
-        return new Promise((resolve) => {
-            ps.keywordSearch('가게', (results: KakaoPlaceResult[], status: KakaoStatus) => {
-                if (status === window.kakao.maps.services.Status.OK && results.length > 0) {
-                    const item = results[0];
-                    console.log(`[getNearestPlace] Keyword search found:`, item.place_name);
-                    resolve({
-                        title: item.place_name,
-                        mapx: item.x,
-                        mapy: item.y,
-                        roadAddress: item.road_address_name,
-                        address: item.address_name,
-                        category: item.category_name,
-                    });
-                } else {
-                    console.log(`[getNearestPlace] No POI found around ${lat}, ${lng}`);
-                    resolve(null);
-                }
-            }, { location, radius: 100, sort: window.kakao.maps.services.SortBy.DISTANCE });
-        });
+        console.log(`[getNearestPlace] No close POI found around ${lat}, ${lng}`);
+        return null;
     } catch (err) {
         console.error("POI 탐색 중 오류:", err);
         return null;

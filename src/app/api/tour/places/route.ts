@@ -2,14 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 
 type TourApiPlaceItem = {
   contentid?: string;
+  contenttypeid?: string;
   title?: string;
   addr1?: string;
+  addr2?: string;
   firstimage?: string;
   firstimage2?: string;
   mapx?: string;
   mapy?: string;
   tel?: string;
   dist?: string;
+  cat1?: string;
+  cat2?: string;
+  cat3?: string;
+  areacode?: string;
+  sigungucode?: string;
+  createdtime?: string;
+  modifiedtime?: string;
+  zipcode?: string;
 };
 
 export async function GET(request: NextRequest) {
@@ -47,7 +57,10 @@ export async function GET(request: NextRequest) {
     }
 
     const requestUrl = `${baseUrl}/locationBasedList2?serviceKey=${tourApiKey}&${params.toString()}`;
-    const response = await fetch(requestUrl, { cache: "no-store" });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch(requestUrl, { cache: "no-store", signal: controller.signal })
+      .finally(() => clearTimeout(timeoutId));
     const responseText = await response.text();
 
     if (!response.ok) {
@@ -69,6 +82,14 @@ export async function GET(request: NextRequest) {
 
     const rawItems = payload?.response?.body?.items?.item;
     const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
+    const apiInfo = {
+      provider: "TOURAPI",
+      endpoint: "locationBasedList2",
+      baseUrl,
+      params: Object.fromEntries(params.entries()),
+      resultCode,
+      totalCount: payload?.response?.body?.totalCount || items.length,
+    };
 
     // NewsCard가 사용하는 Post 형식으로 변환 (MockPost 형태)
     const normalized = items.map((item: TourApiPlaceItem, idx) => ({
@@ -88,7 +109,13 @@ export async function GET(request: NextRequest) {
       score: 0.8,
       user_id: null,
       public_id: null,
-      is_anonymous: false
+      is_anonymous: false,
+      source: "TOURAPI",
+      meta: item,
+      api_info: apiInfo,
+      address: item.addr1 || "",
+      latitude: item.mapy ? Number(item.mapy) : null,
+      longitude: item.mapx ? Number(item.mapx) : null,
     }));
 
     return NextResponse.json({
@@ -96,6 +123,18 @@ export async function GET(request: NextRequest) {
       totalCount: payload?.response?.body?.totalCount || normalized.length,
     });
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error("TourAPI places request timed out");
+      return NextResponse.json(
+        {
+          items: [],
+          totalCount: 0,
+          error: "TourAPI places request timed out.",
+        },
+        { status: 200 },
+      );
+    }
+
     console.error("TourAPI places route error:", error);
     return NextResponse.json({ error: "Failed to fetch TourAPI places." }, { status: 500 });
   }

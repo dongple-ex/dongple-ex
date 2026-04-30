@@ -1,4 +1,4 @@
-export type StatusLabel = "여유" | "보통" | "혼잡" | "요청";
+export type StatusLabel = "한산" | "보통" | "붐빔" | "요청" | "여유" | "혼잡";
 
 type StatusTheme = {
     tone: string;
@@ -12,6 +12,16 @@ type StatusTheme = {
 };
 
 export const STATUS_THEME: Record<StatusLabel, StatusTheme> = {
+    한산: {
+        tone: "bg-green-100 text-green-700",
+        text: "text-green-700",
+        border: "border-green-200",
+        hover: "hover:bg-green-200",
+        ring: "ring-green-300",
+        badgeText: "text-green-500",
+        indicator: "bg-green-500",
+        card: "bg-green-50/50 border-green-100 shadow-green-900/5",
+    },
     여유: {
         tone: "bg-green-100 text-green-700",
         text: "text-green-700",
@@ -31,6 +41,16 @@ export const STATUS_THEME: Record<StatusLabel, StatusTheme> = {
         badgeText: "text-blue-500",
         indicator: "bg-blue-500",
         card: "bg-blue-50/50 border-blue-100 shadow-blue-900/5",
+    },
+    붐빔: {
+        tone: "bg-red-100 text-red-700",
+        text: "text-red-700",
+        border: "border-red-200",
+        hover: "hover:bg-red-200",
+        ring: "ring-red-300",
+        badgeText: "text-red-500",
+        indicator: "bg-red-500",
+        card: "bg-red-50/50 border-red-100 shadow-red-900/5",
     },
     혼잡: {
         tone: "bg-red-100 text-red-700",
@@ -54,7 +74,7 @@ export const STATUS_THEME: Record<StatusLabel, StatusTheme> = {
     },
 };
 
-export const SHAREABLE_STATUS_OPTIONS = (["여유", "보통", "혼잡"] as const).map((label) => ({
+export const SHAREABLE_STATUS_OPTIONS = (["한산", "보통", "붐빔"] as const).map((label) => ({
     label,
     ...STATUS_THEME[label],
 }));
@@ -64,5 +84,10 @@ export function getStatusTheme(status: string, isRequest = false): StatusTheme {
         return STATUS_THEME["요청"];
     }
 
-    return STATUS_THEME[(status as StatusLabel) || "보통"] ?? STATUS_THEME["보통"];
+    // Normalize
+    let normalized = status;
+    if (status === "여유") normalized = "한산";
+    if (status === "혼잡") normalized = "붐빔";
+
+    return STATUS_THEME[(normalized as StatusLabel) || "보통"] ?? STATUS_THEME["보통"];
 }
