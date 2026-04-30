@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, PartyPopper } from "lucide-react";
 import Link from "next/link";
 
+import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { fetchOfficialEvents, OfficialEvent } from "@/services/eventService";
 import { fetchLiveStatus, getEventStatusSummary, LiveStatus } from "@/services/statusService";
@@ -15,9 +16,11 @@ export default function OfficialEventSection() {
     const [statuses, setStatuses] = useState<LiveStatus[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const openBottomSheet = useUIStore((state) => state.openBottomSheet);
+    const regionName = useLocationStore((state) => state.regionName);
 
     useEffect(() => {
         const loadEvents = async () => {
+            setIsLoading(true);
             try {
                 const data = await fetchOfficialEvents();
                 setEvents(data.slice(0, 5));
@@ -32,7 +35,7 @@ export default function OfficialEventSection() {
         };
 
         loadEvents();
-    }, []);
+    }, [regionName]);
 
     const handleEventClick = (event: OfficialEvent) => {
         const period = `${event.event_start_date} ~ ${event.event_end_date}`;

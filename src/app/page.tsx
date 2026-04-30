@@ -19,6 +19,7 @@ import Link from "next/link";
 import HeroSection from "@/components/dashboard/v2/HeroSection";
 import LiveBoardTickerv2 from "@/components/dashboard/v2/LiveBoardTickerv2";
 import OfficialEventSection from "@/features/events/components/OfficialEventSection";
+import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { fetchPosts, Post, subscribePosts } from "@/services/postService";
 
@@ -27,8 +28,10 @@ export default function Home() {
     const [isLoading, setIsLoading] = useState(true);
     const [viewMode, setViewMode] = useState<"grid" | "list">("list");
     const openBottomSheet = useUIStore((state) => state.openBottomSheet);
+    const regionName = useLocationStore((state) => state.regionName);
 
     const loadPosts = async () => {
+        setIsLoading(true);
         try {
             const data = await fetchPosts(10);
             setPosts(data);
@@ -46,7 +49,7 @@ export default function Home() {
         return () => {
             sub.unsubscribe();
         };
-    }, []);
+    }, [regionName]);
 
     return (
         <div className="min-h-screen bg-background pb-32 transition-colors duration-500">
