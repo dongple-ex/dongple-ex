@@ -148,16 +148,24 @@ function MapContent() {
     const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
         if (!isDragging) return;
         const deltaVH = ((e.clientY - startY.current) / window.innerHeight) * 100;
-        const newHeight = Math.max(15, Math.min(92, startHeight.current - deltaVH));
+        const newHeight = Math.max(24, Math.min(92, startHeight.current - deltaVH));
         setSheetHeight(newHeight);
     };
 
     const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
         setIsDragging(false);
         e.currentTarget.releasePointerCapture(e.pointerId);
+
+        // 클릭 이벤트로 간주 (드래그 거리가 10px 미만인 경우)
+        if (Math.abs(e.clientY - startY.current) < 10) {
+            if (sheetHeight < 35) setSheetHeight(50); // 아래쪽에 있으면 반쯤 올리기
+            else setSheetHeight(24); // 반쯤이거나 위에 있으면 내리기
+            return;
+        }
+
         if (sheetHeight > 70) setSheetHeight(92);
         else if (sheetHeight > 35) setSheetHeight(50);
-        else setSheetHeight(15);
+        else setSheetHeight(24);
     };
 
     const handleSearch = async (initialQuery?: string) => {
@@ -237,7 +245,7 @@ function MapContent() {
             if (nearestEvent && minDistance < 0.0003) {
                 setSelectedEventId(nearestEvent.id);
                 setClickedLatLng(null);
-                setSheetHeight(15);
+                setSheetHeight(24);
                 setExpandedCardId(null);
                 setIsResultOpen(false);
                 return;
@@ -263,7 +271,7 @@ function MapContent() {
                 setClickedPlaceName(null);
             }
 
-            setSheetHeight(15);
+            setSheetHeight(24);
             setExpandedCardId(null);
             setIsResultOpen(false);
         });

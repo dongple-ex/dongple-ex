@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, MapPin, Plus, ArrowUpRight } from "lucide-react";
+import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { fetchLiveStatus, subscribeLiveUpdates, postLiveStatus, verifyStatusWithTrust } from "@/services/statusService";
 import { getStatusTheme } from "@/lib/statusTheme";
@@ -14,6 +15,7 @@ export default function LiveBoardTickerv2() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [userId, setUserId] = useState("");
     const openBottomSheet = useUIStore((state) => state.openBottomSheet);
+    const regionName = useLocationStore((state) => state.regionName);
 
     const loadData = async () => {
         try {
@@ -28,7 +30,7 @@ export default function LiveBoardTickerv2() {
         loadData();
         const sub = subscribeLiveUpdates(loadData);
         return () => { sub.unsubscribe(); };
-    }, []);
+    }, [regionName]);
 
     useEffect(() => {
         let id = localStorage.getItem("dongple_temp_id");
