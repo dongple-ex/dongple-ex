@@ -52,13 +52,21 @@ CREATE TABLE IF NOT EXISTS public.posts (
 CREATE TABLE IF NOT EXISTS public.profiles (
     user_id TEXT PRIMARY KEY, -- 'u-...' 형식 또는 auth.users의 UUID
     nickname TEXT NOT NULL,
-    trust_score DECIMAL(3, 2) DEFAULT 0.5,
-    verified_count INTEGER DEFAULT 0,
-    posts_count INTEGER DEFAULT 0,
-    is_verified BOOLEAN DEFAULT FALSE,
+    public_id TEXT UNIQUE,
+    trust_score NUMERIC(4, 2) NOT NULL DEFAULT 0.50,
+    verified_count INTEGER NOT NULL DEFAULT 0,
+    posts_count INTEGER NOT NULL DEFAULT 0,
+    status_count INTEGER NOT NULL DEFAULT 0,
+    badge_level TEXT NOT NULL DEFAULT 'starter',
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     last_active_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_profiles_public_id ON public.profiles (public_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_trust_score ON public.profiles (trust_score DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_last_active_at ON public.profiles (last_active_at DESC);
 
 -- 5. 신고 내역 테이블
 CREATE TABLE IF NOT EXISTS public.reports (
@@ -89,7 +97,13 @@ CREATE POLICY "모두에게 읽기 허용" ON public.reports FOR SELECT USING (t
 CREATE POLICY "모두에게 쓰기 허용" ON public.live_status FOR INSERT WITH CHECK (true);
 CREATE POLICY "모두에게 쓰기 허용" ON public.status_verifications FOR INSERT WITH CHECK (true);
 CREATE POLICY "모두에게 쓰기 허용" ON public.posts FOR INSERT WITH CHECK (true);
-CREATE POLICY "모두에게 쓰기 허용" ON public.profiles FOR ALL USING (true);
+CREATE POLICY "프로필 최초 생성 허용" ON public.profiles FOR INSERT WITH CHECK (
+  user_id LIKE 'u-%'
+  OR (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT)
+);
+CREATE POLICY "프로필 본인 수정 허용" ON public.profiles FOR UPDATE
+USING (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT)
+WITH CHECK (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT);
 CREATE POLICY "모두에게 쓰기 허용" ON public.reports FOR INSERT WITH CHECK (true);
 
 -- 7. Helper Functions
