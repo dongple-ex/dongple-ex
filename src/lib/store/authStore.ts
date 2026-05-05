@@ -44,6 +44,7 @@ interface AuthState {
     initAuth: () => Promise<void>;
     signInWithProvider: (provider: AuthProvider) => Promise<void>;
     signOut: () => Promise<void>;
+    updateNickname: (newNickname: string) => Promise<void>;
 }
 
 let authSubscription: { unsubscribe: () => void } | null = null;
@@ -58,9 +59,12 @@ function getProvider(user: User) {
 }
 
 function getProfileSeed(user: User | null, publicId: string): AuthProfile {
+    // 실명 노출 방지를 위해 무조건 감성적인 별명 생성
+    const defaultNickname = generateSentimentalNickname(publicId);
+
     if (!user) {
         return {
-            nickname: generateSentimentalNickname(publicId),
+            nickname: defaultNickname,
             is_verified: false,
             trust_score: 0.5,
             activity_count: 0,
@@ -68,15 +72,6 @@ function getProfileSeed(user: User | null, publicId: string): AuthProfile {
     }
 
     const metadata = user.user_metadata || {};
-    const nickname =
-        typeof metadata.name === "string"
-            ? metadata.name
-            : typeof metadata.full_name === "string"
-                ? metadata.full_name
-                : typeof metadata.nickname === "string"
-                    ? metadata.nickname
-                    : user.email?.split("@")[0] || generateSentimentalNickname(publicId);
-
     const avatarUrl =
         typeof metadata.avatar_url === "string"
             ? metadata.avatar_url
@@ -85,9 +80,9 @@ function getProfileSeed(user: User | null, publicId: string): AuthProfile {
                 : null;
 
     return {
-        nickname,
+        nickname: defaultNickname, // 구글 실명 대신 랜덤 별명 사용
         is_verified: true,
-        trust_score: 0.7,
+        trust_score: 0.8, // 인증 사용자는 기본 신뢰도 상향
         activity_count: 0,
         avatar_url: avatarUrl,
         email: user.email,
@@ -100,20 +95,20 @@ async function syncProfile(user: User | null, anonymousId: string, publicId: str
     const userId = user?.id || anonymousId;
 
     try {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from("profiles")
             .upsert(
                 [
                     {
                         user_id: userId,
-                        id: user?.id || null,
-                        anonymous_id: user ? null : anonymousId,
+                        // id: user?.id || null, // 컬럼 부재 시 주석 처리
+                        // anonymous_id: user ? null : anonymousId, // 컬럼 부재 시 주석 처리
                         nickname: profileSeed.nickname,
                         public_id: publicId,
                         provider: profileSeed.provider,
                         email: profileSeed.email,
                         avatar_url: profileSeed.avatar_url,
-                        legacy_anonymous_id: user ? anonymousId : null,
+                        // legacy_anonymous_id: user ? anonymousId : null, // 컬럼 부재 시 주석 처리
                         last_active_at: new Date().toISOString(),
                     },
                 ],
@@ -121,6 +116,11 @@ async function syncProfile(user: User | null, anonymousId: string, publicId: str
             )
             .select()
             .single();
+
+        if (error) {
+            console.warn("Profile sync error (expected for new users):", error.message);
+            return profileSeed;
+        }
 
         if (!data) return profileSeed;
 
@@ -134,7 +134,7 @@ async function syncProfile(user: User | null, anonymousId: string, publicId: str
             provider: data.provider || profileSeed.provider,
         } satisfies AuthProfile;
     } catch (err) {
-        console.error("Profile sync failed:", err);
+        console.error("Critical profile sync failure:", err);
         return profileSeed;
     }
 }
@@ -233,5 +233,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isAuthenticated: false,
             isAuthInitialized: true,
         });
+    },
+
+    updateNickname: async (newNickname: string) => {
+        const { userId, profile } = get();
+        if (!userId || !profile) return;
+
+        try {
+            const { error } = await supabase
+                .from("profiles")
+                .update({ nickname: newNickname })
+                .eq("user_id", userId);
+
+            if (error) throw error;
+
+            set({
+                profile: { ...profile, nickname: newNickname },
+            });
+        } catch (error) {
+            console.error("Nickname update failed:", error);
+            throw error;
+        }
     },
 }));

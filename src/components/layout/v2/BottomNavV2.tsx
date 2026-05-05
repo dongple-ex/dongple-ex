@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Footprints, Home, LayoutList, MapPinned, Plus } from "lucide-react";
 import { useRequireAuth } from "@/lib/useRequireAuth";
+import { useUIStore } from "@/lib/store/uiStore";
 import Link from "next/link";
 
 export default function BottomNavV2() {
@@ -15,7 +16,7 @@ export default function BottomNavV2() {
     { icon: LayoutList, label: "소식", path: "/news" },
     { icon: Plus, label: "기록", isCenter: true },
     { icon: MapPinned, label: "지도", path: "/map" },
-    { icon: Footprints, label: "발문자", path: "/album" },
+    { icon: Footprints, label: "내발문자", path: "/album" },
   ];
 
   return (
@@ -33,7 +34,7 @@ export default function BottomNavV2() {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.94 }}
-                  onClick={() => requireAuth({ type: "bottomSheet", content: "recordHub", data: { defaultTab } })}
+                  onClick={() => useUIStore.getState().openBottomSheet("recordHub", { defaultTab })}
                   className="absolute top-[-42px] flex h-16 w-16 items-center justify-center rounded-full border-4 border-background bg-foreground text-background shadow-xl"
                   aria-label="기록하기"
                 >

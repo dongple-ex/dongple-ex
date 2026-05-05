@@ -3,10 +3,11 @@
 import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower, MapPin, Search, Navigation, ArrowLeft, MessageCircle, Mail } from "lucide-react";
+import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower, MapPin, Search, Navigation, ArrowLeft } from "lucide-react";
 import { reportContent, ReportReason } from "@/services/moderationService";
 
 import LiveStatusCreateForm from "@/components/forms/LiveStatusCreateForm";
+import LoginModal from "@/components/auth/LoginModal";
 import { saveAlbumMemory } from "@/lib/albumMemory";
 import { isEventActive } from "@/lib/eventPeriod";
 import { createPost, createComment, fetchComments, likePost, reportPost } from "@/services/postService";
@@ -328,7 +329,7 @@ export default function BottomSheet() {
                   {bottomSheetContent === "liveDetail" && <LiveDetailView />}
                   {bottomSheetContent === "contentReport" && <ReportView />}
                   {bottomSheetContent === "locationSearch" && <LocationSearchView />}
-                  {bottomSheetContent === "authPrompt" && <AuthPromptView />}
+                  {bottomSheetContent === "authPrompt" && <LoginModal />}
                 </div>
 
                 {bottomSheetContent === "postDetail" && !isReadOnlyPostDetailData(bottomSheetData) && (
@@ -559,6 +560,7 @@ WriteForm.displayName = "WriteForm";
 
 function RecordHub() {
     const { bottomSheetData, closeBottomSheet } = useUIStore();
+    const requireAuth = useRequireAuth();
     const defaultTab = bottomSheetData?.defaultTab === "post" ? "post" : "status";
     const [activeTab, setActiveTab] = useState<"status" | "post">(defaultTab);
 
@@ -582,7 +584,14 @@ function RecordHub() {
                         <span>상황공유</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab("post")}
+                        onClick={() => 
+                            requireAuth({ 
+                                type: "bottomSheet", 
+                                content: "recordHub", 
+                                data: { defaultTab: "post" },
+                                callback: () => setActiveTab("post")
+                            })
+                        }
                         className={`flex items-center justify-center space-x-2 rounded-[18px] px-4 py-2.5 text-[13px] font-black transition-all ${
                             activeTab === "post"
                                 ? "bg-[#795548] text-white shadow-lg shadow-[#795548]/20"
@@ -620,65 +629,6 @@ function RecordHub() {
     );
 }
 
-function AuthPromptView() {
-    const { signInWithProvider } = useAuthStore();
-    const [isSubmitting, setIsSubmitting] = useState<"kakao" | "google" | null>(null);
-
-    const handleSignIn = async (provider: "kakao" | "google") => {
-        setIsSubmitting(provider);
-        try {
-            await signInWithProvider(provider);
-        } catch (error) {
-            console.error("OAuth sign in failed:", error);
-            alert("로그인을 시작하지 못했습니다. Supabase 인증 설정을 확인해주세요.");
-            setIsSubmitting(null);
-        }
-    };
-
-    return (
-        <div className="flex flex-col gap-5 pt-2">
-            <div className="rounded-[28px] border border-border bg-nav-bg/70 p-5">
-                <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
-                        <ShieldCheck size={22} />
-                    </div>
-                    <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.16em] text-secondary">Action Sign-in</p>
-                        <h4 className="mt-1 text-[19px] font-black text-foreground">기록을 남길 때만 확인할게요</h4>
-                        <p className="mt-2 text-[13px] font-medium leading-relaxed text-foreground/55">
-                            둘러보기는 그대로 가능하고, 기록하기·상황 요청·내발문자처럼 내 활동으로 남는 순간에만 인증합니다.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-2.5">
-                <button
-                    type="button"
-                    onClick={() => handleSignIn("kakao")}
-                    disabled={Boolean(isSubmitting)}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FEE500] px-4 py-4 text-[14px] font-black text-[#191919] transition-transform active:scale-[0.98] disabled:opacity-60"
-                >
-                    <MessageCircle size={18} />
-                    {isSubmitting === "kakao" ? "카카오 인증 준비 중..." : "카카오톡으로 계속하기"}
-                </button>
-                <button
-                    type="button"
-                    onClick={() => handleSignIn("google")}
-                    disabled={Boolean(isSubmitting)}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card-bg px-4 py-4 text-[14px] font-black text-foreground transition-transform active:scale-[0.98] disabled:opacity-60"
-                >
-                    <Mail size={18} />
-                    {isSubmitting === "google" ? "Google 인증 준비 중..." : "Google 이메일로 계속하기"}
-                </button>
-            </div>
-
-            <p className="px-2 text-center text-[11px] font-medium leading-relaxed text-foreground/40">
-                로그인 후에는 방금 누른 기록/요청/내발문자 화면으로 자동으로 이어집니다.
-            </p>
-        </div>
-    );
-}
 
 function PostDetailView() {
     const { bottomSheetData, openBottomSheet } = useUIStore();

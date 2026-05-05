@@ -1,10 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Clock3, Footprints, Heart, MapPinned, Moon, Route, Settings, Share2, Star, Sun } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock3, Edit3, Footprints, Heart, LogOut, MapPinned, Moon, Route, Settings, Share2, Star, Sun } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useUIStore } from "@/lib/store/uiStore";
@@ -31,11 +31,33 @@ const formatTime = (value: string) =>
 
 export default function JourneyAlbumPage() {
   const router = useRouter();
-  const { publicId, profile, initAuth, isAuthenticated, isAuthInitialized } = useAuthStore();
+  const { publicId, profile, initAuth, isAuthenticated, isAuthInitialized, signOut, updateNickname } = useAuthStore();
   const { theme, toggleTheme } = useUIStore();
   const requireAuth = useRequireAuth();
   const [memories, setMemories] = useState<AlbumMemory[]>([]);
   const [activeFilter, setActiveFilter] = useState<AlbumFilter>("all");
+  const [isEditingNickname, setIsEditingNickname] = useState(false);
+  const [newNickname, setNewNickname] = useState("");
+
+  useEffect(() => {
+    if (profile?.nickname) {
+      setNewNickname(profile.nickname);
+    }
+  }, [profile?.nickname]);
+
+  const handleUpdateNickname = async () => {
+    if (!newNickname.trim() || newNickname === profile?.nickname) {
+      setIsEditingNickname(false);
+      return;
+    }
+    try {
+      await updateNickname(newNickname.trim());
+      setIsEditingNickname(false);
+    } catch (err) {
+      console.error("Nickname update failed:", err);
+      alert("별명 수정에 실패했습니다.");
+    }
+  };
 
   useEffect(() => {
     initAuth();
@@ -90,20 +112,53 @@ export default function JourneyAlbumPage() {
       <main className="mx-auto flex max-w-md flex-col gap-6 px-5 py-6">
         <section className="overflow-hidden rounded-[28px] border border-border bg-card-bg shadow-sm">
           <div className="bg-gradient-to-br from-secondary/10 via-card-bg to-accent/5 px-6 py-6">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-secondary">Memory Loop</p>
-                <h2 className="mt-2 text-[24px] font-black leading-tight">
-                  {(profile?.nickname || `익명 ${publicId || "사용자"}`) + "님의"}
-                  <br />
-                  다시 가고 싶은 곳
-                </h2>
-                <p className="mt-3 text-[13px] leading-relaxed text-foreground/65">
-                  소식에서 발견하고 지도에서 확인한 장소를 발문자처럼 모아둡니다. 다음 방문 때 필요한 맥락이 여기 남아요.
+            <div className="flex flex-col items-center gap-4">
+              {profile?.avatar_url ? (
+                <div className="relative h-20 w-20 overflow-hidden rounded-[24px] border-2 border-white shadow-md">
+                  <Image src={profile.avatar_url} alt="Profile" fill className="object-cover" />
+                </div>
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-secondary/10 text-secondary shadow-sm">
+                  <Footprints size={32} />
+                </div>
+              )}
+              <div className="text-center">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-secondary">
+                  {isAuthenticated ? `${profile?.provider} Authenticated` : "Anonymous Loop"}
                 </p>
-              </div>
-              <div className="rounded-2xl bg-foreground/5 p-3 text-secondary shadow-sm">
-                <Footprints size={24} />
+                {isEditingNickname ? (
+                  <div className="mt-1 flex items-center justify-center gap-2">
+                    <input
+                      type="text"
+                      value={newNickname}
+                      onChange={(e) => setNewNickname(e.target.value)}
+                      autoFocus
+                      className="w-full max-w-[160px] rounded-lg border border-secondary/30 bg-background/50 px-3 py-1.5 text-center text-[18px] font-black outline-none focus:border-secondary"
+                      onKeyDown={(e) => e.key === "Enter" && handleUpdateNickname()}
+                    />
+                    <button
+                      onClick={handleUpdateNickname}
+                      className="rounded-xl bg-secondary px-3 py-2 text-[11px] font-black text-white shadow-lg shadow-secondary/20"
+                    >
+                      저장
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-1 flex items-center justify-center gap-2">
+                    <h2 className="text-[22px] font-black leading-tight text-foreground">
+                      {profile?.nickname || `익명 ${publicId || "사용자"}`}
+                    </h2>
+                    <button
+                      onClick={() => setIsEditingNickname(true)}
+                      className="rounded-full bg-foreground/5 p-1.5 text-foreground/30 transition-colors hover:bg-secondary/10 hover:text-secondary"
+                    >
+                      <Edit3 size={14} />
+                    </button>
+                  </div>
+                )}
+                {isAuthenticated && profile?.email && (
+                  <p className="mt-1 text-[12px] font-bold text-foreground/40">{profile.email}</p>
+                )}
               </div>
             </div>
 
@@ -150,7 +205,7 @@ export default function JourneyAlbumPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-secondary">Memory Cards</p>
-              <h3 className="mt-1 text-[20px] font-black">발문자로 모은 기록</h3>
+              <h3 className="mt-1 text-[20px] font-black">내 발자국이 머문 자리들</h3>
             </div>
             <MapPinned size={18} className="text-secondary" />
           </div>
@@ -161,9 +216,8 @@ export default function JourneyAlbumPage() {
                 key={filter.key}
                 type="button"
                 onClick={() => setActiveFilter(filter.key)}
-                className={`rounded-full px-3.5 py-2 text-[12px] font-black ${
-                  activeFilter === filter.key ? "bg-foreground text-background shadow-md" : "bg-nav-bg text-foreground/55 hover:bg-foreground/5"
-                }`}
+                className={`rounded-full px-3.5 py-2 text-[12px] font-black ${activeFilter === filter.key ? "bg-foreground text-background shadow-md" : "bg-nav-bg text-foreground/55 hover:bg-foreground/5"
+                  }`}
               >
                 {filter.label}
               </button>
@@ -255,6 +309,24 @@ export default function JourneyAlbumPage() {
               <ArrowRight size={14} className="text-foreground/20" />
             </div>
           </button>
+
+          {isAuthenticated && (
+            <button
+              onClick={async () => {
+                if (confirm("로그아웃 하시겠습니까?")) {
+                  await signOut();
+                  router.push("/");
+                }
+              }}
+              className="mt-3 flex w-full items-center justify-between rounded-2xl bg-rose-500/5 p-4 transition-all hover:bg-rose-500/10 active:scale-95"
+            >
+              <div className="flex items-center gap-3">
+                <div className="text-rose-500"><LogOut size={18} /></div>
+                <span className="text-[14px] font-bold text-rose-500">로그아웃</span>
+              </div>
+              <ArrowRight size={14} className="text-rose-500/20" />
+            </button>
+          )}
         </section>
       </main>
     </div>
