@@ -8,6 +8,7 @@ import { reportContent, ReportReason } from "@/services/moderationService";
 
 import LiveStatusCreateForm from "@/components/forms/LiveStatusCreateForm";
 import LoginModal from "@/components/auth/LoginModal";
+import NotificationSheet from "@/features/notifications/components/NotificationSheet";
 import { saveAlbumMemory } from "@/lib/albumMemory";
 import { isEventActive } from "@/lib/eventPeriod";
 import { createPost, createComment, fetchComments, likePost, reportPost } from "@/services/postService";
@@ -167,7 +168,7 @@ function isReadOnlyPostDetailData(data: unknown) {
 
 export default function BottomSheet() {
   const { isBottomSheetOpen, bottomSheetContent, bottomSheetData, closeBottomSheet } = useUIStore();
-  const { authUserId, anonymousId, publicId, isAnonymous, isAuthenticated } = useAuthStore();
+  const { userId, publicId, isAnonymous, isAuthenticated } = useAuthStore();
   const requireAuth = useRequireAuth();
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -197,8 +198,7 @@ export default function BottomSheet() {
         await createComment({
             post_id: bottomSheetData.id,
             content: commentText.trim(),
-            user_id: authUserId,
-            anonymous_id: authUserId ? null : anonymousId,
+            user_id: userId,
             public_id: publicId,
             is_anonymous: isAnonymous
         });
@@ -217,6 +217,7 @@ export default function BottomSheet() {
       if (bottomSheetContent === "postDetail" || bottomSheetContent === "liveCreate") setSheetHeight(85);
       else if (bottomSheetContent === "write" || bottomSheetContent === "recordHub") setSheetHeight(90);
       else if (bottomSheetContent === "authPrompt") setSheetHeight(56);
+      else if (bottomSheetContent === "notifications") setSheetHeight(68);
       else setSheetHeight(50);
     }
   }, [isBottomSheetOpen, bottomSheetContent]);
@@ -257,6 +258,7 @@ export default function BottomSheet() {
     contentReport: "부적절한 정보 신고",
     locationSearch: "지역 설정",
     authPrompt: "로그인이 필요해요",
+    notifications: "알림",
   };
   const sheetTitle = bottomSheetContent ? titleMap[bottomSheetContent] || "상세 정보" : "상세 정보";
 
@@ -330,6 +332,7 @@ export default function BottomSheet() {
                   {bottomSheetContent === "contentReport" && <ReportView />}
                   {bottomSheetContent === "locationSearch" && <LocationSearchView />}
                   {bottomSheetContent === "authPrompt" && <LoginModal />}
+                  {bottomSheetContent === "notifications" && <NotificationSheet />}
                 </div>
 
                 {bottomSheetContent === "postDetail" && !isReadOnlyPostDetailData(bottomSheetData) && (
@@ -362,7 +365,7 @@ export default function BottomSheet() {
 
 const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: boolean) => void; showInlineSubmit?: boolean }>(({ onStateChange, showInlineSubmit = false }, ref) => {
     const { closeBottomSheet } = useUIStore();
-    const { authUserId, anonymousId, publicId, profile, isAnonymous, toggleAnonymous, initAuth } = useAuthStore();
+    const { userId, publicId, profile, isAnonymous, toggleAnonymous, initAuth } = useAuthStore();
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [postType, setPostType] = useState("동네질문");
@@ -399,8 +402,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 content,
                 post_type: postType,
                 category,
-                user_id: authUserId || undefined,
-                anonymous_id: authUserId ? null : anonymousId,
+                user_id: userId || undefined,
                 public_id: publicId,
                 is_anonymous: isAnonymous,
                 score: postType === "정보공유" ? 0.6 : 0.5

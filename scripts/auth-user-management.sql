@@ -3,16 +3,12 @@
 
 ALTER TABLE public.profiles
 ADD COLUMN IF NOT EXISTS id UUID UNIQUE REFERENCES auth.users(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS anonymous_id TEXT,
-ADD COLUMN IF NOT EXISTS legacy_anonymous_id TEXT,
 ADD COLUMN IF NOT EXISTS provider TEXT,
 ADD COLUMN IF NOT EXISTS email TEXT,
 ADD COLUMN IF NOT EXISTS avatar_url TEXT,
 ADD COLUMN IF NOT EXISTS notification_opt_in BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_profiles_id ON public.profiles (id);
-CREATE INDEX IF NOT EXISTS idx_profiles_anonymous_id ON public.profiles (anonymous_id);
-CREATE INDEX IF NOT EXISTS idx_profiles_legacy_anonymous_id ON public.profiles (legacy_anonymous_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles (email);
 
 CREATE TABLE IF NOT EXISTS public.provider_accounts (
@@ -49,23 +45,19 @@ FOR UPDATE
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
-ALTER TABLE public.posts
-ADD COLUMN IF NOT EXISTS anonymous_id TEXT;
-
-ALTER TABLE public.post_comments
-ADD COLUMN IF NOT EXISTS anonymous_id TEXT;
-
 ALTER TABLE public.live_status
-ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS anonymous_id TEXT;
+ADD COLUMN IF NOT EXISTS user_id TEXT;
 
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
   type TEXT NOT NULL,
   title TEXT NOT NULL,
-  body TEXT,
-  href TEXT,
+  content TEXT NOT NULL DEFAULT '',
+  link_url TEXT NOT NULL DEFAULT '/',
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  dedupe_key TEXT,
   read_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -79,11 +71,11 @@ DROP POLICY IF EXISTS "notifications_owner_select" ON public.notifications;
 CREATE POLICY "notifications_owner_select"
 ON public.notifications
 FOR SELECT
-USING (auth.uid() = user_id);
+USING (auth.uid()::TEXT = user_id OR user_id LIKE 'u-%');
 
 DROP POLICY IF EXISTS "notifications_owner_update" ON public.notifications;
 CREATE POLICY "notifications_owner_update"
 ON public.notifications
 FOR UPDATE
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
+USING (auth.uid()::TEXT = user_id OR user_id LIKE 'u-%')
+WITH CHECK (auth.uid()::TEXT = user_id OR user_id LIKE 'u-%');

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.live_status (
     event_id TEXT, -- TourAPI/events 기준 행사 연결 ID
     place_name TEXT NOT NULL,
     category TEXT NOT NULL,
+    user_id TEXT,
     status TEXT NOT NULL, -- 여유, 보통, 혼잡
     status_color TEXT,
     is_request BOOLEAN DEFAULT FALSE,
@@ -20,7 +21,9 @@ CREATE TABLE IF NOT EXISTS public.live_status (
 );
 
 ALTER TABLE public.live_status ADD COLUMN IF NOT EXISTS event_id TEXT;
+ALTER TABLE public.live_status ADD COLUMN IF NOT EXISTS user_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_live_status_event_id ON public.live_status USING btree (event_id);
+CREATE INDEX IF NOT EXISTS idx_live_status_user_id ON public.live_status USING btree (user_id);
 
 -- 2. 상황 인증 내역 테이블
 CREATE TABLE IF NOT EXISTS public.status_verifications (
@@ -231,7 +234,7 @@ CREATE POLICY "모두에게 읽기 허용" ON public.raw_items FOR SELECT USING 
 CREATE TABLE IF NOT EXISTS public.post_comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE,
-    user_id UUID,
+    user_id TEXT,
     public_id TEXT, -- 익명 식별자
     content TEXT NOT NULL,
     is_anonymous BOOLEAN DEFAULT TRUE,
@@ -255,6 +258,36 @@ CREATE POLICY "모두에게 읽기 허용" ON public.post_likes FOR SELECT USING
 CREATE POLICY "모두에게 쓰기 허용" ON public.post_comments FOR INSERT WITH CHECK (true);
 CREATE POLICY "모두에게 쓰기 허용" ON public.post_likes FOR INSERT WITH CHECK (true);
 
+CREATE POLICY "본인 글 수정 허용" ON public.posts FOR UPDATE
+USING (
+  (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT)
+  OR user_id LIKE 'u-%'
+)
+WITH CHECK (
+  (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT)
+  OR user_id LIKE 'u-%'
+);
+
+CREATE POLICY "본인 상황 수정 허용" ON public.live_status FOR UPDATE
+USING (
+  (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT)
+  OR user_id LIKE 'u-%'
+)
+WITH CHECK (
+  (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT)
+  OR user_id LIKE 'u-%'
+);
+
+CREATE POLICY "본인 댓글 수정 허용" ON public.post_comments FOR UPDATE
+USING (
+  (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT)
+  OR user_id LIKE 'u-%'
+)
+WITH CHECK (
+  (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT)
+  OR user_id LIKE 'u-%'
+);
+
 -- 8. 인터랙션 카운트 증가 RPC
 CREATE OR REPLACE FUNCTION increment_like_count(p_post_id UUID)
 RETURNS void AS $$
@@ -273,7 +306,61 @@ BEGIN
   WHERE id = p_post_id;
 END;
 $$ LANGUAGE plpgsql;
--- 9. 콘텐츠 모니터링 및 평판 시스템
+
+-- 9. 사용자 알림 테이블
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('reply', 'status_response', 'trust', 'system')),
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  link_url TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  read_at TIMESTAMPTZ,
+  dedupe_key TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created
+  ON public.notifications (user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_unread
+  ON public.notifications (user_id, is_read, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_dedupe_key
+  ON public.notifications (dedupe_key)
+  WHERE dedupe_key IS NOT NULL;
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "알림 읽기 허용"
+  ON public.notifications
+  FOR SELECT
+  USING (
+    (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT)
+    OR user_id LIKE 'u-%'
+  );
+
+CREATE POLICY "알림 읽음 처리 허용"
+  ON public.notifications
+  FOR UPDATE
+  USING (
+    (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT)
+    OR user_id LIKE 'u-%'
+  )
+  WITH CHECK (
+    (auth.uid() IS NOT NULL AND user_id = auth.uid()::TEXT)
+    OR user_id LIKE 'u-%'
+  );
+
+CREATE POLICY "알림 생성 허용"
+  ON public.notifications
+  FOR INSERT
+  WITH CHECK (true);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+-- 10. 콘텐츠 모니터링 및 평판 시스템
 -- 신고 내역 테이블
 CREATE TABLE IF NOT EXISTS public.post_reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

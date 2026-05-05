@@ -13,8 +13,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     email TEXT,
     avatar_url TEXT,
     provider TEXT,
-    legacy_anonymous_id TEXT, -- 로그인 전 사용하던 익명 ID 백업
-    anonymous_id TEXT, -- 현재 세션의 익명 ID (필요시)
     trust_score NUMERIC(4, 2) NOT NULL DEFAULT 0.50,
     verified_count INTEGER NOT NULL DEFAULT 0,
     posts_count INTEGER NOT NULL DEFAULT 0,

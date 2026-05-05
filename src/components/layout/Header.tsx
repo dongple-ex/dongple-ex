@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Bell, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowLeft, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useAuthStore } from "@/lib/store/authStore";
 import { getVillageWeather, WeatherData } from "@/services/api";
+import NotificationBell from "@/features/notifications/components/NotificationBell";
 
 interface HeaderProps {
   isSearchMode?: boolean;
@@ -110,7 +111,7 @@ export default function Header({
                 <span>{weather.temp}</span>
               </div>
             )}
-            <Bell size={22} className="cursor-pointer text-foreground/70" />
+            <NotificationBell />
             
             <button 
               onClick={() => isAuthenticated ? router.push("/album") : openBottomSheet("authPrompt")}
