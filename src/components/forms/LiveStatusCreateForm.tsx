@@ -57,7 +57,7 @@ export default function LiveStatusCreateForm({
   compact = false,
 }: LiveStatusCreateFormProps) {
   const { address: storeAddress, latitude: storeLat, longitude: storeLng } = useLocationStore();
-  const { authUserId, anonymousId } = useAuthStore();
+  const userId = useAuthStore((state) => state.userId);
 
   const displayAddress = propAddress || storeAddress;
   const finalLat = propLat || storeLat;
@@ -123,8 +123,7 @@ export default function LiveStatusCreateForm({
         latitude: finalLat,
         longitude: finalLng,
         message: note.trim(),
-        user_id: authUserId,
-        anonymous_id: authUserId ? null : anonymousId,
+        user_id: userId,
       });
 
       saveAlbumMemory({

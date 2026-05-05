@@ -102,13 +102,11 @@ async function syncProfile(user: User | null, anonymousId: string, publicId: str
                     {
                         user_id: userId,
                         // id: user?.id || null, // 컬럼 부재 시 주석 처리
-                        // anonymous_id: user ? null : anonymousId, // 컬럼 부재 시 주석 처리
                         nickname: profileSeed.nickname,
                         public_id: publicId,
                         provider: profileSeed.provider,
                         email: profileSeed.email,
                         avatar_url: profileSeed.avatar_url,
-                        // legacy_anonymous_id: user ? anonymousId : null, // 컬럼 부재 시 주석 처리
                         last_active_at: new Date().toISOString(),
                     },
                 ],

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { createReplyNotification } from "@/services/notificationService";
 
 export interface Post {
     id: string;
@@ -7,7 +8,6 @@ export interface Post {
     post_type: string;
     category: string;
     user_id: string | null;
-    anonymous_id?: string | null;
     public_id: string | null;  // 익명 식별자
     is_anonymous: boolean;     // 익명 여부
     score: number;             // 신뢰도 점수 (0.0 ~ 1.0)
@@ -75,6 +75,26 @@ export async function fetchPostsByCategory(category: string, limit = 10) {
 }
 
 /**
+ * 동네 소식 단건 조회
+ */
+export async function fetchPostById(postId: string) {
+    if (!postId) return null;
+
+    const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("id", postId)
+        .single();
+
+    if (error) {
+        console.error(`Error fetching post ${postId}:`, error);
+        return null;
+    }
+
+    return data as Post;
+}
+
+/**
  * 동네 소식 등록
  */
 export async function createPost(payload: { 
@@ -83,26 +103,18 @@ export async function createPost(payload: {
     post_type: string, 
     category: string,
     user_id?: string,
-    anonymous_id?: string | null,
     public_id?: string,
     is_anonymous?: boolean,
     score?: number 
 }) {
     // 지침서 5-B: 사용자 제보 기본 가중치 0.5, 동플 게시물 0.6
     const finalScore = payload.score ?? 0.6; 
-
-    // UUID 유효성 검사 (PostgreSQL uuid 타입 오류 방지)
-    const isValidUuid = (id?: string) => 
-        id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) : false;
-    
-    // 유효한 UUID가 아니면(예: 'u-...' 형식) null로 설정하여 DB 오류 방지
-    const cleanUserId = isValidUuid(payload.user_id) ? payload.user_id : null;
     
     const { data, error } = await supabase
         .from("posts")
         .insert([{
             ...payload,
-            user_id: cleanUserId,
+            user_id: payload.user_id || null,
             score: finalScore
         }])
         .select();
@@ -179,7 +191,6 @@ export async function createComment(payload: {
     post_id: string,
     content: string,
     user_id?: string | null,
-    anonymous_id?: string | null,
     public_id?: string | null,
     is_anonymous?: boolean
 }) {
@@ -193,6 +204,13 @@ export async function createComment(payload: {
     // 댓글 수 증가
     await supabase.rpc('increment_comment_count', {
         p_post_id: payload.post_id
+    });
+
+    await createReplyNotification({
+        postId: payload.post_id,
+        commentId: data[0].id,
+        commentContent: payload.content,
+        commenterUserId: payload.user_id,
     });
 
     return data[0];

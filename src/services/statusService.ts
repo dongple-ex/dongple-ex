@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { createStatusResponseNotifications } from "@/services/notificationService";
 export { normalizeStatus } from "@/lib/statusTheme";
 import { normalizeStatus } from "@/lib/statusTheme";
 
@@ -27,7 +28,6 @@ export interface LiveStatus {
   message?: string;
   trust_score: number;
   user_id?: string | null;
-  anonymous_id?: string | null;
   tourapi_content_id?: string;
   is_hidden: boolean;
   created_at: string;
@@ -150,7 +150,9 @@ export async function postLiveStatus(payload: Partial<LiveStatus>) {
     .select();
 
   if (error) throw error;
-  return data[0] as LiveStatus;
+  const createdStatus = data[0] as LiveStatus;
+  await createStatusResponseNotifications(createdStatus);
+  return createdStatus;
 }
 
 export async function verifyStatusWithTrust(statusId: string, userId: string) {
