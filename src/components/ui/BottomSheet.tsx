@@ -2,17 +2,20 @@
 
 import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower, MapPin, Search, Navigation, ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower, MapPin, Search, Navigation, ArrowLeft, MessageCircle, Mail } from "lucide-react";
 import { reportContent, ReportReason } from "@/services/moderationService";
 
 import LiveStatusCreateForm from "@/components/forms/LiveStatusCreateForm";
 import { saveAlbumMemory } from "@/lib/albumMemory";
+import { isEventActive } from "@/lib/eventPeriod";
 import { createPost, createComment, fetchComments, likePost, reportPost } from "@/services/postService";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useLocationStore } from "@/lib/store/locationStore";
+import { useRequireAuth } from "@/lib/useRequireAuth";
 import { SHAREABLE_STATUS_OPTIONS } from "@/lib/statusTheme";
-import { searchPlaces, getAddressFromCoords } from "@/services/api";
+import { searchPlaces, getAddressFromCoords, SearchPlaceResult } from "@/services/api";
 
 type CommentItem = {
   id: string;
@@ -30,9 +33,141 @@ type LiveDetailHistoryItem = {
   time: string;
 };
 
+type ApiRecord = Record<string, unknown>;
+
+type OfficialInfoRow = {
+  key: string;
+  label: string;
+  value: string;
+};
+
+type TourDetailInfo = {
+  name?: string;
+  text?: string;
+};
+
+type TourDetail = {
+  summary?: string;
+  overview?: string;
+  highlights?: OfficialInfoRow[];
+  info?: TourDetailInfo[];
+  images?: string[];
+  source?: string;
+};
+
+function isApiRecord(value: unknown): value is ApiRecord {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function formatApiValue(value: unknown) {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function formatTourDate(value: unknown) {
+  const raw = formatApiValue(value).replace(/\D/g, "");
+  if (raw.length !== 8) return formatApiValue(value);
+  return `${raw.slice(0, 4)}.${raw.slice(4, 6)}.${raw.slice(6, 8)}`;
+}
+
+function formatTourDateTime(value: unknown) {
+  const raw = formatApiValue(value).replace(/\D/g, "");
+  if (raw.length < 8) return formatApiValue(value);
+  const date = `${raw.slice(0, 4)}.${raw.slice(4, 6)}.${raw.slice(6, 8)}`;
+  if (raw.length < 12) return date;
+  return `${date} ${raw.slice(8, 10)}:${raw.slice(10, 12)}`;
+}
+
+function addOfficialInfoRow(rows: OfficialInfoRow[], key: string, label: string, value: unknown) {
+  const formatted = formatApiValue(value);
+  if (!formatted) return;
+  rows.push({ key, label, value: formatted });
+}
+
+function toOfficialInfoRows(meta?: ApiRecord) {
+  if (!meta) return [];
+
+  const rows: OfficialInfoRow[] = [];
+  const address = [meta.addr1, meta.addr2].map(formatApiValue).filter(Boolean).join(" ");
+  const distance = Number(formatApiValue(meta.dist));
+  const coordinates = meta.mapy && meta.mapx
+    ? `${formatApiValue(meta.mapy)}, ${formatApiValue(meta.mapx)}`
+    : "";
+  const period = meta.eventstartdate || meta.eventenddate
+    ? `${formatTourDate(meta.eventstartdate)} ~ ${formatTourDate(meta.eventenddate)}`
+    : "";
+
+  addOfficialInfoRow(rows, "title", "공식 명칭", meta.title);
+  addOfficialInfoRow(rows, "address", "주소", address);
+  addOfficialInfoRow(rows, "tel", "문의", meta.tel);
+  if (Number.isFinite(distance)) {
+    addOfficialInfoRow(rows, "dist", "현재 위치에서", `약 ${Math.round(distance).toLocaleString()}m`);
+  }
+  addOfficialInfoRow(rows, "eventplace", "행사 장소", meta.eventplace);
+  addOfficialInfoRow(rows, "period", "행사 기간", period);
+  addOfficialInfoRow(rows, "zipcode", "우편번호", meta.zipcode);
+  addOfficialInfoRow(rows, "coordinates", "위치 좌표", coordinates);
+  if (meta.firstimage || meta.firstimage2) {
+    addOfficialInfoRow(rows, "image", "사진 정보", "대표 이미지 제공됨");
+  }
+  addOfficialInfoRow(rows, "modifiedtime", "정보 수정일", formatTourDateTime(meta.modifiedtime));
+  addOfficialInfoRow(rows, "createdtime", "정보 등록일", formatTourDateTime(meta.createdtime));
+  addOfficialInfoRow(rows, "contentid", "공식 콘텐츠 번호", meta.contentid);
+
+  return rows;
+}
+
+function compactText(value: unknown, maxLength = 180) {
+  const text = formatApiValue(value).replace(/\s+/g, " ").trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).replace(/\s+\S*$/, "")}...`;
+}
+
+function normalizeOfficialRows(rows: OfficialInfoRow[]) {
+  return rows
+    .map((row, index) => ({
+      ...row,
+      key: row.key || `${row.label}-${index}`,
+      value: compactText(row.value, row.label === "장소" ? 80 : 120),
+    }))
+    .filter((row) => row.value);
+}
+
+function getContentIdFromData(data?: ApiRecord) {
+  if (!data) return "";
+  if (typeof data.contentId === "string") return data.contentId;
+  if (typeof data.contentid === "string") return data.contentid;
+  const meta = isApiRecord(data.meta) ? data.meta : undefined;
+  return formatApiValue(meta?.contentid);
+}
+
+function getContentTypeIdFromData(data?: ApiRecord) {
+  if (!data) return "";
+  if (typeof data.contentTypeId === "string") return data.contentTypeId;
+  if (typeof data.contenttypeid === "string") return data.contenttypeid;
+  const meta = isApiRecord(data.meta) ? data.meta : undefined;
+  return formatApiValue(meta?.contenttypeid || data.category_code || data.category);
+}
+
+function isReadOnlyPostDetailData(data: unknown) {
+  if (!isApiRecord(data)) return false;
+  return data.is_official === true
+    || typeof data.source === "string"
+    || isApiRecord(data.meta)
+    || isApiRecord(data.api_info);
+}
+
 export default function BottomSheet() {
   const { isBottomSheetOpen, bottomSheetContent, bottomSheetData, closeBottomSheet } = useUIStore();
-  const { userId, publicId, isAnonymous } = useAuthStore();
+  const { authUserId, anonymousId, publicId, isAnonymous, isAuthenticated } = useAuthStore();
+  const requireAuth = useRequireAuth();
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -50,14 +185,19 @@ export default function BottomSheet() {
   }, []);
 
   const handleCreateComment = async () => {
-    if (!commentText.trim() || !bottomSheetData?.id) return;
+    if (!commentText.trim() || !bottomSheetData?.id || isReadOnlyPostDetailData(bottomSheetData)) return;
+    if (!isAuthenticated) {
+        requireAuth({ type: "bottomSheet", content: "postDetail", data: bottomSheetData });
+        return;
+    }
     
     setIsSubmitting(true);
     try {
         await createComment({
             post_id: bottomSheetData.id,
             content: commentText.trim(),
-            user_id: userId,
+            user_id: authUserId,
+            anonymous_id: authUserId ? null : anonymousId,
             public_id: publicId,
             is_anonymous: isAnonymous
         });
@@ -75,6 +215,7 @@ export default function BottomSheet() {
     if (isBottomSheetOpen) {
       if (bottomSheetContent === "postDetail" || bottomSheetContent === "liveCreate") setSheetHeight(85);
       else if (bottomSheetContent === "write" || bottomSheetContent === "recordHub") setSheetHeight(90);
+      else if (bottomSheetContent === "authPrompt") setSheetHeight(56);
       else setSheetHeight(50);
     }
   }, [isBottomSheetOpen, bottomSheetContent]);
@@ -114,6 +255,7 @@ export default function BottomSheet() {
     liveDetail: "상황 정보",
     contentReport: "부적절한 정보 신고",
     locationSearch: "지역 설정",
+    authPrompt: "로그인이 필요해요",
   };
   const sheetTitle = bottomSheetContent ? titleMap[bottomSheetContent] || "상세 정보" : "상세 정보";
 
@@ -186,9 +328,10 @@ export default function BottomSheet() {
                   {bottomSheetContent === "liveDetail" && <LiveDetailView />}
                   {bottomSheetContent === "contentReport" && <ReportView />}
                   {bottomSheetContent === "locationSearch" && <LocationSearchView />}
+                  {bottomSheetContent === "authPrompt" && <AuthPromptView />}
                 </div>
 
-                {bottomSheetContent === "postDetail" && (
+                {bottomSheetContent === "postDetail" && !isReadOnlyPostDetailData(bottomSheetData) && (
                   <div className="absolute bottom-0 left-0 right-0 border-t border-border p-4 px-6 flex items-center space-x-3 bg-card-bg/80 backdrop-blur-xl z-20 pb-8 shadow-[0_-8px_30px_rgba(0,0,0,0.05)]">
                       <input 
                         type="text" 
@@ -218,12 +361,12 @@ export default function BottomSheet() {
 
 const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: boolean) => void; showInlineSubmit?: boolean }>(({ onStateChange, showInlineSubmit = false }, ref) => {
     const { closeBottomSheet } = useUIStore();
-    const { userId, publicId, profile, isAnonymous, toggleAnonymous, initAuth } = useAuthStore();
+    const { authUserId, anonymousId, publicId, profile, isAnonymous, toggleAnonymous, initAuth } = useAuthStore();
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [postType, setPostType] = useState("동네질문");
     const [category, setCategory] = useState("기타");
-    const [isSuccess, setIsSuccess] = useState(false);
+    const [createdMemoryHref, setCreatedMemoryHref] = useState<string | null>(null);
 
     useEffect(() => {
         onStateChange(content.trim().length > 0);
@@ -234,8 +377,8 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
     }));
 
     useEffect(() => {
-        if (!userId) initAuth();
-    }, [initAuth, userId]);
+        initAuth();
+    }, [initAuth]);
 
     const postTypes = ["동네질문", "동네가게", "같이해요", "정보공유"];
     const categories = [
@@ -255,7 +398,8 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 content,
                 post_type: postType,
                 category,
-                user_id: userId,
+                user_id: authUserId || undefined,
+                anonymous_id: authUserId ? null : anonymousId,
                 public_id: publicId,
                 is_anonymous: isAnonymous,
                 score: postType === "정보공유" ? 0.6 : 0.5
@@ -270,24 +414,46 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 category,
                 createdAt: createdPost.created_at,
             });
-            setIsSuccess(true);
-            setTimeout(() => {
-                closeBottomSheet();
-            }, 1500);
+            setCreatedMemoryHref("/album");
         } catch (error) {
             console.error("등록 실패:", error);
             alert("알 수 없는 오류로 등록에 실패했습니다.");
         }
     };
 
-    if (isSuccess) {
+    if (createdMemoryHref) {
         return (
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
                 <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center animate-bounce">
                     <CheckCircle2 size={32} className="text-secondary" />
                 </div>
                 <p className="text-lg font-bold text-foreground">동네 소식이 등록됐습니다.</p>
-                <p className="text-sm text-gray-400">이웃들이 곧 소식을 확인하게 될 거예요.</p>
+                <p className="max-w-[260px] text-center text-sm text-gray-400">
+                    소식에 올라가고 내발문자에도 기록으로 쌓였어요.
+                </p>
+                <div className="grid w-full grid-cols-2 gap-3 pt-2">
+                    <Link
+                        href="/news"
+                        onClick={closeBottomSheet}
+                        className="inline-flex items-center justify-center rounded-2xl bg-[#795548] px-4 py-3 text-[13px] font-black text-white"
+                    >
+                        소식에서 보기
+                    </Link>
+                    <Link
+                        href={createdMemoryHref}
+                        onClick={closeBottomSheet}
+                        className="inline-flex items-center justify-center rounded-2xl border border-border px-4 py-3 text-[13px] font-black text-foreground/70"
+                    >
+                        내발문자에서 보기
+                    </Link>
+                </div>
+                <button
+                    type="button"
+                    onClick={closeBottomSheet}
+                    className="w-full rounded-2xl bg-foreground/5 px-4 py-3 text-[13px] font-black text-foreground/45"
+                >
+                    닫기
+                </button>
             </div>
         );
     }
@@ -435,12 +601,12 @@ function RecordHub() {
                         {activeTab === "status" ? "Realtime Share" : "Community Post"}
                     </p>
                     <h4 className="mt-1 text-[17px] font-black text-foreground">
-                        {activeTab === "status" ? "지금 이 순간의 상황을 빠르게 공유" : "동네 소식을 게시글로 남기기"}
+                        {activeTab === "status" ? "지금 본 상태를 지도에 남기기" : "경험과 정보를 소식으로 남기기"}
                     </h4>
                     <p className="mt-1.5 text-[12px] font-medium leading-relaxed text-foreground/55">
                         {activeTab === "status"
-                            ? "혼잡도, 대기, 현장 분위기처럼 즉시성이 중요한 정보는 상황공유로 등록합니다."
-                            : "경험, 추천, 질문, 생활 정보처럼 맥락이 필요한 내용은 소식 작성으로 남깁니다."}
+                            ? "혼잡도, 대기, 분위기처럼 지금 판단에 필요한 정보는 지도와 내발문자에 함께 이어집니다."
+                            : "방문 경험, 추천, 질문처럼 맥락이 필요한 이야기는 소식에 남고 내 기록으로 쌓입니다."}
                     </p>
                 </div>
 
@@ -454,20 +620,95 @@ function RecordHub() {
     );
 }
 
+function AuthPromptView() {
+    const { signInWithProvider } = useAuthStore();
+    const [isSubmitting, setIsSubmitting] = useState<"kakao" | "google" | null>(null);
+
+    const handleSignIn = async (provider: "kakao" | "google") => {
+        setIsSubmitting(provider);
+        try {
+            await signInWithProvider(provider);
+        } catch (error) {
+            console.error("OAuth sign in failed:", error);
+            alert("로그인을 시작하지 못했습니다. Supabase 인증 설정을 확인해주세요.");
+            setIsSubmitting(null);
+        }
+    };
+
+    return (
+        <div className="flex flex-col gap-5 pt-2">
+            <div className="rounded-[28px] border border-border bg-nav-bg/70 p-5">
+                <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
+                        <ShieldCheck size={22} />
+                    </div>
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.16em] text-secondary">Action Sign-in</p>
+                        <h4 className="mt-1 text-[19px] font-black text-foreground">기록을 남길 때만 확인할게요</h4>
+                        <p className="mt-2 text-[13px] font-medium leading-relaxed text-foreground/55">
+                            둘러보기는 그대로 가능하고, 기록하기·상황 요청·내발문자처럼 내 활동으로 남는 순간에만 인증합니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-2.5">
+                <button
+                    type="button"
+                    onClick={() => handleSignIn("kakao")}
+                    disabled={Boolean(isSubmitting)}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FEE500] px-4 py-4 text-[14px] font-black text-[#191919] transition-transform active:scale-[0.98] disabled:opacity-60"
+                >
+                    <MessageCircle size={18} />
+                    {isSubmitting === "kakao" ? "카카오 인증 준비 중..." : "카카오톡으로 계속하기"}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => handleSignIn("google")}
+                    disabled={Boolean(isSubmitting)}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card-bg px-4 py-4 text-[14px] font-black text-foreground transition-transform active:scale-[0.98] disabled:opacity-60"
+                >
+                    <Mail size={18} />
+                    {isSubmitting === "google" ? "Google 인증 준비 중..." : "Google 이메일로 계속하기"}
+                </button>
+            </div>
+
+            <p className="px-2 text-center text-[11px] font-medium leading-relaxed text-foreground/40">
+                로그인 후에는 방금 누른 기록/요청/내발문자 화면으로 자동으로 이어집니다.
+            </p>
+        </div>
+    );
+}
+
 function PostDetailView() {
     const { bottomSheetData, openBottomSheet } = useUIStore();
-    const { userId } = useAuthStore();
+    const { userId, isAuthenticated } = useAuthStore();
+    const requireAuth = useRequireAuth();
     const isOfficial = bottomSheetData?.is_official;
-    const officialSource = typeof bottomSheetData?.source === "string" ? bottomSheetData.source : "공식 연동";
+    const apiSource = typeof bottomSheetData?.source === "string" ? bottomSheetData.source : undefined;
+    const officialSource = apiSource || "공식 연동";
     const officialAddress = typeof bottomSheetData?.address === "string" ? bottomSheetData.address : undefined;
+    const eventStartDate = typeof bottomSheetData?.eventStartDate === "string" ? bottomSheetData.eventStartDate : undefined;
+    const eventEndDate = typeof bottomSheetData?.eventEndDate === "string" ? bottomSheetData.eventEndDate : undefined;
+    const canShareEventStatus = !isOfficial || isEventActive(eventStartDate, eventEndDate);
+    const apiInfo = isApiRecord(bottomSheetData?.api_info) ? bottomSheetData.api_info : undefined;
+    const apiMeta = isApiRecord(bottomSheetData?.meta) ? bottomSheetData.meta : undefined;
+    const officialInfoRows = toOfficialInfoRows(apiMeta);
+    const apiProvider = apiSource || formatApiValue(apiInfo?.provider) || "공식 정보";
+    const isApiBacked = Boolean(apiSource || apiInfo || apiMeta);
+    const detailContentId = getContentIdFromData(bottomSheetData || undefined);
+    const detailContentTypeId = getContentTypeIdFromData(bottomSheetData || undefined);
     const [comments, setComments] = useState<CommentItem[]>([]);
     const [likes, setLikes] = useState(bottomSheetData?.likes_count || 0);
     const [isLiked, setIsLiked] = useState(false);
     const [loadingComments, setLoadingComments] = useState(false);
     const [isReported, setIsReported] = useState(false);
+    const [tourDetail, setTourDetail] = useState<TourDetail | null>(null);
+    const [loadingTourDetail, setLoadingTourDetail] = useState(false);
+    const [isRemembered, setIsRemembered] = useState(false);
 
     const loadComments = useCallback(async () => {
-        if (!bottomSheetData?.id || isOfficial) return;
+        if (!bottomSheetData?.id || isOfficial || isApiBacked) return;
         setLoadingComments(true);
         try {
             const data = await fetchComments(bottomSheetData.id);
@@ -477,7 +718,7 @@ function PostDetailView() {
         } finally {
             setLoadingComments(false);
         }
-    }, [bottomSheetData?.id, isOfficial]);
+    }, [bottomSheetData?.id, isOfficial, isApiBacked]);
 
     useEffect(() => {
         loadComments();
@@ -493,8 +734,43 @@ function PostDetailView() {
         return () => window.removeEventListener('comment-added', handleCommentRefresh);
     }, [bottomSheetData?.id, isOfficial, loadComments]);
 
+    useEffect(() => {
+        if (!isApiBacked || !detailContentId) {
+            setTourDetail(null);
+            return;
+        }
+
+        const controller = new AbortController();
+        const loadTourDetail = async () => {
+            setLoadingTourDetail(true);
+            try {
+                const params = new URLSearchParams({ contentId: detailContentId });
+                if (detailContentTypeId) params.set("contentTypeId", detailContentTypeId);
+                const response = await fetch(`/api/tour/detail?${params.toString()}`, {
+                    signal: controller.signal,
+                });
+                if (!response.ok) throw new Error("Tour detail request failed");
+                setTourDetail((await response.json()) as TourDetail);
+            } catch (error) {
+                if (error instanceof Error && error.name !== "AbortError") {
+                    console.error("Tour detail load failed:", error);
+                }
+                setTourDetail(null);
+            } finally {
+                if (!controller.signal.aborted) setLoadingTourDetail(false);
+            }
+        };
+
+        loadTourDetail();
+        return () => controller.abort();
+    }, [detailContentId, detailContentTypeId, isApiBacked]);
+
     const handleLike = async () => {
-        if (!userId || isOfficial) return;
+        if (isOfficial) return;
+        if (!isAuthenticated) {
+            requireAuth({ type: "bottomSheet", content: "postDetail", data: bottomSheetData });
+            return;
+        }
         const newIsLiked = !isLiked;
         setIsLiked(newIsLiked);
         setLikes((prev: number) => newIsLiked ? prev + 1 : Math.max(0, prev - 1));
@@ -509,7 +785,11 @@ function PostDetailView() {
     };
 
     const handleReport = async () => {
-        if (!userId || isReported) return;
+        if (isReported) return;
+        if (!isAuthenticated) {
+            requireAuth({ type: "bottomSheet", content: "postDetail", data: bottomSheetData });
+            return;
+        }
         if (!confirm("이 게시글을 신고하시겠습니까? 내발문자 클린 가이드에 따라 검토됩니다.")) return;
 
         setIsReported(true);
@@ -522,24 +802,83 @@ function PostDetailView() {
         }
     };
 
+    const detailOverview = tourDetail?.overview?.trim();
+    const detailSummary = tourDetail?.summary?.trim();
+    const detailHighlights = normalizeOfficialRows(tourDetail?.highlights?.length ? tourDetail.highlights : officialInfoRows);
+    const primaryHighlights = detailHighlights.slice(0, 6);
+    const secondaryHighlights = detailHighlights.slice(6);
+    const detailInfoRows = (tourDetail?.info || [])
+        .filter((item) => item.name || item.text)
+        .slice(0, 3)
+        .map((item, index) => ({
+            key: `detail-info-${index}`,
+            label: item.name || "상세 정보",
+            value: compactText(item.text || "", 220),
+        }))
+        .filter((row) => row.value);
+    const displayContent = detailSummary || detailOverview || compactText(bottomSheetData?.content, 180) || (isOfficial ? "행사 상세 정보가 준비 중입니다." : "내용이 없습니다.");
+    const detailTitle = formatApiValue(bottomSheetData?.title || bottomSheetData?.content).trim() || "기억한 장소";
+    const detailLat = Number(formatApiValue(bottomSheetData?.latitude || apiMeta?.mapy));
+    const detailLng = Number(formatApiValue(bottomSheetData?.longitude || apiMeta?.mapx));
+    
+    // 좌표 유효성 검사 (WGS84 범위 내 인지 확인)
+    const isWgs84 = Number.isFinite(detailLat) && Number.isFinite(detailLng) && detailLat >= 33 && detailLat <= 39 && detailLng >= 124 && detailLng <= 132;
+    
+    const hasDetailLocation = isWgs84;
+    const mapDetailHref = hasDetailLocation
+        ? `/map?lat=${detailLat}&lng=${detailLng}&title=${encodeURIComponent(detailTitle)}&address=${encodeURIComponent(officialAddress || "")}`
+        : "/map";
+    const handleRememberPlace = () => {
+        if (!isAuthenticated) {
+            requireAuth({ type: "bottomSheet", content: "postDetail", data: bottomSheetData });
+            return;
+        }
+        saveAlbumMemory({
+            sourceId: formatApiValue(bottomSheetData?.id || detailContentId || detailTitle),
+            type: "place",
+            title: detailTitle,
+            subtitle: isOfficial ? "공식 행사" : isApiBacked ? "공식 장소" : "소식",
+            description: displayContent,
+            locationLabel: officialAddress || detailTitle,
+            address: officialAddress,
+            latitude: hasDetailLocation ? detailLat : undefined,
+            longitude: hasDetailLocation ? detailLng : undefined,
+            tourapiContentId: detailContentId,
+            category: isOfficial ? "행사" : formatApiValue(bottomSheetData?.category || bottomSheetData?.post_type || "장소"),
+        });
+        setIsRemembered(true);
+    };
+    const handleOpenRecordForDetail = () => {
+        requireAuth({ type: "bottomSheet", content: "liveCreate", data: {
+            mode: "share",
+            eventId: isOfficial ? bottomSheetData?.eventId || bottomSheetData?.id : undefined,
+            defaultPlaceName: detailTitle,
+            address: officialAddress,
+            latitude: hasDetailLocation ? detailLat : undefined,
+            longitude: hasDetailLocation ? detailLng : undefined,
+        }});
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold border ${
                     isOfficial 
                     ? "bg-secondary/10 text-secondary border-secondary/20" 
+                    : isApiBacked
+                    ? "bg-secondary/10 text-secondary border-secondary/20"
                     : "bg-nav-bg text-gray-500 border-border"
                 }`}>
-                    {isOfficial ? "공식 행사" : (bottomSheetData?.post_type || "동네소식")}
+                    {isOfficial ? "공식 행사" : isApiBacked ? "공식 장소 정보" : (bottomSheetData?.post_type || "동네소식")}
                 </span>
-                <span className="text-xs text-gray-400">{isOfficial ? "TourAPI 4.0" : "조금 전"}</span>
+                <span className="text-xs text-gray-400">{isApiBacked ? `${apiProvider} 제공` : "조금 전"}</span>
             </div>
             
             <div className="flex items-start justify-between group">
                 <h2 className="text-[20px] font-black text-foreground leading-tight break-words flex-1">
                     {bottomSheetData?.title || bottomSheetData?.content?.substring(0, 30)}
                 </h2>
-                {!isOfficial && (
+                {!isOfficial && !isApiBacked && (
                   <>
                     <button 
                         onClick={handleLike}
@@ -562,9 +901,9 @@ function PostDetailView() {
                     </button>
                   </>
                 )}
-                {!isOfficial && (
+                {!isOfficial && !isApiBacked && (
                     <button 
-                        onClick={() => openBottomSheet("contentReport", { targetId: bottomSheetData.id, targetType: "POST" })}
+                        onClick={() => requireAuth({ type: "bottomSheet", content: "contentReport", data: { targetId: bottomSheetData.id, targetType: "POST" } })}
                         className="ml-3 p-2 text-gray-300 hover:text-red-400 transition-colors"
                         title="신고하기"
                     >
@@ -572,6 +911,36 @@ function PostDetailView() {
                     </button>
                 )}
             </div>
+
+            {(isOfficial || isApiBacked) && (
+                <div className="grid grid-cols-3 gap-2">
+                    <Link
+                        href={mapDetailHref}
+                        className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-foreground px-2 text-center text-[12px] font-black leading-tight text-background"
+                    >
+                        지도에서 위치 보기
+                    </Link>
+                    <button
+                        type="button"
+                        onClick={handleOpenRecordForDetail}
+                        disabled={isOfficial && !canShareEventStatus}
+                        className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-secondary px-2 text-center text-[12px] font-black leading-tight text-white disabled:bg-foreground/10 disabled:text-foreground/35"
+                    >
+                        {isOfficial && !canShareEventStatus ? "행사 시작 후 기록" : "기록으로 남기기"}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleRememberPlace}
+                        className={`inline-flex min-h-[48px] items-center justify-center rounded-2xl border px-2 text-center text-[12px] font-black leading-tight ${
+                            isRemembered
+                                ? "border-secondary/20 bg-secondary/10 text-secondary"
+                                : "border-border bg-card-bg text-foreground/70"
+                        }`}
+                    >
+                        {isRemembered ? "기억됨" : "내발문자에 기억"}
+                    </button>
+                </div>
+            )}
 
             {isOfficial ? (
                 <div className="mt-4 space-y-3">
@@ -584,26 +953,39 @@ function PostDetailView() {
                     <div className="rounded-[24px] border border-secondary/15 bg-secondary/5 p-4">
                         <p className="text-[11px] font-black uppercase tracking-wider text-secondary">행사 현장 공유</p>
                         <p className="mt-2 text-[13px] font-medium leading-relaxed text-foreground/70">
-                            행사 정보보다 더 중요한 건 지금 현장 분위기입니다. 붐빔, 대기, 분위기를 바로 남겨보세요.
+                            {canShareEventStatus
+                                ? "행사 정보보다 더 중요한 건 지금 현장 분위기입니다. 붐빔, 대기, 분위기를 바로 남겨보세요."
+                                : "행사 기간 전에는 현장 상태를 남길 수 없습니다. 행사 시작 후 현재 상태 공유가 열립니다."}
                         </p>
-                        <button
-                            onClick={() =>
-                                openBottomSheet("liveCreate", {
-                                    mode: "share",
-                                    eventId: bottomSheetData?.eventId || bottomSheetData?.id,
-                                    defaultPlaceName: bottomSheetData?.defaultPlaceName || bottomSheetData?.title,
-                                    address: officialAddress,
-                                    latitude: bottomSheetData?.latitude,
-                                    longitude: bottomSheetData?.longitude,
-                                })
-                            }
-                            className="mt-3 inline-flex items-center justify-center rounded-2xl bg-secondary px-4 py-3 text-[13px] font-black text-white shadow-lg shadow-secondary/20"
-                        >
-                            이 행사 현장 공유하기
-                        </button>
+                        {eventStartDate && eventEndDate && (
+                            <p className="mt-2 text-[12px] font-black text-foreground/45">
+                                행사 기간: {eventStartDate} ~ {eventEndDate}
+                            </p>
+                        )}
+                        {canShareEventStatus ? (
+                            <button
+                                onClick={() =>
+                                    openBottomSheet("liveCreate", {
+                                        mode: "share",
+                                        eventId: bottomSheetData?.eventId || bottomSheetData?.id,
+                                        defaultPlaceName: bottomSheetData?.defaultPlaceName || bottomSheetData?.title,
+                                        address: officialAddress,
+                                        latitude: bottomSheetData?.latitude,
+                                        longitude: bottomSheetData?.longitude,
+                                    })
+                                }
+                                className="mt-3 inline-flex items-center justify-center rounded-2xl bg-secondary px-4 py-3 text-[13px] font-black text-white shadow-lg shadow-secondary/20"
+                            >
+                                이 행사 현장 공유하기
+                            </button>
+                        ) : (
+                            <div className="mt-3 inline-flex items-center justify-center rounded-2xl bg-foreground/10 px-4 py-3 text-[13px] font-black text-foreground/35">
+                                행사 시작 후 공유 가능
+                            </div>
+                        )}
                     </div>
                 </div>
-            ) : (
+            ) : !isApiBacked ? (
                 <div className="flex items-center space-x-2 mt-4 text-[13px] font-medium text-foreground/60">
                     <div className="w-8 h-8 bg-secondary/10 rounded-full shrink-0 flex items-center justify-center">
                         <span className="text-secondary font-bold text-xs">
@@ -614,13 +996,69 @@ function PostDetailView() {
                         {bottomSheetData?.is_anonymous ? `익명 (${bottomSheetData?.public_id})` : "반가운 이웃"}
                     </div>
                 </div>
+            ) : null}
+
+            {isApiBacked ? (
+                <div className="rounded-[24px] border border-secondary/15 bg-secondary/5 p-4">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-secondary">Quick Read</p>
+                    <h3 className="mt-1 text-[16px] font-black text-foreground">지금 볼 요약</h3>
+                    <div className="mt-3 whitespace-pre-wrap text-[14px] font-semibold leading-relaxed text-foreground/75">
+                        {loadingTourDetail && !detailOverview ? "공식 상세 정보를 불러오는 중입니다." : displayContent}
+                    </div>
+                </div>
+            ) : (
+                <div className={`pt-2 pb-6 text-foreground leading-relaxed text-[15px] ${!isOfficial && "border-b border-border"} min-h-[100px] whitespace-pre-wrap opacity-90 font-medium`}>
+                    {displayContent}
+                </div>
             )}
 
-            <div className={`pt-2 pb-6 text-foreground leading-relaxed text-[15px] ${!isOfficial && "border-b border-border"} min-h-[100px] whitespace-pre-wrap opacity-90 font-medium`}>
-                {bottomSheetData?.content || (isOfficial ? "행사 상세 정보가 준비 중입니다." : "내용이 없습니다.")}
-            </div>
+            {isApiBacked && (
+                <div className="rounded-[24px] border border-secondary/15 bg-secondary/5 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-wider text-secondary">Decision Info</p>
+                            <h3 className="mt-1 text-[15px] font-black text-foreground">가기 전에 확인</h3>
+                            <p className="mt-1 text-[12px] font-bold leading-relaxed text-foreground/50">
+                                시간, 요금, 장소처럼 결정에 필요한 것만 먼저 보여줘요.
+                            </p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-secondary/10 px-3 py-1 text-[11px] font-black text-secondary">
+                            {apiProvider}
+                        </span>
+                    </div>
+
+                    {primaryHighlights.length > 0 ? (
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                            {primaryHighlights.map(({ key, ...row }) => (
+                                <InfoPill key={key} {...row} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="mt-4 rounded-2xl border border-secondary/10 bg-card-bg/80 px-3 py-3 text-[12px] font-bold text-foreground/50">
+                            아직 표시할 수 있는 공식 정보가 충분하지 않습니다.
+                        </div>
+                    )}
+
+                    {secondaryHighlights.length > 0 && (
+                        <div className="mt-3 grid grid-cols-1 gap-2">
+                            {secondaryHighlights.map(({ key, ...row }) => (
+                                <ApiInfoRow key={key} {...row} />
+                            ))}
+                        </div>
+                    )}
+
+                    {detailInfoRows.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                            <p className="text-[11px] font-black text-foreground/45">현장 안내</p>
+                            {detailInfoRows.map(({ key, ...row }) => (
+                                <ApiInfoRow key={key} {...row} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
             
-            {!isOfficial && (
+            {!isOfficial && !isApiBacked && (
                 <div className="pt-2 pb-8">
                     <h3 className="font-bold text-foreground mb-4 text-sm">댓글 {comments.length}</h3>
                     {loadingComments ? (
@@ -658,6 +1096,26 @@ function PostDetailView() {
             )}
             
             <div className="h-28" />
+        </div>
+    );
+}
+
+
+function ApiInfoRow({ label, value }: OfficialInfoRow) {
+    return (
+        <div className="rounded-2xl border border-secondary/10 bg-card-bg/80 px-3 py-2.5">
+            <div className="text-[10px] font-black uppercase tracking-wider text-foreground/35">{label}</div>
+            <div className="mt-1 break-words text-[12px] font-bold text-foreground/70">{value}</div>
+        </div>
+    );
+}
+
+
+function InfoPill({ label, value }: OfficialInfoRow) {
+    return (
+        <div className="min-h-[74px] rounded-2xl border border-secondary/10 bg-card-bg/85 px-3 py-3">
+            <div className="text-[10px] font-black text-secondary">{label}</div>
+            <div className="mt-1 line-clamp-2 break-words text-[12px] font-black leading-snug text-foreground/75">{value}</div>
         </div>
     );
 }
@@ -806,7 +1264,7 @@ function LocationSearchView() {
     const { regionName, setLocation, fetchLocation, isLoading: isLocating } = useLocationStore();
     const { closeBottomSheet } = useUIStore();
     const [query, setQuery] = useState("");
-    const [results, setResults] = useState<any[]>([]);
+    const [results, setResults] = useState<SearchPlaceResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
 
     const handleSearch = async () => {
@@ -822,7 +1280,7 @@ function LocationSearchView() {
         }
     };
 
-    const handleSelectLocation = async (item: any) => {
+    const handleSelectLocation = async (item: SearchPlaceResult) => {
         const lat = parseFloat(item.mapy);
         const lng = parseFloat(item.mapx);
         
@@ -933,7 +1391,8 @@ function LocationSearchView() {
 
 function ReportView() {
     const { bottomSheetData, closeBottomSheet } = useUIStore();
-    const { userId } = useAuthStore();
+    const { authUserId, isAuthenticated } = useAuthStore();
+    const requireAuth = useRequireAuth();
     const [reason, setReason] = useState<ReportReason | "">("");
     const [submitting, setSubmitting] = useState(false);
     const [done, setDone] = useState(false);
@@ -941,11 +1400,15 @@ function ReportView() {
     const reasons: ReportReason[] = ["허위 정보", "광고/홍보", "욕설/비하", "기타"];
 
     const handleReport = async () => {
-        if (!reason || !userId || !bottomSheetData?.targetId) return;
+        if (!reason || !bottomSheetData?.targetId) return;
+        if (!isAuthenticated || !authUserId) {
+            requireAuth({ type: "bottomSheet", content: "contentReport", data: bottomSheetData });
+            return;
+        }
         
         setSubmitting(true);
         try {
-            await reportContent(userId, bottomSheetData.targetId, bottomSheetData.targetType, reason);
+            await reportContent(authUserId, bottomSheetData.targetId, bottomSheetData.targetType, reason);
             setDone(true);
             setTimeout(() => {
                 closeBottomSheet();

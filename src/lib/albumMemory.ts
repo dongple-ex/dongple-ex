@@ -1,6 +1,6 @@
 "use client";
 
-export type AlbumMemoryType = "status" | "post";
+export type AlbumMemoryType = "status" | "post" | "place";
 
 export interface AlbumMemory {
   id: string;
@@ -10,6 +10,10 @@ export interface AlbumMemory {
   subtitle: string;
   description: string;
   locationLabel: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  tourapiContentId?: string;
   category: string;
   createdAt: string;
   statusLabel?: string;
@@ -24,6 +28,10 @@ type SaveAlbumMemoryInput = {
   subtitle: string;
   description: string;
   locationLabel?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  tourapiContentId?: string;
   category?: string;
   createdAt?: string;
   statusLabel?: string;
@@ -96,6 +104,10 @@ export function saveAlbumMemory(input: SaveAlbumMemoryInput) {
     subtitle: input.subtitle,
     description: input.description,
     locationLabel: input.locationLabel || input.title,
+    address: input.address,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    tourapiContentId: input.tourapiContentId,
     category: input.category || input.subtitle,
     createdAt: input.createdAt || new Date().toISOString(),
     statusLabel: input.statusLabel,

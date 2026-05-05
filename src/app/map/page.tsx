@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useRef, useEffect, Suspense, useCallback } from "react";
-import { fetchLiveStatus, getEventStatusSummary, LiveStatus, subscribeLiveUpdates } from "@/services/statusService";
+import { useState, useRef, useEffect, Suspense, useCallback, useMemo } from "react";
+import { fetchLiveStatus, getEventStatusSummary, LiveStatus, subscribeLiveUpdates, verifyStatusWithTrust } from "@/services/statusService";
 import { getAddressFromCoords, getCoordsFromAddress, searchPlaces, getNearestPlace } from "@/services/api";
 import { fetchOfficialEvents } from "@/services/eventService";
 import { createRoot } from "react-dom/client";
 import PulseMarker from "@/components/map/PulseMarker";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import { useLocationStore } from "@/lib/store/locationStore";
+import { useRequireAuth } from "@/lib/useRequireAuth";
+import { getEventPeriodPhase, getEventStatusBlock } from "@/lib/eventPeriod";
+import { saveRecentMapPlace } from "@/lib/mapRecentPlaces";
 import { 
     Home, Trees, Coffee, Store, PartyPopper
 } from "lucide-react";
@@ -19,14 +23,11 @@ import MapOverlay from "@/features/map/components/MapOverlay";
 import MapBottomSheet from "@/features/map/components/MapBottomSheet";
 import { StatusMarker, ClickTargetMarker } from "@/features/map/components/Markers";
 
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    kakao: any;
-  }
-}
-
 type MapPoint = { lat: number; lng: number };
+type KakaoMaps = NonNullable<Window["kakao"]>["maps"];
+type KakaoLatLng = InstanceType<KakaoMaps["LatLng"]>;
+type KakaoMapInstance = InstanceType<KakaoMaps["Map"]>;
+type RenderMarkers = () => void;
 
 type SearchResultItem = {
     title: string;
@@ -39,7 +40,7 @@ type SearchResultItem = {
 type OfficialEventMarker = Awaited<ReturnType<typeof fetchOfficialEvents>>[number];
 
 type MarkerEntry = {
-    marker: { setMap: (map: unknown) => void };
+    marker: { setMap: (map: KakaoMapInstance | null) => void };
     root: ReturnType<typeof createRoot> | null;
 };
 
@@ -51,15 +52,24 @@ const CATEGORIES = [
     { id: "공원", label: "공원", icon: Trees },
 ];
 
-const createLatLng = (lat: number, lng: number) => new window.kakao.maps.LatLng(lat, lng);
+const createLatLng = (lat: number, lng: number) => {
+    // 좌표 유효성 검사 (WGS84 범위 내 인지 확인)
+    const isValid = isFinite(lat) && isFinite(lng) && lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132;
+    if (!isValid) {
+        console.warn(`[Map] Invalid coordinates detected: lat=${lat}, lng=${lng}. Falling back to default.`);
+        return new window.kakao!.maps.LatLng(37.2995, 126.9912); // 수원 정자동 기본값
+    }
+    return new window.kakao!.maps.LatLng(lat, lng);
+};
 
-const getLatLngPoint = (latlng: { getLat: () => number; getLng: () => number }) => ({
+const getLatLngPoint = (latlng: KakaoLatLng) => ({
     lat: latlng.getLat(),
     lng: latlng.getLng(),
 });
 
 function MapContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const openGlobalBottomSheet = useUIStore((state) => state.openBottomSheet);
     const { 
         latitude: storeLat, 
@@ -67,35 +77,39 @@ function MapContent() {
         address: storeAddress,
         setLocation 
     } = useLocationStore();
+    const { userId, isAuthenticated } = useAuthStore();
+    const requireAuth = useRequireAuth();
 
     const [markers, setMarkers] = useState<LiveStatus[]>([]);
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
     const [isResultOpen, setIsResultOpen] = useState(false);
-    const [sheetHeight, setSheetHeight] = useState(24);
+    const [sheetHeight, setSheetHeight] = useState(35);
     const [isDragging, setIsDragging] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState("전체");
+    const [isMapReady, setIsMapReady] = useState(false);
 
     // Click-to-Pin states
     const [clickedLatLng, setClickedLatLng] = useState<MapPoint | null>(null);
     const [clickedAddress, setClickedAddress] = useState<string | null>(null);
     const [clickedPlaceName, setClickedPlaceName] = useState<string | null>(null);
-    const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+    const [selectedEventId, setSelectedEventId] = useState<string | number | null>(null);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mapRef = useRef<any>(null);
+    const mapRef = useRef<KakaoMapInstance | null>(null);
     const markersRef = useRef<MarkerEntry[]>([]);
-    const clickMarkerRef = useRef<{ setMap: (map: unknown) => void } | null>(null);
+    const clickMarkerRef = useRef<{ setMap: (map: KakaoMapInstance | null) => void } | null>(null);
+    const handledInitialActionRef = useRef(false);
     const [officialEvents, setOfficialEvents] = useState<OfficialEventMarker[]>([]);
     const officialEventsRef = useRef<OfficialEventMarker[]>([]);
+    const renderMarkersRef = useRef<RenderMarkers>(() => {});
     const isFetchingOfficial = useRef(false);
 
     useEffect(() => {
         officialEventsRef.current = officialEvents;
     }, [officialEvents]);
     const startY = useRef(0);
-    const startHeight = useRef(24);
+    const startHeight = useRef(35);
 
     const loadData = async () => {
         try {
@@ -111,6 +125,24 @@ function MapContent() {
         const sub = subscribeLiveUpdates(loadData);
         return () => { sub.unsubscribe(); };
     }, []);
+
+    const handleVerify = async (statusId: string) => {
+        if (!isAuthenticated) {
+            requireAuth({ type: "path", href: "/map" });
+            return false;
+        }
+        try {
+            const isSuccess = await verifyStatusWithTrust(statusId, userId);
+            if (isSuccess) {
+                await loadData();
+                alert("인증되었습니다.");
+            }
+            return isSuccess;
+        } catch (error) {
+            console.error("Verify failed:", error);
+            return false;
+        }
+    };
 
     const clearRenderedMarkers = useCallback(() => {
         markersRef.current.forEach(({ marker, root }) => {
@@ -158,14 +190,14 @@ function MapContent() {
 
         // 클릭 이벤트로 간주 (드래그 거리가 10px 미만인 경우)
         if (Math.abs(e.clientY - startY.current) < 10) {
-            if (sheetHeight < 35) setSheetHeight(50); // 아래쪽에 있으면 반쯤 올리기
-            else setSheetHeight(24); // 반쯤이거나 위에 있으면 내리기
+            if (sheetHeight < 50) setSheetHeight(65); // 아래쪽에 있으면 반쯤 올리기
+            else setSheetHeight(35); // 반쯤이거나 위에 있으면 내리기
             return;
         }
 
         if (sheetHeight > 70) setSheetHeight(92);
-        else if (sheetHeight > 35) setSheetHeight(50);
-        else setSheetHeight(24);
+        else if (sheetHeight > 45) setSheetHeight(65);
+        else setSheetHeight(35);
     };
 
     const handleSearch = async (initialQuery?: string) => {
@@ -185,6 +217,13 @@ function MapContent() {
                     setClickedLatLng(coords);
                     const addr = await getAddressFromCoords(coords.lat, coords.lng);
                     setClickedAddress(addr.fullAddress);
+                    setClickedPlaceName(queryToSearch);
+                    saveRecentMapPlace({
+                        title: queryToSearch,
+                        address: addr.fullAddress,
+                        latitude: coords.lat,
+                        longitude: coords.lng,
+                    });
                 }
             }
         } catch (err) {
@@ -204,6 +243,12 @@ function MapContent() {
                 setClickedLatLng({ lat, lng });
                 setClickedAddress(place.roadAddress || place.address || place.title);
                 setClickedPlaceName(place.title);
+                saveRecentMapPlace({
+                    title: place.title,
+                    address: place.roadAddress || place.address || place.title,
+                    latitude: lat,
+                    longitude: lng,
+                });
             }
         }
     };
@@ -217,35 +262,50 @@ function MapContent() {
             center: createLatLng(storeLat, storeLng),
             level: 4,
         });
+
+        // 지도가 렌더링되지 않는 이슈 해결을 위해 relayout 호출
+        setTimeout(() => {
+            if (map) map.relayout();
+        }, 100);
+
         mapRef.current = map;
+        setIsMapReady(true);
+        console.log("[Map] Map initialized successfully.");
 
         window.kakao.maps.event.addListener(map, 'idle', async () => {
             const center = map.getCenter();
             const { lat, lng } = getLatLngPoint(center);
+            
+            // 좌표가 0이거나 이상한 경우 건너뜀
+            if (lat === 0 || lng === 0) return;
+
             const addrResult = await getAddressFromCoords(lat, lng);
             setLocation(lat, lng, addrResult.fullAddress, addrResult.regionName);
+            
+            // 지도가 멈췄을 때 마커 렌더링 보장
+            renderMarkersRef.current();
         });
 
-        window.kakao.maps.event.addListener(map, 'click', async (e: { latLng: { getLat: () => number; getLng: () => number } }) => {
+        window.kakao.maps.event.addListener(map, 'click', async (e) => {
+            if (!e?.latLng) return;
             const { lat, lng } = getLatLngPoint(e.latLng);
             
             // Check for nearby official events
-            let nearestEvent = null;
+            let nearestEvent: OfficialEventMarker | null = null;
             let minDistance = Infinity;
             
-            officialEventsRef.current.forEach(event => {
-                // Simple Euclidean distance for proximity (approx. 0.0003 is ~30m)
+            for (const event of officialEventsRef.current) {
                 const dist = Math.sqrt(Math.pow(event.lat - lat, 2) + Math.pow(event.lng - lng, 2));
                 if (dist < minDistance) {
                     minDistance = dist;
                     nearestEvent = event;
                 }
-            });
+            }
 
             if (nearestEvent && minDistance < 0.0003) {
                 setSelectedEventId(nearestEvent.id);
                 setClickedLatLng(null);
-                setSheetHeight(24);
+                setSheetHeight(35);
                 setExpandedCardId(null);
                 setIsResultOpen(false);
                 return;
@@ -254,16 +314,12 @@ function MapContent() {
             setSelectedEventId(null);
             setClickedLatLng({ lat, lng });
             
-            // 1. 역지오코딩 (주소)
             const addrResult = await getAddressFromCoords(lat, lng);
             setClickedAddress(addrResult.fullAddress);
             
-            // 2. 주변 POI 탐색 (장소 아이콘 선택 기능)
             const nearest = await getNearestPlace(lat, lng);
             if (nearest) {
                 setClickedPlaceName(nearest.title);
-                // POI가 발견되면 해당 위치로 핀을 정밀하게 이동 (선택 가능하게 하는 효과)
-                setClickedLatLng({ lat: parseFloat(nearest.mapy), lng: parseFloat(nearest.mapx) });
                 if (nearest.roadAddress || nearest.address) {
                     setClickedAddress(nearest.roadAddress || nearest.address || addrResult.fullAddress);
                 }
@@ -271,7 +327,7 @@ function MapContent() {
                 setClickedPlaceName(null);
             }
 
-            setSheetHeight(24);
+            setSheetHeight(35);
             setExpandedCardId(null);
             setIsResultOpen(false);
         });
@@ -309,6 +365,10 @@ function MapContent() {
     }, [initMap]);
 
     const handleOpenCreateAt = useCallback((mode: string, lat: number, lng: number, address: string, placeName?: string) => {
+        if (!isAuthenticated) {
+            requireAuth({ type: "path", href: typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "/map" });
+            return;
+        }
         openGlobalBottomSheet("liveCreate", {
             mode,
             address,
@@ -316,10 +376,46 @@ function MapContent() {
             longitude: lng,
             defaultPlaceName: placeName || (address ? address.split(' ').slice(-2).join(' ') : "우리 동네")
         });
-    }, [openGlobalBottomSheet]);
+    }, [isAuthenticated, openGlobalBottomSheet, requireAuth]);
+
+    useEffect(() => {
+        if (!isMapReady || !mapRef.current) return;
+
+        const latParam = Number(searchParams.get("lat"));
+        const lngParam = Number(searchParams.get("lng"));
+        const titleParam = searchParams.get("title") || "";
+        const addressParam = searchParams.get("address") || "";
+        const modeParam = searchParams.get("mode");
+
+        if (Number.isFinite(latParam) && Number.isFinite(lngParam)) {
+            mapRef.current.setCenter(createLatLng(latParam, lngParam));
+            mapRef.current.setLevel(3);
+            setClickedLatLng({ lat: latParam, lng: lngParam });
+            setClickedPlaceName(titleParam || null);
+            setClickedAddress(addressParam || titleParam || "");
+            setSelectedEventId(null);
+            setExpandedCardId(null);
+            setSheetHeight(35);
+        }
+
+        if (modeParam === "share" && !handledInitialActionRef.current) {
+            handledInitialActionRef.current = true;
+            const center = mapRef.current.getCenter();
+            const { lat, lng } = getLatLngPoint(center);
+            handleOpenCreateAt("share", lat, lng, storeAddress);
+        }
+    }, [handleOpenCreateAt, isMapReady, searchParams, storeAddress]);
+
+    const visiblePlaceMarkers = useMemo(
+        () => markers.filter((marker) => !marker.event_id && !marker.tourapi_content_id),
+        [markers],
+    );
 
     const renderMarkers = useCallback(() => {
         if (!window.kakao?.maps || !mapRef.current) return;
+        const map = mapRef.current;
+
+        console.log("[Map] Rendering markers start. visiblePlaceMarkers:", visiblePlaceMarkers.length, "officialEvents:", officialEvents.length);
 
         clearRenderedMarkers();
 
@@ -331,7 +427,6 @@ function MapContent() {
         // 1. Click-to-Pin Marker
         if (clickedLatLng) {
             const el = document.createElement('div');
-            // Prevent event propagation to map
             el.addEventListener('click', (e) => e.stopPropagation());
             el.addEventListener('mousedown', (e) => e.stopPropagation());
             el.addEventListener('touchstart', (e) => e.stopPropagation());
@@ -342,6 +437,7 @@ function MapContent() {
                     address={clickedAddress || ""} 
                     placeName={clickedPlaceName || undefined} 
                     onReport={() => handleOpenCreateAt("share", clickedLatLng.lat, clickedLatLng.lng, clickedAddress || "", clickedPlaceName || undefined)} 
+                    onRequest={() => handleOpenCreateAt("request", clickedLatLng.lat, clickedLatLng.lng, clickedAddress || "", clickedPlaceName || undefined)}
                 />
             );
 
@@ -356,8 +452,8 @@ function MapContent() {
             markersRef.current.push({ marker, root });
         }
 
-        // 2. Live Status Markers (Shape: Balloon with status dot)
-        markers
+        // 2. Live Status Markers
+        visiblePlaceMarkers
             .filter(m => {
                 if (selectedCategory === "전체") return true;
                 if (selectedCategory === "행사") return Boolean(m.event_id || m.tourapi_content_id);
@@ -368,7 +464,6 @@ function MapContent() {
             .forEach(m => {
             const isSelected = expandedCardId === m.id;
             const el = document.createElement('div');
-            // Prevent event propagation to map
             el.addEventListener('click', (e) => e.stopPropagation());
             el.addEventListener('mousedown', (e) => e.stopPropagation());
             el.addEventListener('touchstart', (e) => e.stopPropagation());
@@ -383,9 +478,9 @@ function MapContent() {
                         e.stopPropagation();
                         setExpandedCardId(m.id);
                         setSelectedEventId(null);
-                        setSheetHeight(50);
+                        setSheetHeight(65);
                         setClickedLatLng(null);
-                        mapRef.current.panTo(createLatLng(m.latitude || 37.3015, m.longitude || 126.9930));
+                        map.panTo(createLatLng(m.latitude || 37.3015, m.longitude || 126.9930));
                         setTimeout(() => {
                             const card = document.getElementById(`card-${m.id}`);
                             if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -410,7 +505,7 @@ function MapContent() {
 
             const marker = new window.kakao.maps.CustomOverlay({
                 position: createLatLng(m.latitude || 37.3015, m.longitude || 126.9930),
-                map: mapRef.current,
+                map,
                 content: el,
                 xAnchor: 0.5,
                 yAnchor: 1,
@@ -418,38 +513,71 @@ function MapContent() {
             markersRef.current.push({ marker, root });
         });
 
-        // 3. Official Event Markers (Shape: Circular Pulse)
+        // 3. Official Event Markers
         if (selectedCategory !== "카페" && selectedCategory !== "식당" && selectedCategory !== "공원") {
             officialEvents.forEach(festival => {
             const el = document.createElement('div');
-            // Prevent event propagation to map
             el.addEventListener('click', (e) => e.stopPropagation());
             el.addEventListener('mousedown', (e) => e.stopPropagation());
             el.addEventListener('touchstart', (e) => e.stopPropagation());
             const root = createRoot(el);
-            const statusSummary = getEventStatusSummary(festival, markers);
+            const phase = getEventPeriodPhase(festival.event_start_date, festival.event_end_date);
+            const statusSummary = phase === "active" ? getEventStatusSummary(festival, markers) : null;
             const isSelected = selectedEventId === festival.id;
 
             root.render(
                 <PulseMarker 
                     title={festival.title} 
                     category="행사"
+                    status={statusSummary?.level}
                     statusLabel={statusSummary?.label}
                     updatedAgo={statusSummary?.updatedAgo}
-                    statusIndicatorClass={statusSummary?.indicatorClass}
                     isSelected={isSelected}
                     onClick={() => {
                         setSelectedEventId(festival.id);
+                        const activeStatusText = statusSummary
+                            ? `[현장 상태]\n${statusSummary.label} (${statusSummary.updatedAgo})\n${statusSummary.latestMessage || "최근 현장 공유가 있습니다."}\n\n`
+                            : "[현장 상태]\n아직 공유된 현장 상태가 없습니다.\n행사 현장 공유로 첫 상태를 남겨보세요.\n\n";
                         openGlobalBottomSheet("postDetail", {
+                            id: festival.id,
+                            eventId: festival.id,
+                            defaultPlaceName: festival.title,
+                            address: festival.address,
+                            latitude: festival.lat,
+                            longitude: festival.lng,
+                            eventStartDate: festival.event_start_date,
+                            eventEndDate: festival.event_end_date,
+                            eventPhase: phase,
                             title: festival.title,
-                            content: `${festival.address}\n일시: ${festival.event_start_date} ~ ${festival.event_end_date}\n\n${statusSummary ? `[현장 상태]\n${statusSummary.label} (${statusSummary.updatedAgo})\n${statusSummary.latestMessage || "최근 현장 공유가 있습니다."}\n\n` : "[현장 상태]\n아직 공유된 현장 상태가 없습니다.\n지도에서 바로 현장 상황을 공유해 주세요.\n\n"}${festival.description}`,
-                            is_official: true
+                            content: `${festival.address}\n일시: ${festival.event_start_date} ~ ${festival.event_end_date}\n\n${getEventStatusBlock(festival.event_start_date, festival.event_end_date, activeStatusText)}\n\n${festival.description}`,
+                            is_official: true,
+                            source: festival.source,
+                            meta: festival.meta
                         });
-                        setSheetHeight(50);
+                        setSheetHeight(65);
                         setClickedLatLng(null);
-                        mapRef.current.panTo(createLatLng(festival.lat, festival.lng));
+                        map.panTo(createLatLng(festival.lat, festival.lng));
                     }}
                     onReport={() => {
+                        if (getEventPeriodPhase(festival.event_start_date, festival.event_end_date) !== "active") {
+                            openGlobalBottomSheet("postDetail", {
+                                id: festival.id,
+                                eventId: festival.id,
+                                defaultPlaceName: festival.title,
+                                address: festival.address,
+                                latitude: festival.lat,
+                                longitude: festival.lng,
+                                eventStartDate: festival.event_start_date,
+                                eventEndDate: festival.event_end_date,
+                                eventPhase: phase,
+                                title: festival.title,
+                                content: `${festival.address}\n일시: ${festival.event_start_date} ~ ${festival.event_end_date}\n\n${getEventStatusBlock(festival.event_start_date, festival.event_end_date, "")}\n\n${festival.description}`,
+                                is_official: true,
+                                source: festival.source,
+                                meta: festival.meta
+                            });
+                            return;
+                        }
                         openGlobalBottomSheet("liveCreate", {
                             mode: "share",
                             eventId: festival.id,
@@ -464,7 +592,7 @@ function MapContent() {
 
             const marker = new window.kakao.maps.CustomOverlay({
                 position: createLatLng(festival.lat, festival.lng),
-                map: mapRef.current,
+                map,
                 content: el,
                 xAnchor: 0.5,
                 yAnchor: 1,
@@ -472,7 +600,11 @@ function MapContent() {
             markersRef.current.push({ marker, root });
         });
         }
-    }, [clickedAddress, clickedLatLng, expandedCardId, markers, officialEvents, selectedCategory, selectedEventId, clearRenderedMarkers, handleOpenCreateAt, openGlobalBottomSheet]);
+    }, [clickedAddress, clickedLatLng, clickedPlaceName, expandedCardId, markers, visiblePlaceMarkers, officialEvents, selectedCategory, selectedEventId, clearRenderedMarkers, handleOpenCreateAt, openGlobalBottomSheet]);
+
+    useEffect(() => {
+        renderMarkersRef.current = renderMarkers;
+    }, [renderMarkers]);
 
     useEffect(() => {
         if (mapRef.current) {
@@ -504,13 +636,24 @@ function MapContent() {
                 </div>
             </div>
 
-            <div className="relative flex-1 w-full" style={{ minHeight: 'calc(100dvh - 15vh)' }}>
-                <div id="map-container" className="absolute inset-0 w-full h-full bg-gray-100" />
+            <div className="relative flex-1 w-full bg-gray-100 overflow-hidden" style={{ minHeight: '300px' }}>
+                <div 
+                    id="map-container" 
+                    className="w-full h-full" 
+                    style={{ 
+                        position: 'absolute', 
+                        top: 0, 
+                        left: 0, 
+                        width: '100%', 
+                        height: '100%',
+                        zIndex: 0
+                    }} 
+                />
             </div>
 
             <MapBottomSheet 
                 sheetHeight={sheetHeight}
-                markers={markers}
+                markers={visiblePlaceMarkers}
                 expandedCardId={expandedCardId}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
@@ -519,18 +662,26 @@ function MapContent() {
                     setExpandedCardId(expandedCardId === id ? null : id);
                     if (expandedCardId !== id && mapRef.current) {
                         mapRef.current.panTo(createLatLng(lat, lng));
-                        setSheetHeight(50);
+                        setSheetHeight(65);
                         setClickedLatLng(null);
                     }
                 }}
-                onOpenCreate={(mode) => {
-                    if (clickedLatLng) {
+                onOpenCreate={(mode, lat, lng, address, placeName) => {
+                    if (lat && lng) {
+                        handleOpenCreateAt(mode, lat, lng, address || storeAddress, placeName);
+                    } else if (clickedLatLng) {
                         handleOpenCreateAt(mode, clickedLatLng.lat, clickedLatLng.lng, clickedAddress || "", clickedPlaceName || undefined);
                     } else {
-                        const center = mapRef.current.getCenter();
-                        const { lat, lng } = getLatLngPoint(center);
-                        handleOpenCreateAt(mode, lat, lng, storeAddress);
+                        const center = mapRef.current?.getCenter();
+                        if (!center) return;
+                        const { lat: cLat, lng: cLng } = getLatLngPoint(center);
+                        handleOpenCreateAt(mode, cLat, cLng, storeAddress);
                     }
+                }}
+                onVerify={handleVerify}
+                onToggleHeight={() => {
+                    if (sheetHeight < 50) setSheetHeight(65);
+                    else setSheetHeight(35);
                 }}
             />
         </div>

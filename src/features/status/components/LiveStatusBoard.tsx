@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { Plus, HelpCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
+import { useRequireAuth } from "@/lib/useRequireAuth";
+import { useAuthStore } from "@/lib/store/authStore";
 import { fetchLiveStatus, postLiveStatus, subscribeLiveUpdates } from "@/services/statusService";
 import { SHAREABLE_STATUS_OPTIONS, getStatusTheme } from "@/lib/statusTheme";
 
@@ -36,6 +37,8 @@ export default function LiveStatusBoard() {
     }, []);
 
     const openBottomSheet = useUIStore((state) => state.openBottomSheet);
+    const requireAuth = useRequireAuth();
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const [currentIndex, setCurrentIndex] = useState(0);
 
     // 자동 롤링 티커 타이머 (3.5초 간격)
@@ -50,7 +53,7 @@ export default function LiveStatusBoard() {
     const handleReplySubmit = async ({ selectedStatus, replyText, id }: { selectedStatus: string; replyText: string; id: string }) => {
         const option = SHAREABLE_STATUS_OPTIONS.find(opt => opt.label === selectedStatus);
         const newStatus = option ? option.label : "보통";
-        const newBadgeColor = option ? option.badgeColor : "text-gray-500";
+        const newBadgeColor = option ? option.badgeText : "text-gray-500";
 
         try {
             await postLiveStatus({
@@ -75,10 +78,8 @@ export default function LiveStatusBoard() {
         return getStatusTheme(status, is_request).indicator;
     };
 
-    const router = useRouter();
-
     const handleCreateClick = (mode: "request" | "share") => {
-        router.push(`/map?mode=${mode}`);
+        requireAuth({ type: "path", href: `/map?mode=${mode}` });
     };
 
     return (
@@ -156,6 +157,10 @@ export default function LiveStatusBoard() {
                                 const mode = isRequest ? "reply" : "disagree";
                                 const defaultStatus = isRequest ? "보통" : (item.status === "여유" ? "보통" : "여유");
                                 
+                                if (!isAuthenticated) {
+                                    requireAuth({ type: "path", href: "/" });
+                                    return;
+                                }
                                 openBottomSheet("liveReply", { 
                                     mode, 
                                     defaultStatus, 

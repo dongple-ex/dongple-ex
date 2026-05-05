@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "sync:tourapi": "ts-node -r dotenv/config scripts/sync-tourapi.ts"
+    "sync:tourapi": "ts-node -r dotenv/config scripts/sync-tourapi.ts",
+    "db:profiles:sql": "node scripts/print-profiles-sql.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",

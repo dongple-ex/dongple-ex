@@ -5,6 +5,7 @@ import { BadgeCheck, Calendar, MapPin } from "lucide-react";
 
 import { OfficialEvent } from "@/services/eventService";
 import { EventStatusSummary } from "@/services/statusService";
+import { getEventPeriodLabel, getEventPeriodPhase } from "@/lib/eventPeriod";
 
 interface EventSummaryCardProps {
     event: OfficialEvent;
@@ -13,6 +14,9 @@ interface EventSummaryCardProps {
 }
 
 export default function EventSummaryCard({ event, statusSummary, onClick }: EventSummaryCardProps) {
+    const phase = getEventPeriodPhase(event.event_start_date, event.event_end_date);
+    const displaySummary = phase === "active" ? statusSummary : null;
+
     return (
         <div
             onClick={onClick}
@@ -39,10 +43,10 @@ export default function EventSummaryCard({ event, statusSummary, onClick }: Even
 
                 <div
                     className={`absolute bottom-2 left-2 rounded-full border px-2.5 py-1 text-[10px] font-black shadow-sm ${
-                        statusSummary ? statusSummary.colorClass : "border-white/60 bg-black/45 text-white"
+                        displaySummary ? displaySummary.colorClass : "border-white/60 bg-black/45 text-white"
                     }`}
                 >
-                    {statusSummary ? `${statusSummary.label} · ${statusSummary.updatedAgo}` : "현장 상태 대기"}
+                    {displaySummary ? `${displaySummary.label} · ${displaySummary.updatedAgo}` : getEventPeriodLabel(event.event_start_date, event.event_end_date)}
                 </div>
             </div>
 
@@ -51,15 +55,15 @@ export default function EventSummaryCard({ event, statusSummary, onClick }: Even
             </h4>
 
             <div className="space-y-1.5">
-                {statusSummary?.latestMessage && (
+                {displaySummary?.latestMessage && (
                     <div className="line-clamp-1 rounded-xl bg-foreground/5 px-3 py-2 text-[11px] font-bold text-foreground/50">
-                        {statusSummary.latestMessage}
+                        {displaySummary.latestMessage}
                     </div>
                 )}
 
                 <div className="flex items-center text-[11px] font-bold text-foreground/40">
                     <Calendar size={12} className="mr-1.5 shrink-0" />
-                    <span className="truncate">{event.event_start_date}</span>
+                    <span className="truncate">{event.event_start_date} ~ {event.event_end_date}</span>
                 </div>
 
                 <div className="flex items-center text-[11px] font-bold text-foreground/40">

@@ -21,12 +21,22 @@ export const useLocationStore = create<LocationState>((set) => ({
     isLoading: false,
     error: null,
 
-    setLocation: (lat, lng, address, regionName) => set({ 
-        latitude: lat, 
-        longitude: lng, 
-        address, 
-        regionName 
-    }),
+    setLocation: (lat, lng, address, regionName) => {
+        // 좌표 유효성 검사 (WGS84 범위 내)
+        const isValid = isFinite(lat) && isFinite(lng) && lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132;
+        
+        if (!isValid) {
+            console.warn(`[LocationStore] Ignored invalid coordinates: lat=${lat}, lng=${lng}`);
+            return;
+        }
+
+        set({ 
+            latitude: lat, 
+            longitude: lng, 
+            address, 
+            regionName 
+        });
+    },
 
     fetchLocation: async () => {
         set({ isLoading: true, error: null });

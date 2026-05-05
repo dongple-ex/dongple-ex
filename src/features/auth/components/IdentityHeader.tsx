@@ -33,28 +33,28 @@ export default function IdentityHeader({ compact = false }: IdentityHeaderProps)
   const rep = getReputation(profile.trust_score);
 
   return (
-    <div className={`mx-4 ${compact ? "mb-3" : "mb-6"}`}>
+    <div className={`mx-4 ${compact ? "mb-2" : "mb-4"}`}>
       <div
         className={`flex items-center justify-between border border-border bg-card-bg shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${
-          compact ? "rounded-[20px] px-4 py-3" : "rounded-[24px] p-5"
+          compact ? "rounded-[16px] px-3 py-2" : "rounded-[20px] p-4"
         }`}
       >
-        <div className={`flex items-center ${compact ? "space-x-3" : "space-x-4"}`}>
+        <div className={`flex items-center ${compact ? "space-x-2" : "space-x-3"}`}>
           <div
-            className={`${compact ? "h-10 w-10" : "h-12 w-12"} ${rep.bg} dark:bg-foreground/10 flex rounded-full items-center justify-center text-foreground shadow-inner`}
+            className={`${compact ? "h-8 w-8" : "h-10 w-10"} ${rep.bg} dark:bg-foreground/10 flex rounded-full items-center justify-center text-foreground shadow-inner`}
           >
             {rep.icon}
           </div>
           <div>
-            <div className={`mb-0.5 flex items-center ${compact ? "space-x-1.5" : "space-x-2"}`}>
-              <span className={`${compact ? "text-[10px]" : "text-[12px]"} font-black uppercase tracking-tighter text-foreground/40`}>
+            <div className={`mb-0.5 flex items-center ${compact ? "space-x-1" : "space-x-1.5"}`}>
+              <span className={`${compact ? "text-[9px]" : "text-[11px]"} font-black uppercase tracking-tighter text-foreground/40`}>
                 {isAnonymous ? "ANONYMOUS IDENTITY" : "VERIFIED MEMBER"}
               </span>
-              <div className={`rounded-full border border-current/10 px-2 py-0.5 text-[9px] font-bold ${rep.color} ${rep.bg} dark:bg-foreground/10`}>
+              <div className={`rounded-full border border-current/10 px-1.5 py-0.5 text-[8px] font-bold ${rep.color} ${rep.bg} dark:bg-foreground/10`}>
                 Lv. {rep.label}
               </div>
             </div>
-            <h3 className={`${compact ? "text-[14px]" : "text-[16px]"} font-black tracking-tight text-foreground`}>
+            <h3 className={`${compact ? "text-[13px]" : "text-[14px]"} font-black tracking-tight text-foreground`}>
               {profile.nickname}
               <span className="ml-1 text-foreground/30">✨</span>
             </h3>
@@ -62,20 +62,20 @@ export default function IdentityHeader({ compact = false }: IdentityHeaderProps)
         </div>
 
         <div className="text-right">
-          <p className={`${compact ? "text-[9px]" : "text-[10px]"} mb-1 font-bold text-foreground/40`}>나의 기여도</p>
-          <div className={`flex items-center justify-end ${compact ? "space-x-2.5" : "space-x-3"}`}>
+          <p className={`${compact ? "text-[8px]" : "text-[9px]"} mb-0.5 font-bold text-foreground/40`}>나의 기여도</p>
+          <div className={`flex items-center justify-end ${compact ? "space-x-1.5" : "space-x-2"}`}>
             <div className="text-center">
-              <p className={`${compact ? "text-[12px]" : "text-[13px]"} font-black text-foreground`}>
+              <p className={`${compact ? "text-[11px]" : "text-[12px]"} font-black text-foreground`}>
                 {profile.activity_count}
               </p>
-              <p className="text-[8px] font-bold uppercase text-foreground/30">Total</p>
+              <p className="text-[7px] font-bold uppercase text-foreground/30 leading-none">Total</p>
             </div>
-            <div className={`w-[1px] bg-border ${compact ? "h-5" : "h-6"}`} />
+            <div className={`w-[1px] bg-border ${compact ? "h-4" : "h-5"}`} />
             <div className="text-center">
-              <p className={`${compact ? "text-[12px]" : "text-[13px]"} font-black text-secondary`}>
+              <p className={`${compact ? "text-[11px]" : "text-[12px]"} font-black text-secondary`}>
                 {profile.trust_score.toFixed(1)}
               </p>
-              <p className="text-[8px] font-bold uppercase text-foreground/30">Trust</p>
+              <p className="text-[7px] font-bold uppercase text-foreground/30 leading-none">Trust</p>
             </div>
           </div>
         </div>

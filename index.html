@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>내발문자</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">내발문자: 수원에 가다</p>
+          <h1>갈 곳을 발견하고, 지금을 확인하고, 다녀온 시간을 다시 꺼내봐요.</h1>
+        </div>
+        <button class="icon-btn" id="quickRequestBtn" title="상황 요청">?</button>
+      </header>
+
+      <main>
+        <section class="view active" id="homeView" aria-label="홈"></section>
+        <section class="view" id="newsView" aria-label="소식"></section>
+        <section class="view" id="recordView" aria-label="기록"></section>
+        <section class="view" id="mapView" aria-label="지도"></section>
+        <section class="view" id="myView" aria-label="나의 내발문자"></section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="하단 메뉴">
+        <button class="nav-btn active" data-view="homeView">홈</button>
+        <button class="nav-btn" data-view="newsView">소식</button>
+        <button class="nav-btn primary" data-view="recordView">기록</button>
+        <button class="nav-btn" data-view="mapView">지도</button>
+        <button class="nav-btn" data-view="myView">내발문자</button>
+      </nav>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

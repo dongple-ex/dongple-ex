@@ -7,6 +7,7 @@ export interface Post {
     post_type: string;
     category: string;
     user_id: string | null;
+    anonymous_id?: string | null;
     public_id: string | null;  // 익명 식별자
     is_anonymous: boolean;     // 익명 여부
     score: number;             // 신뢰도 점수 (0.0 ~ 1.0)
@@ -82,6 +83,7 @@ export async function createPost(payload: {
     post_type: string, 
     category: string,
     user_id?: string,
+    anonymous_id?: string | null,
     public_id?: string,
     is_anonymous?: boolean,
     score?: number 
@@ -177,6 +179,7 @@ export async function createComment(payload: {
     post_id: string,
     content: string,
     user_id?: string | null,
+    anonymous_id?: string | null,
     public_id?: string | null,
     is_anonymous?: boolean
 }) {

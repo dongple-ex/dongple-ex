@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import GlobalModalProvider from "@/components/ui/GlobalModalProvider";
@@ -9,52 +9,47 @@ import ThemeProvider from "@/components/ui/ThemeProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "내발문자 – 내 발자국이 머문 자리",
-  description: "내발문자는 내가 방문한 장소의 기억과 소식을 기록하고 공유하는 공간입니다. 내 발자국이 머문 자리의 모든 순간을 지금 바로 확인하세요!",
-  keywords: ["내발문자", "발자취", "기록", "우리동네", "지역커뮤니티", "실시간정보"],
-  metadataBase: new URL('https://dongple.vercel.app'),
+  title: "내발문자 | 발견하고 기록하는 동네 생활 지도",
+  description:
+    "동네의 행사, 장소, 현장 상태를 빠르게 확인하고 나중에 다시 가고 싶은 곳을 기록하는 생활 지도 서비스입니다.",
+  keywords: ["내발문자", "동네 소식", "현장 상태", "장소 기록", "생활 지도"],
+  metadataBase: new URL("https://dongple.vercel.app"),
   alternates: {
-    canonical: '/',
+    canonical: "/",
   },
   openGraph: {
-    title: "내발문자 – 내 발자국이 머문 자리",
-    description: "내 주변의 핫플레이스, 행사, 사고 소식까지 이웃들이 실시간으로 전해드립니다.",
-    url: 'https://dongple.vercel.app',
-    siteName: '내발문자 (Dongple)',
+    title: "내발문자",
+    description: "발견한 장소와 지금의 현장 상태를 함께 저장하는 동네 생활 지도.",
+    url: "https://dongple.vercel.app",
+    siteName: "내발문자",
     images: [
       {
-        url: '/logo.png',
+        url: "/logo.png",
         width: 1200,
         height: 630,
-        alt: '내발문자 서비스 메인 이미지',
+        alt: "내발문자 서비스 이미지",
       },
     ],
-    locale: 'ko_KR',
-    type: 'website',
+    locale: "ko_KR",
+    type: "website",
   },
   twitter: {
-    card: 'summary_large_image',
-    title: "내발문자 – 내 발자국이 머문 자리",
-    description: "내 주변의 실시간 소식을 가장 빠르게 확인하세요.",
-    images: ['/logo.png'],
+    card: "summary_large_image",
+    title: "내발문자",
+    description: "동네 소식, 지도, 기록을 한 번에 확인하세요.",
+    images: ["/logo.png"],
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
       <body className={inter.className}>
         <KakaoScript />
         <ThemeProvider>
-        <GlobalModalProvider>
-          <NavigationWrapper>
-            {children}
-          </NavigationWrapper>
-        </GlobalModalProvider>
+          <GlobalModalProvider>
+            <NavigationWrapper>{children}</NavigationWrapper>
+          </GlobalModalProvider>
         </ThemeProvider>
       </body>
     </html>

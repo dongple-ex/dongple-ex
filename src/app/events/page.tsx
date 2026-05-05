@@ -7,6 +7,7 @@ import { ArrowLeft, BadgeCheck, Calendar, Ghost, MapPin, Music, PartyPopper, Sea
 import { useRouter } from "next/navigation";
 
 import { useUIStore } from "@/lib/store/uiStore";
+import { getEventPeriodLabel, getEventPeriodPhase, getEventStatusBlock } from "@/lib/eventPeriod";
 import { fetchOfficialEvents, OfficialEvent } from "@/services/eventService";
 import { fetchLiveStatus, getEventStatusSummary, LiveStatus } from "@/services/statusService";
 
@@ -83,10 +84,12 @@ export default function EventsPage() {
     const filteredEvents = events; 
 
     const handleEventClick = (event: OfficialEvent) => {
+        const phase = getEventPeriodPhase(event.event_start_date, event.event_end_date);
         const summary = getEventStatusSummary(event, statuses);
-        const statusBlock = summary
+        const activeStatusText = summary
             ? `[지금 상태]\n${summary.label} (${summary.updatedAgo})\n${summary.latestMessage || "최근 현장 공유가 있습니다."}`
             : "[지금 상태]\n아직 공유된 현장 상태가 없습니다.\n행사 현장 공유로 첫 상태를 남겨보세요.";
+        const statusBlock = getEventStatusBlock(event.event_start_date, event.event_end_date, activeStatusText);
 
         openBottomSheet("postDetail", {
             id: event.id,
@@ -95,6 +98,9 @@ export default function EventsPage() {
             address: event.address,
             latitude: event.lat,
             longitude: event.lng,
+            eventStartDate: event.event_start_date,
+            eventEndDate: event.event_end_date,
+            eventPhase: phase,
             title: event.title,
             content: `${event.address}\n\n[행사 일정]\n${event.event_start_date} ~ ${event.event_end_date}\n\n${statusBlock}\n\n${event.description || "행사 기본 정보만 있고, 현장 분위기는 아직 비어 있습니다."}`,
             is_official: true,
@@ -175,7 +181,8 @@ export default function EventsPage() {
                 ) : filteredEvents.length > 0 ? (
                     <div className="grid grid-cols-1 gap-6">
                         {filteredEvents.map((event, idx) => {
-                            const summary = getEventStatusSummary(event, statuses);
+                            const phase = getEventPeriodPhase(event.event_start_date, event.event_end_date);
+                            const summary = phase === "active" ? getEventStatusSummary(event, statuses) : null;
 
                             return (
                                 <motion.div
@@ -223,7 +230,9 @@ export default function EventsPage() {
                                                         : "border border-white/30 bg-white/15 text-white"
                                                         }`}
                                                 >
-                                                    {summary ? `${summary.label} ${summary.updatedAgo}` : "현장 상태 대기"}
+                                                    {phase === "active"
+                                                        ? summary ? `${summary.label} ${summary.updatedAgo}` : "현장 상태 대기"
+                                                        : getEventPeriodLabel(event.event_start_date, event.event_end_date)}
                                                 </span>
                                             </div>
                                         </div>
