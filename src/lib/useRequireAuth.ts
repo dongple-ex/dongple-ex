@@ -14,8 +14,9 @@ export function useRequireAuth() {
   return useCallback(
     (intent: AuthActionIntent, runWhenAuthed?: () => void) => {
       if (isAuthenticated) {
-        if (runWhenAuthed) {
-          runWhenAuthed();
+        const finalCallback = intent.callback || runWhenAuthed;
+        if (finalCallback) {
+          finalCallback();
           return;
         }
         if (intent.type === "path") {

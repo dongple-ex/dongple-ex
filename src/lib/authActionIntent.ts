@@ -7,10 +7,12 @@ export type AuthActionIntent =
       type: "bottomSheet";
       content: Exclude<BottomSheetContent, null | "authPrompt">;
       data?: BottomSheetData;
+      callback?: () => void;
     }
   | {
       type: "path";
       href: string;
+      callback?: () => void;
     };
 
 export function saveAuthIntent(intent: AuthActionIntent) {

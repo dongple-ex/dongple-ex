@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Clock3, Edit3, Footprints, Heart, LogOut, MapPinned, Moon, Route, Settings, Share2, ShieldCheck, Star, Sun } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock3, Edit3, Footprints, Heart, LogOut, MapPinned, Moon, Route, Settings, Share2, Star, Sun } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useUIStore } from "@/lib/store/uiStore";
@@ -53,7 +53,8 @@ export default function JourneyAlbumPage() {
     try {
       await updateNickname(newNickname.trim());
       setIsEditingNickname(false);
-    } catch (error) {
+    } catch (err) {
+      console.error("Nickname update failed:", err);
       alert("별명 수정에 실패했습니다.");
     }
   };
