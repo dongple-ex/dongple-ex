@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -34,7 +34,7 @@ const FLOW_STEPS = [
   { title: "2. 확인", text: "지도에서 지금 상태를 봅니다.", icon: MapPinned },
   { title: "3. 요청", text: "모르면 현장 공유를 부탁합니다.", icon: MessageSquare },
   { title: "4. 기록", text: "마음에 남은 곳을 저장합니다.", icon: PencilLine },
-  { title: "5. 다시 보기", text: "나의 내발문자에서 꺼내봅니다.", icon: CheckCircle2 },
+  { title: "5. 다시 보기", text: "내발문자에서 꺼내봅니다.", icon: CheckCircle2 },
 ];
 
 type DiscoveryStatus = "혼잡" | "보통" | "여유" | "요청";
@@ -53,49 +53,49 @@ const DISCOVERY_CARDS: {
   lng: number;
   address: string;
 }[] = [
-  {
-    id: "today-hwaseong-night",
-    type: "공식+질문",
-    title: "화성행궁 야간개장, 지금 가도 줄이 길까요?",
-    place: "수원 화성행궁",
-    category: "행사",
-    status: "혼잡",
-    updated: "5분 전",
-    summary: "공식 행사는 진행 중이고, 현장 공유 기준 입장 대기와 사진 명소 주변이 붐비는 편이에요.",
-    tags: ["대기 있음", "사진 명소", "야간 행사"],
-    lat: 37.2811,
-    lng: 127.0135,
-    address: "경기 수원시 팔달구 정조로 825",
-  },
-  {
-    id: "today-cafe-street",
-    type: "후기+상태",
-    title: "행궁동 카페거리, 비 오는 날에도 걷기 괜찮을까요?",
-    place: "행궁동 카페거리",
-    category: "카페",
-    status: "보통",
-    updated: "12분 전",
-    summary: "골목은 비교적 여유롭지만 인기 카페는 대기가 조금 있어요. 포장이나 짧은 방문에 좋아요.",
-    tags: ["카페 대기", "골목 산책", "포장 추천"],
-    lat: 37.2834,
-    lng: 127.0148,
-    address: "경기 수원시 팔달구 행궁동",
-  },
-  {
-    id: "today-park-walk",
-    type: "추천",
-    title: "방화수류정 산책길, 지금은 한산한 편이에요.",
-    place: "방화수류정",
-    category: "산책",
-    status: "여유",
-    updated: "18분 전",
-    summary: "바람이 좋고 산책 인원이 많지 않아요. 해 질 무렵에는 사진 찍는 사람이 늘 수 있어요.",
-    tags: ["한산", "산책 추천", "노을"],
-    lat: 37.2878,
-    lng: 127.0177,
-    address: "경기 수원시 팔달구 수원천로392번길",
-  },
-];
+    {
+      id: "today-hwaseong-night",
+      type: "공식+질문",
+      title: "화성행궁 야간개장, 지금 가도 줄이 길까요?",
+      place: "수원 화성행궁",
+      category: "행사",
+      status: "혼잡",
+      updated: "5분 전",
+      summary: "공식 행사는 진행 중이고, 현장 공유 기준 입장 대기와 사진 명소 주변이 붐비는 편이에요.",
+      tags: ["대기 있음", "사진 명소", "야간 행사"],
+      lat: 37.2811,
+      lng: 127.0135,
+      address: "경기 수원시 팔달구 정조로 825",
+    },
+    {
+      id: "today-cafe-street",
+      type: "후기+상태",
+      title: "행궁동 카페거리, 비 오는 날에도 걷기 괜찮을까요?",
+      place: "행궁동 카페거리",
+      category: "카페",
+      status: "보통",
+      updated: "12분 전",
+      summary: "골목은 비교적 여유롭지만 인기 카페는 대기가 조금 있어요. 포장이나 짧은 방문에 좋아요.",
+      tags: ["카페 대기", "골목 산책", "포장 추천"],
+      lat: 37.2834,
+      lng: 127.0148,
+      address: "경기 수원시 팔달구 행궁동",
+    },
+    {
+      id: "today-park-walk",
+      type: "추천",
+      title: "방화수류정 산책길, 지금은 한산한 편이에요.",
+      place: "방화수류정",
+      category: "산책",
+      status: "여유",
+      updated: "18분 전",
+      summary: "바람이 좋고 산책 인원이 많지 않아요. 해 질 무렵에는 사진 찍는 사람이 늘 수 있어요.",
+      tags: ["한산", "산책 추천", "노을"],
+      lat: 37.2878,
+      lng: 127.0177,
+      address: "경기 수원시 팔달구 수원천로392번길",
+    },
+  ];
 
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -190,11 +190,11 @@ export default function Home() {
       type: "bottomSheet",
       content: "liveCreate",
       data: {
-      mode: "request",
-      defaultPlaceName: item.place,
-      address: item.address,
-      latitude: item.lat,
-      longitude: item.lng,
+        mode: "request",
+        defaultPlaceName: item.place,
+        address: item.address,
+        latitude: item.lat,
+        longitude: item.lng,
       },
     });
   };
@@ -293,7 +293,7 @@ export default function Home() {
               <ArrowRight size={16} className="ml-2" />
             </Link>
             <button
-              onClick={() => requireAuth({ type: "bottomSheet", content: "recordHub", data: { defaultTab: "request" } })}
+              onClick={() => openBottomSheet("recordHub", { defaultTab: "request" })}
               className="inline-flex items-center justify-center rounded-2xl border border-border px-5 py-3 text-[13px] font-black text-foreground/70"
             >
               현장 공유 요청

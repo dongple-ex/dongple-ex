@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { ArrowLeft, Bell, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import { getVillageWeather, WeatherData } from "@/services/api";
 
 interface HeaderProps {
@@ -33,6 +34,7 @@ export default function Header({
 }: HeaderProps) {
   const { regionName, latitude, longitude, fetchLocation, isLoading } = useLocationStore();
   const openBottomSheet = useUIStore((state) => state.openBottomSheet);
+  const { isAuthenticated, profile } = useAuthStore();
   const router = useRouter();
   const [weather, setWeather] = useState<WeatherData | null>(null);
 
@@ -109,6 +111,21 @@ export default function Header({
               </div>
             )}
             <Bell size={22} className="cursor-pointer text-foreground/70" />
+            
+            <button 
+              onClick={() => isAuthenticated ? router.push("/album") : openBottomSheet("authPrompt")}
+              className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-nav-bg transition-all active:scale-90"
+            >
+              {isAuthenticated && profile?.avatar_url ? (
+                <Image src={profile.avatar_url} alt="Profile" fill className="object-cover" />
+              ) : (
+                <div className={`flex h-full w-full items-center justify-center ${isAuthenticated ? 'bg-secondary/10 text-secondary' : 'text-foreground/30'}`}>
+                  <span className="text-[13px] font-black">
+                    {isAuthenticated ? (profile?.nickname?.charAt(0) || "U") : "L"}
+                  </span>
+                </div>
+              )}
+            </button>
           </div>
         </>
       )}

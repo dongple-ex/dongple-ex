@@ -1,34 +1,48 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'i.pravatar.cc',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
-      {
-        protocol: 'http',
-        hostname: 'tong.visitkorea.or.kr',
-      },
-      {
-        protocol: 'https',
-        hostname: 'tong.visitkorea.or.kr',
-      },
-    ],
-  },
-  async redirects() {
-    return [
-      {
-        source: '/v2',
-        destination: '/',
-        permanent: true,
-      },
-    ];
-  },
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'http',
+                hostname: 'tong.visitkorea.or.kr',
+                pathname: '**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'tong.visitkorea.or.kr',
+                pathname: '**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'lh3.googleusercontent.com',
+                pathname: '**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'k.kakaocdn.net',
+                pathname: '**',
+            },
+            {
+                protocol: 'https',
+                hostname: 't1.kakaocdn.net',
+                pathname: '**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'yjkkjdjaqkcnijpcrwtf.supabase.co',
+                pathname: '**',
+            }
+        ],
+    },
+    async redirects() {
+        return [
+            {
+                source: '/v2',
+                destination: '/',
+                permanent: true,
+            },
+        ];
+    },
 };
 
 export default nextConfig;

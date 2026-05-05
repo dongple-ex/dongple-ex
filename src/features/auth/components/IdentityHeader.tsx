@@ -30,6 +30,7 @@ export default function IdentityHeader({ compact = false }: IdentityHeaderProps)
     return { label: "관찰자", color: "text-gray-500", bg: "bg-gray-50", icon: <UserIcon size={14} /> };
   };
 
+  const isAuthUser = !isAnonymous;
   const rep = getReputation(profile.trust_score);
 
   return (
@@ -41,9 +42,13 @@ export default function IdentityHeader({ compact = false }: IdentityHeaderProps)
       >
         <div className={`flex items-center ${compact ? "space-x-2" : "space-x-3"}`}>
           <div
-            className={`${compact ? "h-8 w-8" : "h-10 w-10"} ${rep.bg} dark:bg-foreground/10 flex rounded-full items-center justify-center text-foreground shadow-inner`}
+            className={`${compact ? "h-8 w-8" : "h-10 w-10"} ${
+              isAuthUser 
+                ? "bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400" 
+                : "bg-gray-100 text-gray-400 dark:bg-gray-800"
+            } flex rounded-full items-center justify-center shadow-inner transition-colors duration-500`}
           >
-            {rep.icon}
+            {isAuthUser ? <ShieldCheck size={compact ? 16 : 20} /> : <UserIcon size={compact ? 16 : 20} />}
           </div>
           <div>
             <div className={`mb-0.5 flex items-center ${compact ? "space-x-1" : "space-x-1.5"}`}>
@@ -54,7 +59,7 @@ export default function IdentityHeader({ compact = false }: IdentityHeaderProps)
                 Lv. {rep.label}
               </div>
             </div>
-            <h3 className={`${compact ? "text-[13px]" : "text-[14px]"} font-black tracking-tight text-foreground`}>
+            <h3 className={`${compact ? "text-[13px]" : "text-[14px]"} font-black tracking-tight text-foreground flex items-center gap-1`}>
               {profile.nickname}
               <span className="ml-1 text-foreground/30">✨</span>
             </h3>
