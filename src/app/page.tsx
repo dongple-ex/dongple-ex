@@ -26,6 +26,7 @@ import { AlbumMemory, getAlbumMemories, saveAlbumMemory, subscribeAlbumMemories 
 import { getRecentMapPlaces, RecentMapPlace, subscribeRecentMapPlaces } from "@/lib/mapRecentPlaces";
 import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
+import { useRequireAuth } from "@/lib/useRequireAuth";
 import { fetchPosts, Post, subscribePosts } from "@/services/postService";
 
 const FLOW_STEPS = [
@@ -103,6 +104,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const openBottomSheet = useUIStore((state) => state.openBottomSheet);
+  const requireAuth = useRequireAuth();
   const regionName = useLocationStore((state) => state.regionName);
 
   const loadPosts = async () => {
@@ -184,12 +186,16 @@ export default function Home() {
   };
 
   const handleRequestDiscovery = (item: (typeof DISCOVERY_CARDS)[number]) => {
-    openBottomSheet("liveCreate", {
+    requireAuth({
+      type: "bottomSheet",
+      content: "liveCreate",
+      data: {
       mode: "request",
       defaultPlaceName: item.place,
       address: item.address,
       latitude: item.lat,
       longitude: item.lng,
+      },
     });
   };
 
@@ -287,7 +293,7 @@ export default function Home() {
               <ArrowRight size={16} className="ml-2" />
             </Link>
             <button
-              onClick={() => openBottomSheet("recordHub", { defaultTab: "request" })}
+              onClick={() => requireAuth({ type: "bottomSheet", content: "recordHub", data: { defaultTab: "request" } })}
               className="inline-flex items-center justify-center rounded-2xl border border-border px-5 py-3 text-[13px] font-black text-foreground/70"
             >
               현장 공유 요청

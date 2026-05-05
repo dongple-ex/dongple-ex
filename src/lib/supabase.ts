@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -112,4 +112,4 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = ((supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('placeholder')) 
   ? createClient(supabaseUrl, supabaseAnonKey)
-  : mockSupabase) as any;
+  : mockSupabase) as unknown as SupabaseClient;

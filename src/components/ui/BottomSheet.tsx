@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower, MapPin, Search, Navigation, ArrowLeft } from "lucide-react";
+import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower, MapPin, Search, Navigation, ArrowLeft, MessageCircle, Mail } from "lucide-react";
 import { reportContent, ReportReason } from "@/services/moderationService";
 
 import LiveStatusCreateForm from "@/components/forms/LiveStatusCreateForm";
@@ -13,6 +13,7 @@ import { createPost, createComment, fetchComments, likePost, reportPost } from "
 import { useAuthStore } from "@/lib/store/authStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useLocationStore } from "@/lib/store/locationStore";
+import { useRequireAuth } from "@/lib/useRequireAuth";
 import { SHAREABLE_STATUS_OPTIONS } from "@/lib/statusTheme";
 import { searchPlaces, getAddressFromCoords, SearchPlaceResult } from "@/services/api";
 
@@ -165,7 +166,8 @@ function isReadOnlyPostDetailData(data: unknown) {
 
 export default function BottomSheet() {
   const { isBottomSheetOpen, bottomSheetContent, bottomSheetData, closeBottomSheet } = useUIStore();
-  const { userId, publicId, isAnonymous } = useAuthStore();
+  const { authUserId, anonymousId, publicId, isAnonymous, isAuthenticated } = useAuthStore();
+  const requireAuth = useRequireAuth();
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -184,13 +186,18 @@ export default function BottomSheet() {
 
   const handleCreateComment = async () => {
     if (!commentText.trim() || !bottomSheetData?.id || isReadOnlyPostDetailData(bottomSheetData)) return;
+    if (!isAuthenticated) {
+        requireAuth({ type: "bottomSheet", content: "postDetail", data: bottomSheetData });
+        return;
+    }
     
     setIsSubmitting(true);
     try {
         await createComment({
             post_id: bottomSheetData.id,
             content: commentText.trim(),
-            user_id: userId,
+            user_id: authUserId,
+            anonymous_id: authUserId ? null : anonymousId,
             public_id: publicId,
             is_anonymous: isAnonymous
         });
@@ -208,6 +215,7 @@ export default function BottomSheet() {
     if (isBottomSheetOpen) {
       if (bottomSheetContent === "postDetail" || bottomSheetContent === "liveCreate") setSheetHeight(85);
       else if (bottomSheetContent === "write" || bottomSheetContent === "recordHub") setSheetHeight(90);
+      else if (bottomSheetContent === "authPrompt") setSheetHeight(56);
       else setSheetHeight(50);
     }
   }, [isBottomSheetOpen, bottomSheetContent]);
@@ -247,6 +255,7 @@ export default function BottomSheet() {
     liveDetail: "상황 정보",
     contentReport: "부적절한 정보 신고",
     locationSearch: "지역 설정",
+    authPrompt: "로그인이 필요해요",
   };
   const sheetTitle = bottomSheetContent ? titleMap[bottomSheetContent] || "상세 정보" : "상세 정보";
 
@@ -319,6 +328,7 @@ export default function BottomSheet() {
                   {bottomSheetContent === "liveDetail" && <LiveDetailView />}
                   {bottomSheetContent === "contentReport" && <ReportView />}
                   {bottomSheetContent === "locationSearch" && <LocationSearchView />}
+                  {bottomSheetContent === "authPrompt" && <AuthPromptView />}
                 </div>
 
                 {bottomSheetContent === "postDetail" && !isReadOnlyPostDetailData(bottomSheetData) && (
@@ -351,7 +361,7 @@ export default function BottomSheet() {
 
 const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: boolean) => void; showInlineSubmit?: boolean }>(({ onStateChange, showInlineSubmit = false }, ref) => {
     const { closeBottomSheet } = useUIStore();
-    const { userId, publicId, profile, isAnonymous, toggleAnonymous, initAuth } = useAuthStore();
+    const { authUserId, anonymousId, publicId, profile, isAnonymous, toggleAnonymous, initAuth } = useAuthStore();
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [postType, setPostType] = useState("동네질문");
@@ -367,8 +377,8 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
     }));
 
     useEffect(() => {
-        if (!userId) initAuth();
-    }, [initAuth, userId]);
+        initAuth();
+    }, [initAuth]);
 
     const postTypes = ["동네질문", "동네가게", "같이해요", "정보공유"];
     const categories = [
@@ -388,7 +398,8 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 content,
                 post_type: postType,
                 category,
-                user_id: userId,
+                user_id: authUserId || undefined,
+                anonymous_id: authUserId ? null : anonymousId,
                 public_id: publicId,
                 is_anonymous: isAnonymous,
                 score: postType === "정보공유" ? 0.6 : 0.5
@@ -609,9 +620,70 @@ function RecordHub() {
     );
 }
 
+function AuthPromptView() {
+    const { signInWithProvider } = useAuthStore();
+    const [isSubmitting, setIsSubmitting] = useState<"kakao" | "google" | null>(null);
+
+    const handleSignIn = async (provider: "kakao" | "google") => {
+        setIsSubmitting(provider);
+        try {
+            await signInWithProvider(provider);
+        } catch (error) {
+            console.error("OAuth sign in failed:", error);
+            alert("로그인을 시작하지 못했습니다. Supabase 인증 설정을 확인해주세요.");
+            setIsSubmitting(null);
+        }
+    };
+
+    return (
+        <div className="flex flex-col gap-5 pt-2">
+            <div className="rounded-[28px] border border-border bg-nav-bg/70 p-5">
+                <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
+                        <ShieldCheck size={22} />
+                    </div>
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.16em] text-secondary">Action Sign-in</p>
+                        <h4 className="mt-1 text-[19px] font-black text-foreground">기록을 남길 때만 확인할게요</h4>
+                        <p className="mt-2 text-[13px] font-medium leading-relaxed text-foreground/55">
+                            둘러보기는 그대로 가능하고, 기록하기·상황 요청·내발문자처럼 내 활동으로 남는 순간에만 인증합니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-2.5">
+                <button
+                    type="button"
+                    onClick={() => handleSignIn("kakao")}
+                    disabled={Boolean(isSubmitting)}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FEE500] px-4 py-4 text-[14px] font-black text-[#191919] transition-transform active:scale-[0.98] disabled:opacity-60"
+                >
+                    <MessageCircle size={18} />
+                    {isSubmitting === "kakao" ? "카카오 인증 준비 중..." : "카카오톡으로 계속하기"}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => handleSignIn("google")}
+                    disabled={Boolean(isSubmitting)}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card-bg px-4 py-4 text-[14px] font-black text-foreground transition-transform active:scale-[0.98] disabled:opacity-60"
+                >
+                    <Mail size={18} />
+                    {isSubmitting === "google" ? "Google 인증 준비 중..." : "Google 이메일로 계속하기"}
+                </button>
+            </div>
+
+            <p className="px-2 text-center text-[11px] font-medium leading-relaxed text-foreground/40">
+                로그인 후에는 방금 누른 기록/요청/내발문자 화면으로 자동으로 이어집니다.
+            </p>
+        </div>
+    );
+}
+
 function PostDetailView() {
     const { bottomSheetData, openBottomSheet } = useUIStore();
-    const { userId } = useAuthStore();
+    const { userId, isAuthenticated } = useAuthStore();
+    const requireAuth = useRequireAuth();
     const isOfficial = bottomSheetData?.is_official;
     const apiSource = typeof bottomSheetData?.source === "string" ? bottomSheetData.source : undefined;
     const officialSource = apiSource || "공식 연동";
@@ -694,7 +766,11 @@ function PostDetailView() {
     }, [detailContentId, detailContentTypeId, isApiBacked]);
 
     const handleLike = async () => {
-        if (!userId || isOfficial) return;
+        if (isOfficial) return;
+        if (!isAuthenticated) {
+            requireAuth({ type: "bottomSheet", content: "postDetail", data: bottomSheetData });
+            return;
+        }
         const newIsLiked = !isLiked;
         setIsLiked(newIsLiked);
         setLikes((prev: number) => newIsLiked ? prev + 1 : Math.max(0, prev - 1));
@@ -709,7 +785,11 @@ function PostDetailView() {
     };
 
     const handleReport = async () => {
-        if (!userId || isReported) return;
+        if (isReported) return;
+        if (!isAuthenticated) {
+            requireAuth({ type: "bottomSheet", content: "postDetail", data: bottomSheetData });
+            return;
+        }
         if (!confirm("이 게시글을 신고하시겠습니까? 내발문자 클린 가이드에 따라 검토됩니다.")) return;
 
         setIsReported(true);
@@ -749,6 +829,10 @@ function PostDetailView() {
         ? `/map?lat=${detailLat}&lng=${detailLng}&title=${encodeURIComponent(detailTitle)}&address=${encodeURIComponent(officialAddress || "")}`
         : "/map";
     const handleRememberPlace = () => {
+        if (!isAuthenticated) {
+            requireAuth({ type: "bottomSheet", content: "postDetail", data: bottomSheetData });
+            return;
+        }
         saveAlbumMemory({
             sourceId: formatApiValue(bottomSheetData?.id || detailContentId || detailTitle),
             type: "place",
@@ -765,14 +849,14 @@ function PostDetailView() {
         setIsRemembered(true);
     };
     const handleOpenRecordForDetail = () => {
-        openBottomSheet("liveCreate", {
+        requireAuth({ type: "bottomSheet", content: "liveCreate", data: {
             mode: "share",
             eventId: isOfficial ? bottomSheetData?.eventId || bottomSheetData?.id : undefined,
             defaultPlaceName: detailTitle,
             address: officialAddress,
             latitude: hasDetailLocation ? detailLat : undefined,
             longitude: hasDetailLocation ? detailLng : undefined,
-        });
+        }});
     };
 
     return (
@@ -819,7 +903,7 @@ function PostDetailView() {
                 )}
                 {!isOfficial && !isApiBacked && (
                     <button 
-                        onClick={() => openBottomSheet("contentReport", { targetId: bottomSheetData.id, targetType: "POST" })}
+                        onClick={() => requireAuth({ type: "bottomSheet", content: "contentReport", data: { targetId: bottomSheetData.id, targetType: "POST" } })}
                         className="ml-3 p-2 text-gray-300 hover:text-red-400 transition-colors"
                         title="신고하기"
                     >
@@ -1307,7 +1391,8 @@ function LocationSearchView() {
 
 function ReportView() {
     const { bottomSheetData, closeBottomSheet } = useUIStore();
-    const { userId } = useAuthStore();
+    const { authUserId, isAuthenticated } = useAuthStore();
+    const requireAuth = useRequireAuth();
     const [reason, setReason] = useState<ReportReason | "">("");
     const [submitting, setSubmitting] = useState(false);
     const [done, setDone] = useState(false);
@@ -1315,11 +1400,15 @@ function ReportView() {
     const reasons: ReportReason[] = ["허위 정보", "광고/홍보", "욕설/비하", "기타"];
 
     const handleReport = async () => {
-        if (!reason || !userId || !bottomSheetData?.targetId) return;
+        if (!reason || !bottomSheetData?.targetId) return;
+        if (!isAuthenticated || !authUserId) {
+            requireAuth({ type: "bottomSheet", content: "contentReport", data: bottomSheetData });
+            return;
+        }
         
         setSubmitting(true);
         try {
-            await reportContent(userId, bottomSheetData.targetId, bottomSheetData.targetType, reason);
+            await reportContent(authUserId, bottomSheetData.targetId, bottomSheetData.targetType, reason);
             setDone(true);
             setTimeout(() => {
                 closeBottomSheet();

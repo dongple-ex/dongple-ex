@@ -1,6 +1,7 @@
 "use client";
 
 import BottomSheet from "./BottomSheet";
+import AuthGate from "@/components/auth/AuthGate";
 
 export default function GlobalModalProvider({
   children,
@@ -9,6 +10,7 @@ export default function GlobalModalProvider({
 }) {
   return (
     <>
+      <AuthGate />
       {children}
       <BottomSheet />
     </>

@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, MapPin, Plus, Zap } from "lucide-react";
 import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
+import { useAuthStore } from "@/lib/store/authStore";
+import { useRequireAuth } from "@/lib/useRequireAuth";
 import { fetchLiveStatus, postLiveStatus, subscribeLiveUpdates, verifyStatusWithTrust } from "@/services/statusService";
 import { getStatusTheme, normalizeStatus } from "@/lib/statusTheme";
 
@@ -13,8 +15,9 @@ type LiveUpdateItem = Awaited<ReturnType<typeof fetchLiveStatus>>[number];
 export default function LiveBoardTickerv2() {
   const [liveUpdates, setLiveUpdates] = useState<LiveUpdateItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [userId, setUserId] = useState("");
   const openBottomSheet = useUIStore((state) => state.openBottomSheet);
+  const { userId, isAuthenticated } = useAuthStore();
+  const requireAuth = useRequireAuth();
   const regionName = useLocationStore((state) => state.regionName);
 
   const loadData = async () => {
@@ -35,15 +38,6 @@ export default function LiveBoardTickerv2() {
   }, [regionName]);
 
   useEffect(() => {
-    let id = localStorage.getItem("dongple_temp_id");
-    if (!id) {
-      id = `user-${Math.random().toString(36).slice(2, 11)}`;
-      localStorage.setItem("dongple_temp_id", id);
-    }
-    setUserId(id);
-  }, []);
-
-  useEffect(() => {
     if (liveUpdates.length === 0) return;
     const timer = setInterval(() => setCurrentIndex((prev) => (prev + 1) % liveUpdates.length), 4000);
     return () => clearInterval(timer);
@@ -56,7 +50,10 @@ export default function LiveBoardTickerv2() {
   const theme = getStatusTheme(current.status, current.is_request);
 
   const handleAgree = async () => {
-    if (!userId) return;
+    if (!isAuthenticated) {
+      requireAuth({ type: "path", href: "/" });
+      return;
+    }
     const success = await verifyStatusWithTrust(current.id, userId);
     if (!success) {
       alert("이미 확인했거나 처리 중 문제가 생겼습니다.");
@@ -66,6 +63,11 @@ export default function LiveBoardTickerv2() {
   };
 
   const handleDisagree = () => {
+    if (!isAuthenticated) {
+      requireAuth({ type: "path", href: "/" });
+      return;
+    }
+
     const defaultStatus = normalizeStatus(current.status) === "여유" ? "보통" : "여유";
 
     openBottomSheet("liveReply", {
@@ -144,7 +146,7 @@ export default function LiveBoardTickerv2() {
           <button onClick={handleAgree} className="rounded-full bg-secondary/10 px-3 py-1.5 text-[10px] font-black text-secondary hover:bg-secondary hover:text-white">
             맞아요
           </button>
-          <button onClick={() => openBottomSheet("liveCreate", { mode: "share" })} className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background shadow-lg">
+          <button onClick={() => requireAuth({ type: "bottomSheet", content: "liveCreate", data: { mode: "share" } })} className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background shadow-lg">
             <Plus size={16} />
           </button>
         </div>

@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 
-export type BottomSheetContent = "write" | "recordHub" | "postDetail" | "liveCreate" | "liveReply" | "liveDetail" | "contentReport" | "locationSearch" | null;
+export type BottomSheetContent = "write" | "recordHub" | "postDetail" | "liveCreate" | "liveReply" | "liveDetail" | "contentReport" | "locationSearch" | "authPrompt" | null;
 
+// Bottom sheet payloads are intentionally polymorphic across modal types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type BottomSheetData = any;
 
 export type ThemeMode = "light" | "dark";

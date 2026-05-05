@@ -23,11 +23,27 @@ export interface SearchPlaceResult {
 export interface WeatherData {
     temp: string;
     icon: string;
+    condition?: string;
+    source?: "kma" | "fallback";
+    isFallback?: boolean;
 }
 
 // Kakao Maps SDK Type helpers (approximate)
 type KakaoStatus = "OK" | "ZERO_RESULT" | "ERROR";
-interface KakaoAddressResult {
+type KakaoLatLng = {
+    getLat: () => number;
+    getLng: () => number;
+};
+
+type KakaoMapInstance = {
+    getCenter: () => KakaoLatLng;
+    setCenter: (latLng: KakaoLatLng) => void;
+    setLevel: (level: number) => void;
+    relayout: () => void;
+    panTo: (latLng: KakaoLatLng) => void;
+};
+
+type KakaoAddressResult = {
     address: {
         address_name: string;
         region_1depth_name: string;
@@ -37,15 +53,15 @@ interface KakaoAddressResult {
     road_address: {
         address_name: string;
     } | null;
-}
+};
 
-interface KakaoRegionResult {
+type KakaoRegionResult = {
     region_type: string;
     address_name: string;
     region_1depth_name: string;
     region_2depth_name: string;
     region_3depth_name: string;
-}
+};
 
 interface KakaoPlaceResult {
     place_name: string;
@@ -56,9 +72,75 @@ interface KakaoPlaceResult {
     category_name: string;
 }
 
+type KakaoSearchOptions = {
+    location?: KakaoLatLng;
+    radius?: number;
+    sort: string;
+};
+
+type KakaoGeocoder = {
+    coord2Address: (
+        lng: number,
+        lat: number,
+        callback: (result: KakaoAddressResult[], status: KakaoStatus) => void,
+    ) => void;
+    coord2RegionCode: (
+        lng: number,
+        lat: number,
+        callback: (result: KakaoRegionResult[], status: KakaoStatus) => void,
+    ) => void;
+    addressSearch: (
+        address: string,
+        callback: (result: Array<{ x: string; y: string }>, status: KakaoStatus) => void,
+    ) => void;
+};
+
+type KakaoPlaces = {
+    keywordSearch: (
+        query: string,
+        callback: (results: KakaoPlaceResult[], status: KakaoStatus) => void,
+        options?: KakaoSearchOptions,
+    ) => void;
+};
+
+type KakaoMapsSdk = {
+    load: (callback: () => void) => void;
+    LatLng: new (lat: number, lng: number) => KakaoLatLng;
+    Map: new (container: HTMLElement, options: { center: KakaoLatLng; level: number }) => KakaoMapInstance;
+    CustomOverlay: new (options: {
+        position: KakaoLatLng;
+        map: KakaoMapInstance;
+        content: HTMLElement;
+        xAnchor: number;
+        yAnchor: number;
+    }) => { setMap: (map: KakaoMapInstance | null) => void };
+    event: {
+        addListener: (
+            target: KakaoMapInstance,
+            eventName: string,
+            handler: (event?: { latLng: KakaoLatLng }) => void,
+        ) => void;
+    };
+    services: {
+        Geocoder: new () => KakaoGeocoder;
+        Places: new () => KakaoPlaces;
+        SortBy: {
+            ACCURACY: string;
+            DISTANCE: string;
+        };
+        Status: {
+            OK: KakaoStatus;
+            ZERO_RESULT: KakaoStatus;
+            ERROR: KakaoStatus;
+        };
+    };
+};
+
 declare global {
     interface Window {
-        kakao: any;
+        kakao: {
+            maps: KakaoMapsSdk;
+        };
     }
 }
 
@@ -106,7 +188,7 @@ export async function getAddressFromCoords(lat: number, lng: number): Promise<Ad
         const geocoder = new window.kakao.maps.services.Geocoder();
 
         // 1. 상세 주소 시도
-        geocoder.coord2Address(lng, lat, (result: any, status: any) => {
+        geocoder.coord2Address(lng, lat, (result, status) => {
             if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
                 const addr = result[0].address;
                 const roadAddr = result[0].road_address;
@@ -118,9 +200,9 @@ export async function getAddressFromCoords(lat: number, lng: number): Promise<Ad
                 });
             } else {
                 // 2. 실패 시 행정구역 정보 시도 (coord2RegionCode)
-                geocoder.coord2RegionCode(lng, lat, (regResult: any, regStatus: any) => {
+                geocoder.coord2RegionCode(lng, lat, (regResult, regStatus) => {
                     if (regStatus === window.kakao.maps.services.Status.OK && regResult.length > 0) {
-                        const bAddress = regResult.find((r: any) => r.region_type === 'B') || regResult[0];
+                        const bAddress = regResult.find((r) => r.region_type === 'B') || regResult[0];
                         resolve({
                             fullAddress: bAddress.address_name || "주소 정보 없음",
                             regionName: bAddress.region_1depth_name + " " + bAddress.region_2depth_name + " " + bAddress.region_3depth_name,
@@ -146,7 +228,7 @@ export async function searchPlaces(query: string, options?: { lat?: number; lng?
     return new Promise((resolve) => {
         const places = new window.kakao.maps.services.Places();
         
-        const searchOptions: any = {
+        const searchOptions: KakaoSearchOptions = {
             sort: window.kakao.maps.services.SortBy.ACCURACY
         };
 
@@ -185,7 +267,7 @@ export async function getNearestPlace(lat: number, lng: number): Promise<SearchP
 
     return new Promise((resolve) => {
         const geocoder = new window.kakao.maps.services.Geocoder();
-        geocoder.coord2Address(lng, lat, async (result: any, status: any) => {
+        geocoder.coord2Address(lng, lat, async (result, status) => {
             if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
                 // '정자동'처럼 중복된 이름이 많은 경우를 대비해 구 단위까지 포함하여 검색
                 const addr = result[0].address;
@@ -221,7 +303,7 @@ export async function getCoordsFromAddress(address: string): Promise<MapPoint | 
 
     return new Promise((resolve) => {
         const geocoder = new window.kakao.maps.services.Geocoder();
-        geocoder.addressSearch(address, (result: any, status: any) => {
+        geocoder.addressSearch(address, (result, status) => {
             if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
                 resolve({
                     lat: parseFloat(result[0].y),
@@ -245,8 +327,11 @@ export async function getVillageWeather(lat: number, lng: number): Promise<Weath
     } catch (error) {
         console.error("Weather API error", error);
         return {
-            temp: "22°C",
-            icon: "☀️"
+            temp: "22°",
+            icon: "☀️",
+            condition: "맑음",
+            source: "fallback",
+            isFallback: true,
         };
     }
 }

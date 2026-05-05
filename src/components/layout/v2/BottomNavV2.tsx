@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Footprints, Home, LayoutList, MapPinned, Plus } from "lucide-react";
-import { useUIStore } from "@/lib/store/uiStore";
+import { useRequireAuth } from "@/lib/useRequireAuth";
+import Link from "next/link";
 
 export default function BottomNavV2() {
   const pathname = usePathname();
-  const openBottomSheet = useUIStore((state) => state.openBottomSheet);
+  const requireAuth = useRequireAuth();
 
   const navItems = [
     { icon: Home, label: "홈", path: "/" },
@@ -33,7 +33,7 @@ export default function BottomNavV2() {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.94 }}
-                  onClick={() => openBottomSheet("recordHub", { defaultTab })}
+                  onClick={() => requireAuth({ type: "bottomSheet", content: "recordHub", data: { defaultTab } })}
                   className="absolute top-[-42px] flex h-16 w-16 items-center justify-center rounded-full border-4 border-background bg-foreground text-background shadow-xl"
                   aria-label="기록하기"
                 >
@@ -41,6 +41,23 @@ export default function BottomNavV2() {
                 </motion.button>
                 <span className="mt-6 text-[10px] font-black text-foreground/45">{item.label}</span>
               </div>
+            );
+          }
+
+          if (item.path === "/album") {
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={() => requireAuth({ type: "path", href: "/album" })}
+                className="flex flex-1 flex-col items-center justify-center gap-1"
+              >
+                <Icon size={22} className={isActive ? "text-secondary" : "text-foreground/40"} />
+                <span className={`text-[10px] font-black ${isActive ? "text-secondary" : "text-foreground/40"}`}>
+                  {item.label}
+                </span>
+                {isActive && <motion.div layoutId="navTab" className="h-1 w-1 rounded-full bg-secondary" />}
+              </button>
             );
           }
 

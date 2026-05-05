@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useLocationStore } from "@/lib/store/locationStore";
+import { useRequireAuth } from "@/lib/useRequireAuth";
 import { getEventPeriodPhase, getEventStatusBlock } from "@/lib/eventPeriod";
 import { saveRecentMapPlace } from "@/lib/mapRecentPlaces";
 import { 
@@ -22,14 +23,11 @@ import MapOverlay from "@/features/map/components/MapOverlay";
 import MapBottomSheet from "@/features/map/components/MapBottomSheet";
 import { StatusMarker, ClickTargetMarker } from "@/features/map/components/Markers";
 
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    kakao: any;
-  }
-}
-
 type MapPoint = { lat: number; lng: number };
+type KakaoMaps = NonNullable<Window["kakao"]>["maps"];
+type KakaoLatLng = InstanceType<KakaoMaps["LatLng"]>;
+type KakaoMapInstance = InstanceType<KakaoMaps["Map"]>;
+type RenderMarkers = () => void;
 
 type SearchResultItem = {
     title: string;
@@ -42,7 +40,7 @@ type SearchResultItem = {
 type OfficialEventMarker = Awaited<ReturnType<typeof fetchOfficialEvents>>[number];
 
 type MarkerEntry = {
-    marker: { setMap: (map: unknown) => void };
+    marker: { setMap: (map: KakaoMapInstance | null) => void };
     root: ReturnType<typeof createRoot> | null;
 };
 
@@ -59,12 +57,12 @@ const createLatLng = (lat: number, lng: number) => {
     const isValid = isFinite(lat) && isFinite(lng) && lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132;
     if (!isValid) {
         console.warn(`[Map] Invalid coordinates detected: lat=${lat}, lng=${lng}. Falling back to default.`);
-        return new window.kakao.maps.LatLng(37.2995, 126.9912); // 수원 정자동 기본값
+        return new window.kakao!.maps.LatLng(37.2995, 126.9912); // 수원 정자동 기본값
     }
-    return new window.kakao.maps.LatLng(lat, lng);
+    return new window.kakao!.maps.LatLng(lat, lng);
 };
 
-const getLatLngPoint = (latlng: any) => ({
+const getLatLngPoint = (latlng: KakaoLatLng) => ({
     lat: latlng.getLat(),
     lng: latlng.getLng(),
 });
@@ -79,7 +77,8 @@ function MapContent() {
         address: storeAddress,
         setLocation 
     } = useLocationStore();
-    const { userId } = useAuthStore();
+    const { userId, isAuthenticated } = useAuthStore();
+    const requireAuth = useRequireAuth();
 
     const [markers, setMarkers] = useState<LiveStatus[]>([]);
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
@@ -97,13 +96,13 @@ function MapContent() {
     const [clickedPlaceName, setClickedPlaceName] = useState<string | null>(null);
     const [selectedEventId, setSelectedEventId] = useState<string | number | null>(null);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mapRef = useRef<any>(null);
+    const mapRef = useRef<KakaoMapInstance | null>(null);
     const markersRef = useRef<MarkerEntry[]>([]);
-    const clickMarkerRef = useRef<{ setMap: (map: unknown) => void } | null>(null);
+    const clickMarkerRef = useRef<{ setMap: (map: KakaoMapInstance | null) => void } | null>(null);
     const handledInitialActionRef = useRef(false);
     const [officialEvents, setOfficialEvents] = useState<OfficialEventMarker[]>([]);
     const officialEventsRef = useRef<OfficialEventMarker[]>([]);
+    const renderMarkersRef = useRef<RenderMarkers>(() => {});
     const isFetchingOfficial = useRef(false);
 
     useEffect(() => {
@@ -128,8 +127,8 @@ function MapContent() {
     }, []);
 
     const handleVerify = async (statusId: string) => {
-        if (!userId) {
-            alert("로그인이 필요한 기능입니다.");
+        if (!isAuthenticated) {
+            requireAuth({ type: "path", href: "/map" });
             return false;
         }
         try {
@@ -284,10 +283,11 @@ function MapContent() {
             setLocation(lat, lng, addrResult.fullAddress, addrResult.regionName);
             
             // 지도가 멈췄을 때 마커 렌더링 보장
-            renderMarkers();
+            renderMarkersRef.current();
         });
 
-        window.kakao.maps.event.addListener(map, 'click', async (e: { latLng: { getLat: () => number; getLng: () => number } }) => {
+        window.kakao.maps.event.addListener(map, 'click', async (e) => {
+            if (!e?.latLng) return;
             const { lat, lng } = getLatLngPoint(e.latLng);
             
             // Check for nearby official events
@@ -365,6 +365,10 @@ function MapContent() {
     }, [initMap]);
 
     const handleOpenCreateAt = useCallback((mode: string, lat: number, lng: number, address: string, placeName?: string) => {
+        if (!isAuthenticated) {
+            requireAuth({ type: "path", href: typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "/map" });
+            return;
+        }
         openGlobalBottomSheet("liveCreate", {
             mode,
             address,
@@ -372,7 +376,7 @@ function MapContent() {
             longitude: lng,
             defaultPlaceName: placeName || (address ? address.split(' ').slice(-2).join(' ') : "우리 동네")
         });
-    }, [openGlobalBottomSheet]);
+    }, [isAuthenticated, openGlobalBottomSheet, requireAuth]);
 
     useEffect(() => {
         if (!isMapReady || !mapRef.current) return;
@@ -409,6 +413,7 @@ function MapContent() {
 
     const renderMarkers = useCallback(() => {
         if (!window.kakao?.maps || !mapRef.current) return;
+        const map = mapRef.current;
 
         console.log("[Map] Rendering markers start. visiblePlaceMarkers:", visiblePlaceMarkers.length, "officialEvents:", officialEvents.length);
 
@@ -475,7 +480,7 @@ function MapContent() {
                         setSelectedEventId(null);
                         setSheetHeight(65);
                         setClickedLatLng(null);
-                        mapRef.current.panTo(createLatLng(m.latitude || 37.3015, m.longitude || 126.9930));
+                        map.panTo(createLatLng(m.latitude || 37.3015, m.longitude || 126.9930));
                         setTimeout(() => {
                             const card = document.getElementById(`card-${m.id}`);
                             if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -500,7 +505,7 @@ function MapContent() {
 
             const marker = new window.kakao.maps.CustomOverlay({
                 position: createLatLng(m.latitude || 37.3015, m.longitude || 126.9930),
-                map: mapRef.current,
+                map,
                 content: el,
                 xAnchor: 0.5,
                 yAnchor: 1,
@@ -551,7 +556,7 @@ function MapContent() {
                         });
                         setSheetHeight(65);
                         setClickedLatLng(null);
-                        mapRef.current.panTo(createLatLng(festival.lat, festival.lng));
+                        map.panTo(createLatLng(festival.lat, festival.lng));
                     }}
                     onReport={() => {
                         if (getEventPeriodPhase(festival.event_start_date, festival.event_end_date) !== "active") {
@@ -587,7 +592,7 @@ function MapContent() {
 
             const marker = new window.kakao.maps.CustomOverlay({
                 position: createLatLng(festival.lat, festival.lng),
-                map: mapRef.current,
+                map,
                 content: el,
                 xAnchor: 0.5,
                 yAnchor: 1,
@@ -596,6 +601,10 @@ function MapContent() {
         });
         }
     }, [clickedAddress, clickedLatLng, clickedPlaceName, expandedCardId, markers, visiblePlaceMarkers, officialEvents, selectedCategory, selectedEventId, clearRenderedMarkers, handleOpenCreateAt, openGlobalBottomSheet]);
+
+    useEffect(() => {
+        renderMarkersRef.current = renderMarkers;
+    }, [renderMarkers]);
 
     useEffect(() => {
         if (mapRef.current) {
@@ -663,7 +672,8 @@ function MapContent() {
                     } else if (clickedLatLng) {
                         handleOpenCreateAt(mode, clickedLatLng.lat, clickedLatLng.lng, clickedAddress || "", clickedPlaceName || undefined);
                     } else {
-                        const center = mapRef.current.getCenter();
+                        const center = mapRef.current?.getCenter();
+                        if (!center) return;
                         const { lat: cLat, lng: cLng } = getLatLngPoint(center);
                         handleOpenCreateAt(mode, cLat, cLng, storeAddress);
                     }

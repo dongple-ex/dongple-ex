@@ -18,6 +18,7 @@ import {
 import IdentityHeader from "@/features/auth/components/IdentityHeader";
 import { saveAlbumMemory } from "@/lib/albumMemory";
 import { useLocationStore } from "@/lib/store/locationStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import { SHAREABLE_STATUS_OPTIONS } from "@/lib/statusTheme";
 import { postLiveStatus } from "@/services/statusService";
 
@@ -56,6 +57,7 @@ export default function LiveStatusCreateForm({
   compact = false,
 }: LiveStatusCreateFormProps) {
   const { address: storeAddress, latitude: storeLat, longitude: storeLng } = useLocationStore();
+  const { authUserId, anonymousId } = useAuthStore();
 
   const displayAddress = propAddress || storeAddress;
   const finalLat = propLat || storeLat;
@@ -121,6 +123,8 @@ export default function LiveStatusCreateForm({
         latitude: finalLat,
         longitude: finalLng,
         message: note.trim(),
+        user_id: authUserId,
+        anonymous_id: authUserId ? null : anonymousId,
       });
 
       saveAlbumMemory({

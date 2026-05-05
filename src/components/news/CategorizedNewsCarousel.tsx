@@ -61,6 +61,9 @@ export default function CategorizedNewsCarousel({
             params.set("mapX", String(longitude));
             params.set("mapY", String(latitude));
             params.set("radius", "25000");
+            if (regionName) {
+              params.set("regionName", regionName);
+            }
           }
           url = `/api/tour/events?${params.toString()}`;
         } else {
@@ -87,7 +90,7 @@ export default function CategorizedNewsCarousel({
     };
 
     load();
-  }, [category, festivalScope, latitude, longitude]);
+  }, [category, festivalScope, latitude, longitude, regionName]);
 
   const helperText =
     description ||

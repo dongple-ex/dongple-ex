@@ -26,6 +26,8 @@ export interface LiveStatus {
   longitude?: number;
   message?: string;
   trust_score: number;
+  user_id?: string | null;
+  anonymous_id?: string | null;
   tourapi_content_id?: string;
   is_hidden: boolean;
   created_at: string;

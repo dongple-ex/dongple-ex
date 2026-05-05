@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, Clock3, Footprints, Heart, MapPinned, Moon, Rout
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useUIStore } from "@/lib/store/uiStore";
+import { useRequireAuth } from "@/lib/useRequireAuth";
 import { AlbumMemory, getAlbumMemories, subscribeAlbumMemories, toggleAlbumFavorite } from "@/lib/albumMemory";
 
 type AlbumFilter = "all" | "status" | "post" | "place" | "favorite";
@@ -30,14 +31,20 @@ const formatTime = (value: string) =>
 
 export default function JourneyAlbumPage() {
   const router = useRouter();
-  const { publicId, profile, initAuth } = useAuthStore();
+  const { publicId, profile, initAuth, isAuthenticated, isAuthInitialized } = useAuthStore();
   const { theme, toggleTheme } = useUIStore();
+  const requireAuth = useRequireAuth();
   const [memories, setMemories] = useState<AlbumMemory[]>([]);
   const [activeFilter, setActiveFilter] = useState<AlbumFilter>("all");
 
   useEffect(() => {
     initAuth();
   }, [initAuth]);
+
+  useEffect(() => {
+    if (!isAuthInitialized || isAuthenticated) return;
+    requireAuth({ type: "path", href: "/album" });
+  }, [isAuthInitialized, isAuthenticated, requireAuth]);
 
   useEffect(() => {
     const sync = () => setMemories(getAlbumMemories());
