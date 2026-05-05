@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 type TourApiFestivalItem = {
   contentid?: string;
+  contenttypeid?: string;
   title?: string;
   addr1?: string;
   eventstartdate?: string;
@@ -55,6 +56,30 @@ function toDisplayDate(value?: string) {
   return `${value.slice(0, 4)}.${value.slice(4, 6)}.${value.slice(6, 8)}`;
 }
 
+function toDigits(value?: string) {
+  return (value || "").replace(/\D/g, "");
+}
+
+function toNumber(value: string | null) {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function distanceInMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const radius = 6371000;
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  return radius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function buildDescription(item: TourApiFestivalItem) {
   const parts = [
     item.eventplace ? `행사 장소: ${item.eventplace}` : null,
@@ -86,10 +111,14 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams;
   const eventStartDate = searchParams.get("eventStartDate") || toToday();
+  const today = toToday();
   const pageNo = Number(searchParams.get("pageNo") || "1");
   const numOfRows = Number(searchParams.get("numOfRows") || "20");
   const keyword = searchParams.get("keyword");
   const arrange = searchParams.get("arrange") || "A";
+  const mapX = toNumber(searchParams.get("mapX"));
+  const mapY = toNumber(searchParams.get("mapY"));
+  const radius = Number(searchParams.get("radius") || "25000");
 
   try {
     const endpoint = pickEndpoint(baseUrl, keyword);
@@ -171,7 +200,12 @@ export async function GET(request: NextRequest) {
     const items = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
 
     const requestedCategory = searchParams.get("contentTypeId");
-    const normalized = items
+    let normalized = items
+      .filter((item) => {
+        const endDate = toDigits(item.eventenddate || item.eventstartdate);
+        if (!endDate || endDate.length !== 8) return true;
+        return endDate >= today;
+      })
       .map((item: TourApiFestivalItem) => ({
         id: item.contentid || `${item.title}-${item.eventstartdate}`,
         title: item.title || "이름 없는 행사",
@@ -189,6 +223,16 @@ export async function GET(request: NextRequest) {
         source: "TOURAPI",
       }))
       .filter((item) => Number.isFinite(item.lat) && Number.isFinite(item.lng));
+
+    if (mapX !== null && mapY !== null && Number.isFinite(radius)) {
+      normalized = normalized
+        .map((item) => ({
+          ...item,
+          distance: distanceInMeters(mapY, mapX, item.lat, item.lng),
+        }))
+        .filter((item) => item.distance <= radius)
+        .sort((a, b) => a.distance - b.distance);
+    }
 
     return NextResponse.json({
       items: normalized,

@@ -1,20 +1,3 @@
-/**
- * 동네 위치 기반 외부 데이터 연동 서비스
- */
-
-export interface LocationData {
-    lat: number;
-    lng: number;
-    addressName?: string;
-    regionName?: string; // 예: 역삼동
-}
-
-export interface WeatherData {
-    temp: string;
-    condition: string;
-    icon: string;
-}
-
 export interface PlaceData {
     name: string;
     address: string;
@@ -24,57 +7,67 @@ export interface PlaceData {
 
 export interface AddressResult {
     fullAddress: string;
-    regionName: string; // 예: 수원시 정자동
+    regionName: string;
+    roadAddress?: string | null;
 }
 
 export interface SearchPlaceResult {
     title: string;
     mapx: string;
     mapy: string;
-    roadAddress?: string;
-    address?: string;
-    category?: string;
+    roadAddress: string;
+    address: string;
+    category: string;
 }
 
-declare global {
-    interface Window {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        kakao: any;
-    }
+export interface WeatherData {
+    temp: string;
+    icon: string;
 }
 
+// Kakao Maps SDK Type helpers (approximate)
 type KakaoStatus = "OK" | "ZERO_RESULT" | "ERROR";
-
 interface KakaoAddressResult {
-    address?: {
-        address_name?: string;
-        region_1depth_name?: string;
-        region_2depth_name?: string;
-        region_3depth_name?: string;
+    address: {
+        address_name: string;
+        region_1depth_name: string;
+        region_2depth_name: string;
+        region_3depth_name: string;
     };
-    road_address?: {
-        address_name?: string;
-    };
+    road_address: {
+        address_name: string;
+    } | null;
 }
 
 interface KakaoRegionResult {
-    region_type?: string;
-    address_name?: string;
-    region_2depth_name?: string;
-    region_3depth_name?: string;
+    region_type: string;
+    address_name: string;
+    region_1depth_name: string;
+    region_2depth_name: string;
+    region_3depth_name: string;
 }
 
 interface KakaoPlaceResult {
     place_name: string;
     x: string;
     y: string;
-    road_address_name?: string;
-    address_name?: string;
-    category_name?: string;
+    road_address_name: string;
+    address_name: string;
+    category_name: string;
 }
 
-const isKakaoServicesReady = () =>
-    typeof window !== "undefined" && Boolean(window.kakao?.maps?.services);
+declare global {
+    interface Window {
+        kakao: any;
+    }
+}
+
+/**
+ * 카카오 지도 서비스 라이브러리가 로드되었는지 확인
+ */
+function isKakaoServicesReady(): boolean {
+    return typeof window !== "undefined" && !!window.kakao?.maps?.services?.Geocoder;
+}
 
 /**
  * 카카오 SDK가 로드되었는지 확인하고, autoload=false인 경우 load()를 호출하여 대기합니다.
@@ -89,8 +82,21 @@ async function ensureKakaoReady(): Promise<boolean> {
         });
     });
 }
+
+/**
+ * 좌표(WGS84)를 주소로 변환 (Reverse Geocoding)
+ */
 export async function getAddressFromCoords(lat: number, lng: number): Promise<AddressResult> {
     const fallback: AddressResult = { fullAddress: "주소 정보 없음", regionName: "위치 확인 불가" };
+    
+    // 좌표 유효성 검사 (WGS84 한국 범위 내 인지 확인)
+    // 33~39도 사이가 아닌 경우 (예: KTM 좌표 400,000 이상) 무시
+    const isValid = isFinite(lat) && isFinite(lng) && lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132;
+    
+    if (!isValid) {
+        console.warn("[API] Invalid or non-WGS84 coordinates passed to getAddressFromCoords:", lat, lng);
+        return fallback;
+    }
     
     if (!(await ensureKakaoReady())) {
         return { fullAddress: "서비스 로드 중...", regionName: "위치 확인 중" };
@@ -99,37 +105,31 @@ export async function getAddressFromCoords(lat: number, lng: number): Promise<Ad
     return new Promise((resolve) => {
         const geocoder = new window.kakao.maps.services.Geocoder();
 
-        geocoder.coord2Address(lng, lat, (addressResults: KakaoAddressResult[], addressStatus: KakaoStatus) => {
-            if (addressStatus !== window.kakao.maps.services.Status.OK) {
-                console.error("Reverse Geocoding 실패:", addressStatus);
-                resolve(fallback);
-                return;
-            }
-
-            try {
-                const addressResult = addressResults?.[0];
-                const fullAddress =
-                    addressResult?.road_address?.address_name ||
-                    addressResult?.address?.address_name ||
-                    "주소 정보 없음";
-
-                geocoder.coord2RegionCode(lng, lat, (regionResults: KakaoRegionResult[], regionStatus: KakaoStatus) => {
-                    let regionName = "알 수 없는 지역";
-
-                    if (regionStatus === window.kakao.maps.services.Status.OK && regionResults?.length > 0) {
-                        const region =
-                            regionResults.find((item) => item.region_type === "H") ||
-                            regionResults[0];
-                        regionName = `${region.region_2depth_name || ""} ${region.region_3depth_name || ""}`.trim()
-                            || region.address_name
-                            || regionName;
-                    }
-
-                    resolve({ fullAddress, regionName });
+        // 1. 상세 주소 시도
+        geocoder.coord2Address(lng, lat, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
+                const addr = result[0].address;
+                const roadAddr = result[0].road_address;
+                
+                resolve({
+                    fullAddress: roadAddr?.address_name || addr.address_name,
+                    regionName: addr.region_1depth_name + " " + addr.region_2depth_name + " " + addr.region_3depth_name,
+                    roadAddress: roadAddr?.address_name || null
                 });
-            } catch (err) {
-                console.error("주소 파싱 에러:", err);
-                resolve(fallback);
+            } else {
+                // 2. 실패 시 행정구역 정보 시도 (coord2RegionCode)
+                geocoder.coord2RegionCode(lng, lat, (regResult: any, regStatus: any) => {
+                    if (regStatus === window.kakao.maps.services.Status.OK && regResult.length > 0) {
+                        const bAddress = regResult.find((r: any) => r.region_type === 'B') || regResult[0];
+                        resolve({
+                            fullAddress: bAddress.address_name || "주소 정보 없음",
+                            regionName: bAddress.region_1depth_name + " " + bAddress.region_2depth_name + " " + bAddress.region_3depth_name,
+                            roadAddress: null
+                        });
+                    } else {
+                        resolve(fallback);
+                    }
+                });
             }
         });
     });
@@ -137,15 +137,24 @@ export async function getAddressFromCoords(lat: number, lng: number): Promise<Ad
 
 /**
  * 상호/장소 키워드로 검색 (POI Search)
- * 카카오 장소 검색 services API 호출
  */
-export async function searchPlaces(query: string): Promise<SearchPlaceResult[]> {
+export async function searchPlaces(query: string, options?: { lat?: number; lng?: number; radius?: number }): Promise<SearchPlaceResult[]> {
     if (!(await ensureKakaoReady())) {
         return [];
     }
 
     return new Promise((resolve) => {
         const places = new window.kakao.maps.services.Places();
+        
+        const searchOptions: any = {
+            sort: window.kakao.maps.services.SortBy.ACCURACY
+        };
+
+        if (options?.lat && options?.lng) {
+            searchOptions.location = new window.kakao.maps.LatLng(options.lat, options.lng);
+            searchOptions.radius = options.radius || 2000; // 기본 2km 반경
+            searchOptions.sort = window.kakao.maps.services.SortBy.DISTANCE; // 거리가 가까운 순으로
+        }
 
         places.keywordSearch(query, (results: KakaoPlaceResult[], status: KakaoStatus) => {
             if (status !== window.kakao.maps.services.Status.OK) {
@@ -164,98 +173,40 @@ export async function searchPlaces(query: string): Promise<SearchPlaceResult[]> 
                 address: item.address_name,
                 category: item.category_name,
             })));
-        });
+        }, searchOptions);
     });
 }
 
 /**
- * 좌표 기준 가장 가까운 상호/장소 정보 가져오기 (POI Reverse Search)
+ * 주변 장소(POI) 탐색 - 가장 가까운 하나 반환
  */
 export async function getNearestPlace(lat: number, lng: number): Promise<SearchPlaceResult | null> {
     if (!(await ensureKakaoReady())) return null;
 
-    const ps = new window.kakao.maps.services.Places();
-    const location = new window.kakao.maps.LatLng(lat, lng);
-    
-    // 탐색할 카카오 장소 카테고리 목록. 새 마커는 클릭 좌표가 주인공이므로 아주 가까운 POI만 보조 이름으로 사용한다.
-    const categories = ['FD6', 'CE7', 'CS2', 'CT1', 'AT4', 'PO3', 'PK6', 'MT1'];
-    const radius = 25;
-    
-    const searchCategory = (category: string): Promise<SearchPlaceResult | null> => {
-        return new Promise((resolve) => {
-            ps.categorySearch(category, (results: KakaoPlaceResult[], status: KakaoStatus) => {
-                if (status === window.kakao.maps.services.Status.OK && results.length > 0) {
-                    console.log(`[getNearestPlace] Category ${category} found:`, results[0].place_name);
-                    resolve({
-                        title: results[0].place_name,
-                        mapx: results[0].x,
-                        mapy: results[0].y,
-                        roadAddress: results[0].road_address_name,
-                        address: results[0].address_name,
-                        category: results[0].category_name,
-                    });
-                } else {
-                    resolve(null);
-                }
-            }, { location, radius, sort: window.kakao.maps.services.SortBy.DISTANCE });
-        });
-    };
-
-    try {
-        console.log(`[getNearestPlace] Starting search at ${lat}, ${lng}`);
-        // 1단계: 카테고리 기반 검색 (정확도 높음)
-        const catResults = await Promise.all(categories.map(cat => searchCategory(cat)));
-        const validResults = catResults.filter((r): r is SearchPlaceResult => r !== null);
-        
-        if (validResults.length > 0) {
-            const nearest = validResults.reduce((prev, curr) => {
-                const distPrev = Math.pow(parseFloat(prev.mapy) - lat, 2) + Math.pow(parseFloat(prev.mapx) - lng, 2);
-                const distCurr = Math.pow(parseFloat(curr.mapy) - lat, 2) + Math.pow(parseFloat(curr.mapx) - lng, 2);
-                return distCurr < distPrev ? curr : prev;
-            });
-            console.log(`[getNearestPlace] Final Nearest:`, nearest.title);
-            return nearest;
-        }
-
-        console.log(`[getNearestPlace] No close POI found around ${lat}, ${lng}`);
-        return null;
-    } catch (err) {
-        console.error("POI 탐색 중 오류:", err);
-        return null;
-    }
-}
-
-
-/**
- * 주소를 좌표로 변환 (Geocoding) - 검색 기능용
- */
-export async function getCoordsFromAddress(address: string): Promise<{ lat: number, lng: number } | null> {
-    if (!(await ensureKakaoReady())) {
-        return null;
-    }
-
     return new Promise((resolve) => {
         const geocoder = new window.kakao.maps.services.Geocoder();
-
-        geocoder.addressSearch(address, (results: Array<{ x: string; y: string }>, status: KakaoStatus) => {
-            if (status !== window.kakao.maps.services.Status.OK) {
-                console.error("Geocoding 실패:", status);
-                resolve(null);
-                return;
-            }
-
-            try {
-                if (results && results.length > 0) {
-                    const item = results[0];
-                    resolve({
-                        lat: parseFloat(item.y),
-                        lng: parseFloat(item.x)
-                    });
+        geocoder.coord2Address(lng, lat, async (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
+                // '정자동'처럼 중복된 이름이 많은 경우를 대비해 구 단위까지 포함하여 검색
+                const addr = result[0].address;
+                const query = `${addr.region_2depth_name} ${addr.region_3depth_name}`;
+                
+                // 해당 좌표를 기준으로 검색 가중치 부여
+                const places = await searchPlaces(query, { lat, lng, radius: 1000 });
+                if (places.length > 0) {
+                    resolve(places[0]);
                 } else {
-                    resolve(null);
+                    // POI가 없을 경우 주소 정보라도 반환
+                    resolve({
+                        title: addr.address_name,
+                        mapx: String(lng),
+                        mapy: String(lat),
+                        roadAddress: result[0].road_address?.address_name || "",
+                        address: addr.address_name,
+                        category: "주소",
+                    });
                 }
-            } catch (err) {
-                console.error("좌표 변환 에러:", err);
+            } else {
                 resolve(null);
             }
         });
@@ -263,7 +214,28 @@ export async function getCoordsFromAddress(address: string): Promise<{ lat: numb
 }
 
 /**
- * 공공 데이터 API 연동: 날씨 정보 가져오기
+ * 주소로 좌표 변환
+ */
+export async function getCoordsFromAddress(address: string): Promise<MapPoint | null> {
+    if (!(await ensureKakaoReady())) return null;
+
+    return new Promise((resolve) => {
+        const geocoder = new window.kakao.maps.services.Geocoder();
+        geocoder.addressSearch(address, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
+                resolve({
+                    lat: parseFloat(result[0].y),
+                    lng: parseFloat(result[0].x)
+                });
+            } else {
+                resolve(null);
+            }
+        });
+    });
+}
+
+/**
+ * 동네 날씨 조회 (기상청 API 연동)
  */
 export async function getVillageWeather(lat: number, lng: number): Promise<WeatherData> {
     try {
@@ -273,9 +245,8 @@ export async function getVillageWeather(lat: number, lng: number): Promise<Weath
     } catch (error) {
         console.error("Weather API error", error);
         return {
-            temp: "12°",
-            condition: "맑음",
-            icon: "☀️",
+            temp: "22°C",
+            icon: "☀️"
         };
     }
 }
@@ -287,7 +258,7 @@ export async function getNearbyPlaces(lat: number, lng: number, keyword: string)
     try {
         const address = await getAddressFromCoords(lat, lng);
         const query = `${address.regionName !== "위치 확인 불가" ? address.regionName : ""} ${keyword}`.trim();
-        const places = await searchPlaces(query || keyword);
+        const places = await searchPlaces(query || keyword, { lat, lng });
         
         return places.map((item: SearchPlaceResult) => {
             const cleanName = item.title.replace(/<[^>]*>?/gm, '');
@@ -303,3 +274,5 @@ export async function getNearbyPlaces(lat: number, lng: number, keyword: string)
         return [];
     }
 }
+
+type MapPoint = { lat: number; lng: number };

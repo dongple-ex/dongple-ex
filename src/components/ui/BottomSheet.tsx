@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { X, CheckCircle2, ShieldCheck, User as UserIcon, AlertTriangle, Heart, Flag, LayoutList, RadioTower, MapPin, Search, Navigation, ArrowLeft } from "lucide-react";
 import { reportContent, ReportReason } from "@/services/moderationService";
 
@@ -355,7 +356,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
     const [content, setContent] = useState("");
     const [postType, setPostType] = useState("동네질문");
     const [category, setCategory] = useState("기타");
-    const [isSuccess, setIsSuccess] = useState(false);
+    const [createdMemoryHref, setCreatedMemoryHref] = useState<string | null>(null);
 
     useEffect(() => {
         onStateChange(content.trim().length > 0);
@@ -402,24 +403,46 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 category,
                 createdAt: createdPost.created_at,
             });
-            setIsSuccess(true);
-            setTimeout(() => {
-                closeBottomSheet();
-            }, 1500);
+            setCreatedMemoryHref("/album");
         } catch (error) {
             console.error("등록 실패:", error);
             alert("알 수 없는 오류로 등록에 실패했습니다.");
         }
     };
 
-    if (isSuccess) {
+    if (createdMemoryHref) {
         return (
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
                 <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center animate-bounce">
                     <CheckCircle2 size={32} className="text-secondary" />
                 </div>
                 <p className="text-lg font-bold text-foreground">동네 소식이 등록됐습니다.</p>
-                <p className="text-sm text-gray-400">이웃들이 곧 소식을 확인하게 될 거예요.</p>
+                <p className="max-w-[260px] text-center text-sm text-gray-400">
+                    소식에 올라가고 내발문자에도 기록으로 쌓였어요.
+                </p>
+                <div className="grid w-full grid-cols-2 gap-3 pt-2">
+                    <Link
+                        href="/news"
+                        onClick={closeBottomSheet}
+                        className="inline-flex items-center justify-center rounded-2xl bg-[#795548] px-4 py-3 text-[13px] font-black text-white"
+                    >
+                        소식에서 보기
+                    </Link>
+                    <Link
+                        href={createdMemoryHref}
+                        onClick={closeBottomSheet}
+                        className="inline-flex items-center justify-center rounded-2xl border border-border px-4 py-3 text-[13px] font-black text-foreground/70"
+                    >
+                        내발문자에서 보기
+                    </Link>
+                </div>
+                <button
+                    type="button"
+                    onClick={closeBottomSheet}
+                    className="w-full rounded-2xl bg-foreground/5 px-4 py-3 text-[13px] font-black text-foreground/45"
+                >
+                    닫기
+                </button>
             </div>
         );
     }
@@ -567,12 +590,12 @@ function RecordHub() {
                         {activeTab === "status" ? "Realtime Share" : "Community Post"}
                     </p>
                     <h4 className="mt-1 text-[17px] font-black text-foreground">
-                        {activeTab === "status" ? "지금 이 순간의 상황을 빠르게 공유" : "동네 소식을 게시글로 남기기"}
+                        {activeTab === "status" ? "지금 본 상태를 지도에 남기기" : "경험과 정보를 소식으로 남기기"}
                     </h4>
                     <p className="mt-1.5 text-[12px] font-medium leading-relaxed text-foreground/55">
                         {activeTab === "status"
-                            ? "혼잡도, 대기, 현장 분위기처럼 즉시성이 중요한 정보는 상황공유로 등록합니다."
-                            : "경험, 추천, 질문, 생활 정보처럼 맥락이 필요한 내용은 소식 작성으로 남깁니다."}
+                            ? "혼잡도, 대기, 분위기처럼 지금 판단에 필요한 정보는 지도와 내발문자에 함께 이어집니다."
+                            : "방문 경험, 추천, 질문처럼 맥락이 필요한 이야기는 소식에 남고 내 기록으로 쌓입니다."}
                     </p>
                 </div>
 
@@ -610,6 +633,7 @@ function PostDetailView() {
     const [isReported, setIsReported] = useState(false);
     const [tourDetail, setTourDetail] = useState<TourDetail | null>(null);
     const [loadingTourDetail, setLoadingTourDetail] = useState(false);
+    const [isRemembered, setIsRemembered] = useState(false);
 
     const loadComments = useCallback(async () => {
         if (!bottomSheetData?.id || isOfficial || isApiBacked) return;
@@ -713,6 +737,43 @@ function PostDetailView() {
         }))
         .filter((row) => row.value);
     const displayContent = detailSummary || detailOverview || compactText(bottomSheetData?.content, 180) || (isOfficial ? "행사 상세 정보가 준비 중입니다." : "내용이 없습니다.");
+    const detailTitle = formatApiValue(bottomSheetData?.title || bottomSheetData?.content).trim() || "기억한 장소";
+    const detailLat = Number(formatApiValue(bottomSheetData?.latitude || apiMeta?.mapy));
+    const detailLng = Number(formatApiValue(bottomSheetData?.longitude || apiMeta?.mapx));
+    
+    // 좌표 유효성 검사 (WGS84 범위 내 인지 확인)
+    const isWgs84 = Number.isFinite(detailLat) && Number.isFinite(detailLng) && detailLat >= 33 && detailLat <= 39 && detailLng >= 124 && detailLng <= 132;
+    
+    const hasDetailLocation = isWgs84;
+    const mapDetailHref = hasDetailLocation
+        ? `/map?lat=${detailLat}&lng=${detailLng}&title=${encodeURIComponent(detailTitle)}&address=${encodeURIComponent(officialAddress || "")}`
+        : "/map";
+    const handleRememberPlace = () => {
+        saveAlbumMemory({
+            sourceId: formatApiValue(bottomSheetData?.id || detailContentId || detailTitle),
+            type: "place",
+            title: detailTitle,
+            subtitle: isOfficial ? "공식 행사" : isApiBacked ? "공식 장소" : "소식",
+            description: displayContent,
+            locationLabel: officialAddress || detailTitle,
+            address: officialAddress,
+            latitude: hasDetailLocation ? detailLat : undefined,
+            longitude: hasDetailLocation ? detailLng : undefined,
+            tourapiContentId: detailContentId,
+            category: isOfficial ? "행사" : formatApiValue(bottomSheetData?.category || bottomSheetData?.post_type || "장소"),
+        });
+        setIsRemembered(true);
+    };
+    const handleOpenRecordForDetail = () => {
+        openBottomSheet("liveCreate", {
+            mode: "share",
+            eventId: isOfficial ? bottomSheetData?.eventId || bottomSheetData?.id : undefined,
+            defaultPlaceName: detailTitle,
+            address: officialAddress,
+            latitude: hasDetailLocation ? detailLat : undefined,
+            longitude: hasDetailLocation ? detailLng : undefined,
+        });
+    };
 
     return (
         <div className="space-y-4">
@@ -766,6 +827,36 @@ function PostDetailView() {
                     </button>
                 )}
             </div>
+
+            {(isOfficial || isApiBacked) && (
+                <div className="grid grid-cols-3 gap-2">
+                    <Link
+                        href={mapDetailHref}
+                        className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-foreground px-2 text-center text-[12px] font-black leading-tight text-background"
+                    >
+                        지도에서 위치 보기
+                    </Link>
+                    <button
+                        type="button"
+                        onClick={handleOpenRecordForDetail}
+                        disabled={isOfficial && !canShareEventStatus}
+                        className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-secondary px-2 text-center text-[12px] font-black leading-tight text-white disabled:bg-foreground/10 disabled:text-foreground/35"
+                    >
+                        {isOfficial && !canShareEventStatus ? "행사 시작 후 기록" : "기록으로 남기기"}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleRememberPlace}
+                        className={`inline-flex min-h-[48px] items-center justify-center rounded-2xl border px-2 text-center text-[12px] font-black leading-tight ${
+                            isRemembered
+                                ? "border-secondary/20 bg-secondary/10 text-secondary"
+                                : "border-border bg-card-bg text-foreground/70"
+                        }`}
+                    >
+                        {isRemembered ? "기억됨" : "내발문자에 기억"}
+                    </button>
+                </div>
+            )}
 
             {isOfficial ? (
                 <div className="mt-4 space-y-3">
@@ -854,8 +945,8 @@ function PostDetailView() {
 
                     {primaryHighlights.length > 0 ? (
                         <div className="mt-4 grid grid-cols-2 gap-2">
-                            {primaryHighlights.map((row) => (
-                                <InfoPill key={row.key} {...row} />
+                            {primaryHighlights.map(({ key, ...row }) => (
+                                <InfoPill key={key} {...row} />
                             ))}
                         </div>
                     ) : (
@@ -866,8 +957,8 @@ function PostDetailView() {
 
                     {secondaryHighlights.length > 0 && (
                         <div className="mt-3 grid grid-cols-1 gap-2">
-                            {secondaryHighlights.map((row) => (
-                                <ApiInfoRow key={row.key} {...row} />
+                            {secondaryHighlights.map(({ key, ...row }) => (
+                                <ApiInfoRow key={key} {...row} />
                             ))}
                         </div>
                     )}
@@ -875,8 +966,8 @@ function PostDetailView() {
                     {detailInfoRows.length > 0 && (
                         <div className="mt-4 space-y-2">
                             <p className="text-[11px] font-black text-foreground/45">현장 안내</p>
-                            {detailInfoRows.map((row) => (
-                                <ApiInfoRow key={row.key} {...row} />
+                            {detailInfoRows.map(({ key, ...row }) => (
+                                <ApiInfoRow key={key} {...row} />
                             ))}
                         </div>
                     )}

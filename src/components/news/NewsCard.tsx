@@ -9,6 +9,14 @@ import { useState } from "react";
 
 interface CardItem extends Post {
     image_url?: string;
+    event_start_date?: string;
+    event_end_date?: string;
+    eventStartDate?: string;
+    eventEndDate?: string;
+    meta?: {
+        eventstartdate?: string;
+        eventenddate?: string;
+    };
 }
 
 interface NewsCardProps {
@@ -62,6 +70,7 @@ export default function NewsCard({ item, isRss, onUpdate }: NewsCardProps) {
     };
 
     const trust = getTrustLevel(item.score || 0.5);
+    const displayDate = getDisplayDate(item);
 
     return (
         <motion.div
@@ -111,7 +120,7 @@ export default function NewsCard({ item, isRss, onUpdate }: NewsCardProps) {
                 <div className="flex items-center justify-between mb-3">
                     <span className="text-[11px] font-black text-accent uppercase tracking-[0.1em]">{item.category}</span>
                     <span className="text-[10px] text-foreground/40 font-bold">
-                        {new Date(item.created_at).toLocaleDateString([], { month: 'long', day: 'numeric' })}
+                        {displayDate}
                     </span>
                 </div>
 
@@ -148,4 +157,24 @@ export default function NewsCard({ item, isRss, onUpdate }: NewsCardProps) {
             </div>
         </motion.div>
     );
+}
+
+function getDisplayDate(item: CardItem) {
+    const startDate = item.event_start_date || item.eventStartDate || formatTourDate(item.meta?.eventstartdate);
+    const endDate = item.event_end_date || item.eventEndDate || formatTourDate(item.meta?.eventenddate);
+
+    if (startDate && endDate) {
+        return startDate === endDate ? startDate : `${startDate} ~ ${endDate}`;
+    }
+
+    if (startDate) return startDate;
+
+    return new Date(item.created_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
+}
+
+function formatTourDate(value?: string) {
+    if (!value) return "";
+    const digits = value.replace(/\D/g, "");
+    if (digits.length !== 8) return value;
+    return `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6, 8)}`;
 }

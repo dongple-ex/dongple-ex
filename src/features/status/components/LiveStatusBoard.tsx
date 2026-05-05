@@ -50,7 +50,7 @@ export default function LiveStatusBoard() {
     const handleReplySubmit = async ({ selectedStatus, replyText, id }: { selectedStatus: string; replyText: string; id: string }) => {
         const option = SHAREABLE_STATUS_OPTIONS.find(opt => opt.label === selectedStatus);
         const newStatus = option ? option.label : "보통";
-        const newBadgeColor = option ? option.badgeColor : "text-gray-500";
+        const newBadgeColor = option ? option.badgeText : "text-gray-500";
 
         try {
             await postLiveStatus({

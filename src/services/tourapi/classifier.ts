@@ -24,7 +24,13 @@ export async function classifyAndLinkEvent(item: FestivalItem) {
   const lat = parseFloat(mapy);
   const lng = parseFloat(mapx);
 
-  if (isNaN(lat) || isNaN(lng)) return;
+  // WGS84 범위 체크 (한국 위경도)
+  const isValid = !isNaN(lat) && !isNaN(lng) && lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132;
+
+  if (!isValid) {
+    console.warn(`[Classifier] Ignored invalid or non-WGS84 coordinates for ${title}: lat=${lat}, lng=${lng}`);
+    return;
+  }
 
   // 1. 기존 데이터 중 근접한(100m) 데이터 검색
   const range = 0.001; // 약 100m 오차 범위 내 중복 제거

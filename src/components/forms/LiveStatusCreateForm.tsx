@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import {
   Building2,
@@ -66,6 +67,12 @@ export default function LiveStatusCreateForm({
   const [selectedStatus, setSelectedStatus] = useState("보통");
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [completedRecord, setCompletedRecord] = useState<{
+    title: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -127,13 +134,20 @@ export default function LiveStatusCreateForm({
             ? "이 장소의 현재 상황을 다른 이웃에게 요청했어요."
             : `${nextStatus} 상태를 현장에서 바로 기록했어요.`),
         locationLabel: displayAddress || placeName.trim(),
+        address: displayAddress,
+        latitude: finalLat,
+        longitude: finalLng,
         statusLabel: nextStatus,
         category,
         createdAt: created.created_at,
       });
 
-      alert("성공적으로 공유되었습니다.");
-      onSuccess?.();
+      setCompletedRecord({
+        title: placeName.trim(),
+        address: displayAddress,
+        latitude: finalLat,
+        longitude: finalLng,
+      });
     } catch (error) {
       console.error("상황 공유 등록 실패:", error);
       alert("등록 중 오류가 발생했습니다.");
@@ -141,6 +155,47 @@ export default function LiveStatusCreateForm({
       setIsSubmitting(false);
     }
   };
+
+  const mapHref = completedRecord?.latitude && completedRecord?.longitude
+    ? `/map?lat=${completedRecord.latitude}&lng=${completedRecord.longitude}&title=${encodeURIComponent(completedRecord.title)}&address=${encodeURIComponent(completedRecord.address || "")}`
+    : "/map";
+
+  if (completedRecord) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+          <MapPin size={30} />
+        </div>
+        <h3 className="mt-5 text-[20px] font-black text-foreground">기록이 지도와 내발문자에 남았어요</h3>
+        <p className="mt-2 max-w-[280px] text-[13px] font-medium leading-relaxed text-foreground/55">
+          지금 남긴 상태는 위치와 함께 저장됐습니다. 바로 지도에서 확인하거나 내발문자에서 다시 꺼내볼 수 있어요.
+        </p>
+        <div className="mt-6 grid w-full grid-cols-2 gap-3">
+          <Link
+            href={mapHref}
+            className="inline-flex items-center justify-center rounded-2xl bg-secondary px-4 py-3 text-[13px] font-black text-white shadow-lg shadow-secondary/20"
+            onClick={onSuccess}
+          >
+            지도에서 보기
+          </Link>
+          <Link
+            href="/album"
+            className="inline-flex items-center justify-center rounded-2xl border border-border bg-card-bg px-4 py-3 text-[13px] font-black text-foreground/70"
+            onClick={onSuccess}
+          >
+            내발문자에서 보기
+          </Link>
+        </div>
+        <button
+          type="button"
+          onClick={onSuccess}
+          className="mt-3 w-full rounded-2xl bg-foreground/5 px-4 py-3 text-[13px] font-black text-foreground/45"
+        >
+          닫기
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={compact ? "space-y-4" : "space-y-5"}>
@@ -159,10 +214,10 @@ export default function LiveStatusCreateForm({
                 행사 현장 공유
               </p>
               <h4 className="mt-1 text-[15px] font-black text-foreground">
-                이 행사의 지금 상태를 남기는 화면입니다
+                이 행사 핀에 지금 상태를 연결합니다
               </h4>
               <p className="mt-1 text-[12px] font-medium leading-relaxed text-foreground/50">
-                붐빔, 대기, 분위기를 공유하면 행사 핀에 몇 분 전 상태로 바로 연결됩니다.
+                행사 기간에만 현장 상태를 남길 수 있고, 공유한 내용은 지도와 내발문자에 이어집니다.
               </p>
             </div>
           </div>

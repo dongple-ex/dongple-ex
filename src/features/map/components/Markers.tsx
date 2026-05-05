@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { getStatusTheme } from "@/lib/statusTheme";
+import { normalizeStatus } from "@/services/statusService";
 
 /**
  * 실시간 제보 상태 마커
@@ -15,11 +16,7 @@ interface StatusMarkerProps {
 
 export function StatusMarker({ status, isRequest, isSelected }: StatusMarkerProps) {
     const theme = getStatusTheme(status, isRequest);
-
-    // Normalize display text
-    let displayStatus = status;
-    if (status === "여유") displayStatus = "한산";
-    if (status === "혼잡") displayStatus = "붐빔";
+    const displayStatus = normalizeStatus(status);
 
     return (
         <motion.div
@@ -86,7 +83,7 @@ export function ClickTargetMarker({ address, placeName, onReport, onRequest }: C
             {/* 마커 본체: 바운싱하는 내발문자 아이콘 */}
             <div className="w-10 h-10 bg-white rounded-full border-2 border-secondary/20 shadow-2xl flex items-center justify-center animate-bounce overflow-hidden relative">
                 <Image
-                    src="/favicon-marker.png"
+                    src="/favicon_marker.png"
                     alt="위치 선택"
                     width={40}
                     height={40}

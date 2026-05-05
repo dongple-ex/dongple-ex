@@ -6,11 +6,12 @@ import { getAddressFromCoords, getCoordsFromAddress, searchPlaces, getNearestPla
 import { fetchOfficialEvents } from "@/services/eventService";
 import { createRoot } from "react-dom/client";
 import PulseMarker from "@/components/map/PulseMarker";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useLocationStore } from "@/lib/store/locationStore";
 import { getEventPeriodPhase, getEventStatusBlock } from "@/lib/eventPeriod";
+import { saveRecentMapPlace } from "@/lib/mapRecentPlaces";
 import { 
     Home, Trees, Coffee, Store, PartyPopper
 } from "lucide-react";
@@ -53,15 +54,24 @@ const CATEGORIES = [
     { id: "공원", label: "공원", icon: Trees },
 ];
 
-const createLatLng = (lat: number, lng: number) => new window.kakao.maps.LatLng(lat, lng);
+const createLatLng = (lat: number, lng: number) => {
+    // 좌표 유효성 검사 (WGS84 범위 내 인지 확인)
+    const isValid = isFinite(lat) && isFinite(lng) && lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132;
+    if (!isValid) {
+        console.warn(`[Map] Invalid coordinates detected: lat=${lat}, lng=${lng}. Falling back to default.`);
+        return new window.kakao.maps.LatLng(37.2995, 126.9912); // 수원 정자동 기본값
+    }
+    return new window.kakao.maps.LatLng(lat, lng);
+};
 
-const getLatLngPoint = (latlng: { getLat: () => number; getLng: () => number }) => ({
+const getLatLngPoint = (latlng: any) => ({
     lat: latlng.getLat(),
     lng: latlng.getLng(),
 });
 
 function MapContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const openGlobalBottomSheet = useUIStore((state) => state.openBottomSheet);
     const { 
         latitude: storeLat, 
@@ -79,17 +89,19 @@ function MapContent() {
     const [sheetHeight, setSheetHeight] = useState(35);
     const [isDragging, setIsDragging] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState("전체");
+    const [isMapReady, setIsMapReady] = useState(false);
 
     // Click-to-Pin states
     const [clickedLatLng, setClickedLatLng] = useState<MapPoint | null>(null);
     const [clickedAddress, setClickedAddress] = useState<string | null>(null);
     const [clickedPlaceName, setClickedPlaceName] = useState<string | null>(null);
-    const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+    const [selectedEventId, setSelectedEventId] = useState<string | number | null>(null);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mapRef = useRef<any>(null);
     const markersRef = useRef<MarkerEntry[]>([]);
     const clickMarkerRef = useRef<{ setMap: (map: unknown) => void } | null>(null);
+    const handledInitialActionRef = useRef(false);
     const [officialEvents, setOfficialEvents] = useState<OfficialEventMarker[]>([]);
     const officialEventsRef = useRef<OfficialEventMarker[]>([]);
     const isFetchingOfficial = useRef(false);
@@ -206,6 +218,13 @@ function MapContent() {
                     setClickedLatLng(coords);
                     const addr = await getAddressFromCoords(coords.lat, coords.lng);
                     setClickedAddress(addr.fullAddress);
+                    setClickedPlaceName(queryToSearch);
+                    saveRecentMapPlace({
+                        title: queryToSearch,
+                        address: addr.fullAddress,
+                        latitude: coords.lat,
+                        longitude: coords.lng,
+                    });
                 }
             }
         } catch (err) {
@@ -225,6 +244,12 @@ function MapContent() {
                 setClickedLatLng({ lat, lng });
                 setClickedAddress(place.roadAddress || place.address || place.title);
                 setClickedPlaceName(place.title);
+                saveRecentMapPlace({
+                    title: place.title,
+                    address: place.roadAddress || place.address || place.title,
+                    latitude: lat,
+                    longitude: lng,
+                });
             }
         }
     };
@@ -238,30 +263,44 @@ function MapContent() {
             center: createLatLng(storeLat, storeLng),
             level: 4,
         });
+
+        // 지도가 렌더링되지 않는 이슈 해결을 위해 relayout 호출
+        setTimeout(() => {
+            if (map) map.relayout();
+        }, 100);
+
         mapRef.current = map;
+        setIsMapReady(true);
+        console.log("[Map] Map initialized successfully.");
 
         window.kakao.maps.event.addListener(map, 'idle', async () => {
             const center = map.getCenter();
             const { lat, lng } = getLatLngPoint(center);
+            
+            // 좌표가 0이거나 이상한 경우 건너뜀
+            if (lat === 0 || lng === 0) return;
+
             const addrResult = await getAddressFromCoords(lat, lng);
             setLocation(lat, lng, addrResult.fullAddress, addrResult.regionName);
+            
+            // 지도가 멈췄을 때 마커 렌더링 보장
+            renderMarkers();
         });
 
         window.kakao.maps.event.addListener(map, 'click', async (e: { latLng: { getLat: () => number; getLng: () => number } }) => {
             const { lat, lng } = getLatLngPoint(e.latLng);
             
             // Check for nearby official events
-            let nearestEvent = null;
+            let nearestEvent: OfficialEventMarker | null = null;
             let minDistance = Infinity;
             
-            officialEventsRef.current.forEach(event => {
-                // Simple Euclidean distance for proximity (approx. 0.0003 is ~30m)
+            for (const event of officialEventsRef.current) {
                 const dist = Math.sqrt(Math.pow(event.lat - lat, 2) + Math.pow(event.lng - lng, 2));
                 if (dist < minDistance) {
                     minDistance = dist;
                     nearestEvent = event;
                 }
-            });
+            }
 
             if (nearestEvent && minDistance < 0.0003) {
                 setSelectedEventId(nearestEvent.id);
@@ -275,11 +314,9 @@ function MapContent() {
             setSelectedEventId(null);
             setClickedLatLng({ lat, lng });
             
-            // 1. 역지오코딩 (주소)
             const addrResult = await getAddressFromCoords(lat, lng);
             setClickedAddress(addrResult.fullAddress);
             
-            // 2. 주변 POI 탐색. 새 마커 위치는 사용자가 찍은 좌표 그대로 유지하고, 아주 가까운 POI는 이름만 보조로 쓴다.
             const nearest = await getNearestPlace(lat, lng);
             if (nearest) {
                 setClickedPlaceName(nearest.title);
@@ -337,6 +374,34 @@ function MapContent() {
         });
     }, [openGlobalBottomSheet]);
 
+    useEffect(() => {
+        if (!isMapReady || !mapRef.current) return;
+
+        const latParam = Number(searchParams.get("lat"));
+        const lngParam = Number(searchParams.get("lng"));
+        const titleParam = searchParams.get("title") || "";
+        const addressParam = searchParams.get("address") || "";
+        const modeParam = searchParams.get("mode");
+
+        if (Number.isFinite(latParam) && Number.isFinite(lngParam)) {
+            mapRef.current.setCenter(createLatLng(latParam, lngParam));
+            mapRef.current.setLevel(3);
+            setClickedLatLng({ lat: latParam, lng: lngParam });
+            setClickedPlaceName(titleParam || null);
+            setClickedAddress(addressParam || titleParam || "");
+            setSelectedEventId(null);
+            setExpandedCardId(null);
+            setSheetHeight(35);
+        }
+
+        if (modeParam === "share" && !handledInitialActionRef.current) {
+            handledInitialActionRef.current = true;
+            const center = mapRef.current.getCenter();
+            const { lat, lng } = getLatLngPoint(center);
+            handleOpenCreateAt("share", lat, lng, storeAddress);
+        }
+    }, [handleOpenCreateAt, isMapReady, searchParams, storeAddress]);
+
     const visiblePlaceMarkers = useMemo(
         () => markers.filter((marker) => !marker.event_id && !marker.tourapi_content_id),
         [markers],
@@ -344,6 +409,8 @@ function MapContent() {
 
     const renderMarkers = useCallback(() => {
         if (!window.kakao?.maps || !mapRef.current) return;
+
+        console.log("[Map] Rendering markers start. visiblePlaceMarkers:", visiblePlaceMarkers.length, "officialEvents:", officialEvents.length);
 
         clearRenderedMarkers();
 
@@ -355,7 +422,6 @@ function MapContent() {
         // 1. Click-to-Pin Marker
         if (clickedLatLng) {
             const el = document.createElement('div');
-            // Prevent event propagation to map
             el.addEventListener('click', (e) => e.stopPropagation());
             el.addEventListener('mousedown', (e) => e.stopPropagation());
             el.addEventListener('touchstart', (e) => e.stopPropagation());
@@ -381,7 +447,7 @@ function MapContent() {
             markersRef.current.push({ marker, root });
         }
 
-        // 2. Live Status Markers (Shape: Balloon with status dot)
+        // 2. Live Status Markers
         visiblePlaceMarkers
             .filter(m => {
                 if (selectedCategory === "전체") return true;
@@ -393,7 +459,6 @@ function MapContent() {
             .forEach(m => {
             const isSelected = expandedCardId === m.id;
             const el = document.createElement('div');
-            // Prevent event propagation to map
             el.addEventListener('click', (e) => e.stopPropagation());
             el.addEventListener('mousedown', (e) => e.stopPropagation());
             el.addEventListener('touchstart', (e) => e.stopPropagation());
@@ -443,11 +508,10 @@ function MapContent() {
             markersRef.current.push({ marker, root });
         });
 
-        // 3. Official Event Markers (Shape: Circular Pulse)
+        // 3. Official Event Markers
         if (selectedCategory !== "카페" && selectedCategory !== "식당" && selectedCategory !== "공원") {
             officialEvents.forEach(festival => {
             const el = document.createElement('div');
-            // Prevent event propagation to map
             el.addEventListener('click', (e) => e.stopPropagation());
             el.addEventListener('mousedown', (e) => e.stopPropagation());
             el.addEventListener('touchstart', (e) => e.stopPropagation());
@@ -460,9 +524,9 @@ function MapContent() {
                 <PulseMarker 
                     title={festival.title} 
                     category="행사"
+                    status={statusSummary?.level}
                     statusLabel={statusSummary?.label}
                     updatedAgo={statusSummary?.updatedAgo}
-                    statusIndicatorClass={statusSummary?.indicatorClass}
                     isSelected={isSelected}
                     onClick={() => {
                         setSelectedEventId(festival.id);
@@ -563,8 +627,19 @@ function MapContent() {
                 </div>
             </div>
 
-            <div className="relative flex-1 w-full" style={{ minHeight: 'calc(100dvh - 15vh)' }}>
-                <div id="map-container" className="absolute inset-0 w-full h-full bg-gray-100" />
+            <div className="relative flex-1 w-full bg-gray-100 overflow-hidden" style={{ minHeight: '300px' }}>
+                <div 
+                    id="map-container" 
+                    className="w-full h-full" 
+                    style={{ 
+                        position: 'absolute', 
+                        top: 0, 
+                        left: 0, 
+                        width: '100%', 
+                        height: '100%',
+                        zIndex: 0
+                    }} 
+                />
             </div>
 
             <MapBottomSheet 

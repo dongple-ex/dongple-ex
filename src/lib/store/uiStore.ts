@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 
-export type BottomSheetContent = "write" | "recordHub" | "postDetail" | "liveCreate" | "liveReply" | "liveDetail" | "contentReport" | null;
+export type BottomSheetContent = "write" | "recordHub" | "postDetail" | "liveCreate" | "liveReply" | "liveDetail" | "contentReport" | "locationSearch" | null;
 
-export type BottomSheetData = Record<string, unknown> | null;
+export type BottomSheetData = any;
 
 export type ThemeMode = "light" | "dark";
 

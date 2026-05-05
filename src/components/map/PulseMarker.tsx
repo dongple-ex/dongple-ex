@@ -2,13 +2,14 @@
 
 import { motion } from "framer-motion";
 import { BadgeCheck, Plus } from "lucide-react";
+import { getStatusTheme } from "@/lib/statusTheme";
 
 interface PulseMarkerProps {
     title: string;
     category: string;
+    status?: string;
     statusLabel?: string;
     updatedAgo?: string;
-    statusIndicatorClass?: string;
     isSelected?: boolean;
     onClick?: () => void;
     onReport?: () => void;
@@ -17,13 +18,20 @@ interface PulseMarkerProps {
 export default function PulseMarker({
     title,
     category,
+    status,
     statusLabel,
     updatedAgo,
-    statusIndicatorClass = "bg-secondary",
     isSelected = false,
     onClick,
     onReport,
 }: PulseMarkerProps) {
+    const theme = getStatusTheme(status || "");
+    
+    // 상태가 있을 때는 해당 테마 색상, 없을 때는 기본 secondary(초록) 사용
+    const markerColorClass = status ? theme.indicator : "bg-secondary";
+    const labelBgClass = status ? theme.indicator : "bg-secondary";
+    const labelBorderClass = status ? theme.border : "border-secondary/20";
+
     return (
         <div 
             className={`relative flex flex-col items-center cursor-pointer group transition-all duration-300 pointer-events-auto ${isSelected ? 'z-50 scale-110' : 'z-10'}`}
@@ -47,7 +55,7 @@ export default function PulseMarker({
                         repeat: Infinity, 
                         ease: "easeOut" 
                     }}
-                    className="w-full h-full bg-secondary/20 rounded-full"
+                    className={`w-full h-full opacity-20 rounded-full ${markerColorClass}`}
                 />
             </div>
 
@@ -67,24 +75,24 @@ export default function PulseMarker({
                 <motion.div 
                     whileHover={{ scale: 1.15 }} 
                     whileTap={{ scale: 0.95 }}
-                    className="relative z-10 w-9 h-9 bg-card-bg border-2 border-secondary rounded-full flex items-center justify-center shadow-[0_10px_20px_rgba(0,0,0,0.15)] transition-shadow group-hover:shadow-secondary/30"
+                    className={`relative z-10 w-9 h-9 bg-card-bg border-2 rounded-full flex items-center justify-center shadow-[0_10px_20px_rgba(0,0,0,0.15)] transition-all ${status ? theme.border : 'border-secondary'}`}
                 >
-                    <BadgeCheck size={20} className="text-secondary" />
+                    <BadgeCheck size={20} className={status ? theme.text : "text-secondary"} />
                     
                     {/* Top Right Active Dot */}
-                    <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-secondary text-white rounded-full flex items-center justify-center border-2 border-card-bg">
+                    <div className={`absolute -top-0.5 -right-0.5 w-4 h-4 text-white rounded-full flex items-center justify-center border-2 border-card-bg ${markerColorClass}`}>
                         <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                     </div>
                 </motion.div>
 
                 {/* Label (Follows floating motion) */}
-                <div className="mt-2 bg-secondary text-white px-3 py-1.5 rounded-xl border border-secondary/20 shadow-xl whitespace-nowrap opacity-90 group-hover:opacity-100 transition-opacity">
+                <div className={`mt-2 text-white px-3 py-1.5 rounded-xl border shadow-xl whitespace-nowrap opacity-90 group-hover:opacity-100 transition-all ${labelBgClass} ${labelBorderClass}`}>
                     <div className="flex flex-col items-center">
                         <span className="text-[9px] font-black opacity-70 uppercase tracking-tighter mb-0.5">{category}</span>
                         <span className="text-[13px] font-black">{title}</span>
                         {statusLabel ? (
                             <span className="mt-1 flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-black">
-                                <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${statusIndicatorClass}`} />
+                                <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-white" />
                                 {statusLabel}
                                 {updatedAgo ? <span className="ml-1 opacity-70">· {updatedAgo}</span> : null}
                             </span>
@@ -97,7 +105,7 @@ export default function PulseMarker({
                 </div>
 
                 {/* Bottom Pointer attached to Label */}
-                <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-secondary -mt-0.5" />
+                <div className={`w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] -mt-0.5 ${status ? 'border-t-' + theme.indicator.replace('bg-', '') : 'border-t-secondary'}`} />
 
                 {onReport && isSelected && (
                     <motion.button

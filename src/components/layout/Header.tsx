@@ -1,146 +1,117 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { MapPin, Search, Bell, ArrowLeft, SlidersHorizontal, X } from "lucide-react";
-import { useLocationStore } from "@/lib/store/locationStore";
-import { useUIStore } from "@/lib/store/uiStore";
+import { ArrowLeft, Bell, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useLocationStore } from "@/lib/store/locationStore";
+import { useUIStore } from "@/lib/store/uiStore";
 import { getVillageWeather, WeatherData } from "@/services/api";
 
 interface HeaderProps {
-    isSearchMode?: boolean;
-    searchValue?: string;
-    onSearchChange?: (val: string) => void;
-    onSearch?: () => void;
-    showBackButton?: boolean;
-    backUrl?: string;
-    rightElement?: React.ReactNode;
-    placeholder?: string;
-    onClearSearch?: () => void;
+  isSearchMode?: boolean;
+  searchValue?: string;
+  onSearchChange?: (val: string) => void;
+  onSearch?: () => void;
+  showBackButton?: boolean;
+  backUrl?: string;
+  rightElement?: React.ReactNode;
+  placeholder?: string;
+  onClearSearch?: () => void;
 }
 
 export default function Header({
-    isSearchMode = false,
-    searchValue = "",
-    onSearchChange,
-    onSearch,
-    showBackButton = false,
-    backUrl,
-    rightElement,
-    placeholder = "동네 소식 검색...",
-    onClearSearch
+  isSearchMode = false,
+  searchValue = "",
+  onSearchChange,
+  onSearch,
+  showBackButton = false,
+  backUrl,
+  rightElement,
+  placeholder = "장소나 동네 소식 검색",
+  onClearSearch,
 }: HeaderProps) {
-    const { regionName, latitude, longitude, fetchLocation, isLoading } = useLocationStore();
-    const openBottomSheet = useUIStore((state) => state.openBottomSheet);
-    const router = useRouter();
-    const [weather, setWeather] = useState<WeatherData | null>(null);
+  const { regionName, latitude, longitude, fetchLocation, isLoading } = useLocationStore();
+  const openBottomSheet = useUIStore((state) => state.openBottomSheet);
+  const router = useRouter();
+  const [weather, setWeather] = useState<WeatherData | null>(null);
 
-    useEffect(() => {
-        if (!isSearchMode && !regionName) {
-            fetchLocation();
-        }
-    }, [fetchLocation, isSearchMode, regionName]);
+  useEffect(() => {
+    if (!isSearchMode && !regionName) fetchLocation();
+  }, [fetchLocation, isSearchMode, regionName]);
 
-    useEffect(() => {
-        if (latitude && longitude) {
-            getVillageWeather(latitude, longitude).then(data => setWeather(data));
-        }
-    }, [latitude, longitude]);
+  useEffect(() => {
+    if (latitude && longitude) {
+      getVillageWeather(latitude, longitude).then((data) => setWeather(data));
+    }
+  }, [latitude, longitude]);
 
-    const handleBack = () => {
-        if (backUrl) {
-            router.push(backUrl);
-        } else {
-            router.back();
-        }
-    };
+  const handleBack = () => {
+    if (backUrl) router.push(backUrl);
+    else router.back();
+  };
 
-    return (
-        <header className="sticky top-0 w-full max-w-inherit bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 h-14 flex items-center justify-between z-50">
-            {isSearchMode ? (
-                <div className="flex items-center w-full space-x-3">
-                    {showBackButton ? (
-                        <button
-                            onClick={handleBack}
-                            className="p-1 -ml-1 text-gray-700 hover:text-[#2E7D32] transition-colors"
-                        >
-                            <ArrowLeft size={24} />
-                        </button>
-                    ) : (
-                        <MapPin size={20} className="text-[#2E7D32]" />
-                    )}
+  return (
+    <header className="sticky top-0 z-50 flex h-14 w-full items-center justify-between border-b border-border bg-background/86 px-4 backdrop-blur-md">
+      {isSearchMode ? (
+        <div className="flex w-full items-center gap-3">
+          {showBackButton ? (
+            <button onClick={handleBack} className="-ml-1 p-1 text-foreground/70 transition-colors hover:text-secondary">
+              <ArrowLeft size={24} />
+            </button>
+          ) : (
+            <MapPin size={20} className="text-secondary" />
+          )}
 
-                    <div className="flex-1 relative group">
-                        <input
-                            type="text"
-                            placeholder={placeholder}
-                            value={searchValue}
-                            onChange={(e) => onSearchChange?.(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    onSearch?.();
-                                }
-                            }}
-                            className="w-full h-10 pl-10 pr-10 bg-gray-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#2E7D32]/20 outline-none transition-all"
-                            autoFocus={isSearchMode}
-                        />
-                        <Search
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#2E7D32] transition-colors"
-                            size={18}
-                        />
-                        {searchValue && (
-                            <button
-                                onClick={() => onClearSearch?.()}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                                <X size={16} />
-                            </button>
-                        )}
-                    </div>
-
-                    {rightElement || (
-                        <button className="p-1 text-gray-700 hover:text-[#2E7D32] transition-colors">
-                            <SlidersHorizontal size={22} />
-                        </button>
-                    )}
-                </div>
-            ) : (
-                <>
-                    <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 relative overflow-hidden rounded-lg">
-                            <Image 
-                                src="/logo.png" 
-                                alt="내발문자 로고" 
-                                fill
-                                className="object-contain"
-                            />
-                        </div>
-                        <div
-                            className="flex items-center space-x-1 font-bold text-lg text-[#3E2723] cursor-pointer hover:opacity-70 transition-opacity"
-                            onClick={() => openBottomSheet("locationSearch")}
-                            title="지역 검색 및 설정"
-                        >
-                            <MapPin
-                                size={18}
-                                className={`text-[#2E7D32] ${isLoading ? 'animate-pulse' : ''}`}
-                            />
-                            <span className={`text-base ${isLoading ? "text-gray-400" : ""}`}>
-                                {regionName}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                        {weather && (
-                            <div className="flex items-center space-x-1 text-sm font-bold text-gray-700 bg-gray-100 px-2.5 py-1 rounded-full cursor-pointer hover:bg-gray-200 transition-colors">
-                                <span>{weather.icon}</span>
-                                <span>{weather.temp}</span>
-                            </div>
-                        )}
-                        <Bell size={22} className="text-gray-700 cursor-pointer" />
-                    </div>
-                </>
+          <div className="group relative flex-1">
+            <input
+              type="text"
+              placeholder={placeholder}
+              value={searchValue}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onSearch?.();
+              }}
+              className="h-10 w-full rounded-xl border border-border bg-nav-bg pl-10 pr-10 text-sm outline-none transition-all focus:ring-2 focus:ring-secondary/20"
+              autoFocus={isSearchMode}
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/35 group-focus-within:text-secondary" size={18} />
+            {searchValue && (
+              <button onClick={() => onClearSearch?.()} className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/35 hover:text-foreground">
+                <X size={16} />
+              </button>
             )}
-        </header>
-    );
+          </div>
+
+          {rightElement || (
+            <button className="p-1 text-foreground/70 transition-colors hover:text-secondary">
+              <SlidersHorizontal size={22} />
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          <button className="flex items-center gap-2" onClick={() => openBottomSheet("locationSearch")} title="지역 검색 및 설정">
+            <div className="relative h-8 w-8 overflow-hidden rounded-lg bg-nav-bg">
+              <Image src="/logo.png" alt="내발문자 로고" fill className="object-contain" />
+            </div>
+            <div className="flex items-center gap-1 font-black text-foreground">
+              <MapPin size={18} className={`text-secondary ${isLoading ? "animate-pulse" : ""}`} />
+              <span className={`text-base ${isLoading ? "text-foreground/35" : ""}`}>{regionName || "내 동네"}</span>
+            </div>
+          </button>
+
+          <div className="flex items-center gap-3">
+            {weather && (
+              <div className="flex items-center gap-1 rounded-full bg-nav-bg px-2.5 py-1 text-sm font-black text-foreground/70">
+                <span>{weather.icon}</span>
+                <span>{weather.temp}</span>
+              </div>
+            )}
+            <Bell size={22} className="cursor-pointer text-foreground/70" />
+          </div>
+        </>
+      )}
+    </header>
+  );
 }

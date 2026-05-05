@@ -19,8 +19,17 @@ type TourApiPlaceItem = {
   sigungucode?: string;
   createdtime?: string;
   modifiedtime?: string;
+  eventstartdate?: string;
+  eventenddate?: string;
   zipcode?: string;
 };
+
+function toDisplayDate(value?: string) {
+  if (!value) return "";
+  const digits = value.replace(/\D/g, "");
+  if (digits.length !== 8) return value;
+  return `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6, 8)}`;
+}
 
 export async function GET(request: NextRequest) {
   const tourApiKey = process.env.TOURAPI_KEY || process.env.TOURAPI_SERVICE_KEY;
@@ -104,6 +113,8 @@ export async function GET(request: NextRequest) {
       post_type: 'post', // 'rss'나 'post' 모두 가능
       image_url: item.firstimage || item.firstimage2 || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=600&q=80", // fallback image
       created_at: new Date().toISOString(), // Mock 데이터처럼 현재 시간 사용
+      event_start_date: toDisplayDate(item.eventstartdate),
+      event_end_date: toDisplayDate(item.eventenddate),
       likes_count: Math.floor(Math.random() * 20), // 가짜 좋아요 수
       comments_count: Math.floor(Math.random() * 5),
       score: 0.8,
@@ -116,7 +127,12 @@ export async function GET(request: NextRequest) {
       address: item.addr1 || "",
       latitude: item.mapy ? Number(item.mapy) : null,
       longitude: item.mapx ? Number(item.mapx) : null,
-    }));
+    })).filter(item => {
+      // WGS84 한국 범위 내 인지 확인 (KTM 좌표 등 제외)
+      const lat = item.latitude;
+      const lng = item.longitude;
+      return lat !== null && lng !== null && lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132;
+    });
 
     return NextResponse.json({
       items: normalized,

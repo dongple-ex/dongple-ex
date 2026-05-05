@@ -110,6 +110,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ Supabase URL or Anon Key is missing. Mock client is being used.');
 }
 
-export const supabase = (supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('placeholder')) 
+export const supabase = ((supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('placeholder')) 
   ? createClient(supabaseUrl, supabaseAnonKey)
-  : mockSupabase;
+  : mockSupabase) as any;
