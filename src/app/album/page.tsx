@@ -92,7 +92,7 @@ export default function JourneyAlbumPage() {
                   다시 가고 싶은 곳
                 </h2>
                 <p className="mt-3 text-[13px] leading-relaxed text-foreground/65">
-                  소식에서 발견하고 지도에서 확인한 장소를 문장처럼 모아둡니다. 다음 방문 때 필요한 맥락이 여기 남아요.
+                  소식에서 발견하고 지도에서 확인한 장소를 발문자처럼 모아둡니다. 다음 방문 때 필요한 맥락이 여기 남아요.
                 </p>
               </div>
               <div className="rounded-2xl bg-foreground/5 p-3 text-secondary shadow-sm">
@@ -143,7 +143,7 @@ export default function JourneyAlbumPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-secondary">Memory Cards</p>
-              <h3 className="mt-1 text-[20px] font-black">문장으로 모은 기록</h3>
+              <h3 className="mt-1 text-[20px] font-black">발문자로 모은 기록</h3>
             </div>
             <MapPinned size={18} className="text-secondary" />
           </div>
