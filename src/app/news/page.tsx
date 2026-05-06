@@ -40,21 +40,16 @@ function NewsContent() {
 
       <section className="px-6 pb-3 pt-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="rounded-[28px] border border-border bg-card-bg p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-widest text-secondary">Step 1. Discover</p>
-              <h2 className="mt-2 text-[26px] font-black tracking-normal">소식은 “가볼 이유”를 고르는 화면입니다.</h2>
-              <p className="mt-3 max-w-[340px] text-[13px] font-medium leading-relaxed text-foreground/60">
-                행사, 카페, 시장, 산책 코스처럼 오늘 방문할 명분이 되는 정보를 모았습니다. 관심 있는 소식을 열고, 지도에서 지금 상태까지 확인해보세요.
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-secondary/70">Explore Nearby</p>
+              <h2 className="mt-2 text-[22px] font-black tracking-tighter leading-tight break-keep text-foreground/90">
+                오늘 우리 동네 어디에<br /><span className="text-secondary">발자국</span> 남길지 찾아봐요
+              </h2>
             </div>
-            <LayoutList size={26} className="shrink-0 text-secondary" />
-          </div>
-
-          <div className="mt-5 grid grid-cols-3 gap-2.5">
-            <FlowCard icon={<Search size={15} />} eyebrow="발견" label="갈 이유 찾기" />
-            <FlowCard icon={<MapPinned size={15} />} eyebrow="확인" label="지도에서 상태 보기" />
-            <FlowCard icon={<PencilLine size={15} />} eyebrow="기록" label="다음 방문으로 저장" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
+              <MapPinned size={28} />
+            </div>
           </div>
         </motion.div>
       </section>
@@ -88,10 +83,10 @@ function NewsContent() {
 
 function FlowCard({ icon, eyebrow, label }: { icon: React.ReactNode; eyebrow: string; label: string }) {
   return (
-    <div className="rounded-2xl bg-nav-bg px-3 py-3 text-center">
-      <div className="mx-auto mb-1 flex justify-center text-secondary">{icon}</div>
-      <p className="text-[10px] font-black uppercase tracking-wider text-foreground/40">{eyebrow}</p>
-      <p className="mt-1 text-[12px] font-bold">{label}</p>
+    <div className="flex flex-col items-center rounded-2xl bg-nav-bg px-2 py-3.5 text-center">
+      <div className="mb-1.5 flex h-5 items-center justify-center text-secondary">{icon}</div>
+      <p className="text-[9px] font-black uppercase tracking-wider text-foreground/30">{eyebrow}</p>
+      <p className="mt-1 text-[11px] font-bold leading-[1.3] break-keep">{label}</p>
     </div>
   );
 }

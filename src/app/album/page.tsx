@@ -99,7 +99,7 @@ export default function JourneyAlbumPage() {
           </button>
           <div className="text-center">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-secondary">Memory Archive</p>
-            <h1 className="mt-1 text-lg font-black">나의 내발문자</h1>
+            <h1 className="mt-1 text-lg font-black">내 발자국이 머문 자리</h1>
           </div>
           <button className="-mr-2 p-2 text-secondary transition-transform active:scale-95" aria-label="공유">
             <Share2 size={22} />

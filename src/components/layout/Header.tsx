@@ -49,6 +49,10 @@ export default function Header({
     }
   }, [latitude, longitude]);
 
+  const formattedRegionName = regionName 
+    ? regionName.split(" ").slice(-2).join(" ") 
+    : "내 동네";
+
   const handleBack = () => {
     if (backUrl) router.push(backUrl);
     else router.back();
@@ -94,13 +98,12 @@ export default function Header({
         </div>
       ) : (
         <>
-          <button className="flex items-center gap-2" onClick={() => openBottomSheet("locationSearch")} title="지역 검색 및 설정">
-            <div className="relative h-8 w-8 overflow-hidden rounded-lg bg-nav-bg">
-              <Image src="/logo.png" alt="내발문자 로고" fill className="object-contain" />
-            </div>
-            <div className="flex items-center gap-1 font-black text-foreground">
+          <button className="flex items-center" onClick={() => openBottomSheet("locationSearch")} title="지역 검색 및 설정">
+            <div className="flex items-center gap-1.5 font-black text-foreground">
               <MapPin size={18} className={`text-secondary ${isLoading ? "animate-pulse" : ""}`} />
-              <span className={`text-base ${isLoading ? "text-foreground/35" : ""}`}>{regionName || "내 동네"}</span>
+              <span className={`text-[17px] tracking-tight ${isLoading ? "text-foreground/35" : ""}`}>
+                {formattedRegionName}
+              </span>
             </div>
           </button>
 
