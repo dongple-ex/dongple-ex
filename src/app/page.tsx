@@ -242,9 +242,6 @@ export default function Home() {
           <div className="mb-4">
             <p className="text-[11px] font-black uppercase tracking-widest text-secondary">Today Discovery</p>
             <h2 className="mt-1.5 text-[22px] font-black">오늘 발견한 곳</h2>
-            <p className="mt-2 text-[13px] font-medium leading-relaxed text-foreground/55">
-              카드 하나에서 정보의 성격, 지금 상태, 다음 행동까지 바로 판단합니다.
-            </p>
           </div>
 
           <div className="space-y-3">
@@ -265,7 +262,6 @@ export default function Home() {
           <div className="mb-4">
             <p className="text-[11px] font-black uppercase tracking-widest text-secondary">Next Stop</p>
             <h2 className="mt-1.5 text-[22px] font-black">다시 볼 장소</h2>
-            <p className="mt-2 text-[13px] font-medium text-foreground/55">검색했거나 저장한 장소를 지도에서 바로 이어봅니다.</p>
           </div>
 
           {mapHubItems.length > 0 ? (

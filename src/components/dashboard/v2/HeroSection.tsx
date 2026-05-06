@@ -32,9 +32,6 @@ export default function HeroSection() {
           다시 꺼내보세요.
         </h1>
 
-        <p className="mt-4 max-w-[350px] text-[14px] font-medium leading-relaxed text-white/82">
-          소식은 “왜 갈지”를, 지도는 “지금 괜찮은지”를, 내발문자는 “다음에 다시 볼 이유”를 남깁니다.
-        </p>
 
         <div className="mt-6 flex gap-2.5">
           <Link

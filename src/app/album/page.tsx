@@ -31,7 +31,7 @@ const formatTime = (value: string) =>
 
 export default function JourneyAlbumPage() {
   const router = useRouter();
-  const { publicId, profile, initAuth, isAuthenticated, isAuthInitialized, signOut, updateNickname } = useAuthStore();
+  const { publicId, profile, isAuthenticated, isAuthInitialized, signOut, updateNickname } = useAuthStore();
   const { theme, toggleTheme } = useUIStore();
   const requireAuth = useRequireAuth();
   const [memories, setMemories] = useState<AlbumMemory[]>([]);
@@ -59,9 +59,6 @@ export default function JourneyAlbumPage() {
     }
   };
 
-  useEffect(() => {
-    initAuth();
-  }, [initAuth]);
 
   useEffect(() => {
     if (!isAuthInitialized || isAuthenticated) return;
@@ -69,10 +66,11 @@ export default function JourneyAlbumPage() {
   }, [isAuthInitialized, isAuthenticated, requireAuth]);
 
   useEffect(() => {
+    if (!isAuthInitialized) return;
     const sync = () => setMemories(getAlbumMemories());
     sync();
     return subscribeAlbumMemories(sync);
-  }, []);
+  }, [isAuthInitialized]);
 
   const filteredMemories = useMemo(() => {
     if (activeFilter === "favorite") return memories.filter((item) => item.favorite);
@@ -101,7 +99,7 @@ export default function JourneyAlbumPage() {
           </button>
           <div className="text-center">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-secondary">Memory Archive</p>
-            <h1 className="mt-1 text-lg font-black">나의 내발문자</h1>
+            <h1 className="mt-1 text-lg font-black">내 발자국이 머문 자리</h1>
           </div>
           <button className="-mr-2 p-2 text-secondary transition-transform active:scale-95" aria-label="공유">
             <Share2 size={22} />

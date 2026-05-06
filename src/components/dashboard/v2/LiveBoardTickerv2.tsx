@@ -157,16 +157,18 @@ export default function LiveBoardTickerv2() {
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between px-2">
-        <p className="text-[11px] font-bold text-foreground/40">지금 {liveUpdates.length}곳의 현장 상태가 공유되고 있어요.</p>
-        <div className="flex gap-2">
-          <button onClick={handleDisagree} className="rounded-full bg-foreground/5 px-3 py-1.5 text-[10px] font-black text-foreground/45 hover:text-rose-500">
+      <div className="mt-3 flex items-center justify-between px-2 gap-3">
+        <p className="flex-1 text-[11px] font-bold leading-tight text-foreground/40 break-keep">
+          지금 {liveUpdates.length}곳의 현장 상태가 공유되고 있어요.
+        </p>
+        <div className="flex gap-2 shrink-0 items-center">
+          <button onClick={handleDisagree} className="rounded-full bg-foreground/5 px-3 py-1.5 text-[10px] font-black text-foreground/45 hover:text-rose-500 whitespace-nowrap transition-colors">
             달라요
           </button>
-          <button onClick={handleAgree} className="rounded-full bg-secondary/10 px-3 py-1.5 text-[10px] font-black text-secondary hover:bg-secondary hover:text-white">
+          <button onClick={handleAgree} className="rounded-full bg-secondary/10 px-3 py-1.5 text-[10px] font-black text-secondary hover:bg-secondary hover:text-white whitespace-nowrap transition-colors">
             맞아요
           </button>
-          <button onClick={() => requireAuth({ type: "bottomSheet", content: "liveCreate", data: { mode: "share" } })} className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background shadow-lg">
+          <button onClick={() => requireAuth({ type: "bottomSheet", content: "liveCreate", data: { mode: "share" } })} className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background shadow-lg hover:scale-105 active:scale-95 transition-all">
             <Plus size={16} />
           </button>
         </div>
