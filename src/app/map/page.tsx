@@ -10,7 +10,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useLocationStore } from "@/lib/store/locationStore";
-import { useRequireAuth } from "@/lib/useRequireAuth";
 import { getEventPeriodPhase, getEventStatusBlock } from "@/lib/eventPeriod";
 import { saveRecentMapPlace } from "@/lib/mapRecentPlaces";
 import { getPersistentUserId } from "@/lib/auth-utils";
@@ -82,8 +81,7 @@ function MapContent() {
         address: storeAddress,
         setLocation 
     } = useLocationStore();
-    const { userId, isAuthenticated } = useAuthStore();
-    const requireAuth = useRequireAuth();
+    const { userId } = useAuthStore();
 
     const [markers, setMarkers] = useState<LiveStatus[]>([]);
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null);

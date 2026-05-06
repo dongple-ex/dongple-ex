@@ -31,7 +31,7 @@ const formatTime = (value: string) =>
 
 export default function JourneyAlbumPage() {
   const router = useRouter();
-  const { publicId, profile, initAuth, isAuthenticated, isAuthInitialized, signOut, updateNickname } = useAuthStore();
+  const { publicId, profile, isAuthenticated, isAuthInitialized, signOut, updateNickname } = useAuthStore();
   const { theme, toggleTheme } = useUIStore();
   const requireAuth = useRequireAuth();
   const [memories, setMemories] = useState<AlbumMemory[]>([]);

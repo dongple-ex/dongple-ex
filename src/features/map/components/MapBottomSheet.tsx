@@ -58,32 +58,35 @@ export default function MapBottomSheet({
               <span className="ml-2 rounded-full bg-secondary/10 px-2.5 py-0.5 text-[14px] font-black text-secondary">{markers.length}</span>
             </h3>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-col items-end gap-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => onOpenCreate("request")}
+                title="현장 상태 요청"
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-foreground/5 text-foreground/45 transition-all hover:bg-foreground/10 hover:text-foreground active:scale-95"
+              >
+                <HelpCircle size={15} />
+              </button>
+              <button
+                onClick={onToggleHeight}
+                title={isExpanded ? "접기" : "펼치기"}
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary text-white shadow-lg shadow-secondary/30 transition-all active:scale-95"
+              >
+                {isExpanded ? <ChevronDown size={15} strokeWidth={3} /> : <ChevronUp size={15} strokeWidth={3} />}
+              </button>
+            </div>
+
             <button 
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleHistory();
               }}
-              className="mr-1.5 flex items-center gap-1.5 group"
+              className="flex items-center gap-1.5 group pr-0.5"
             >
-              <div className={`relative w-7 h-3.5 rounded-full transition-colors duration-300 ${showHistory ? 'bg-secondary' : 'bg-foreground/10'}`}>
-                <div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-all duration-300 ${showHistory ? 'left-4' : 'left-0.5'}`} />
-              </div>
               <span className={`text-[10px] font-black transition-colors ${showHistory ? 'text-secondary' : 'text-foreground/30 group-hover:text-foreground/50'}`}>과거 이력</span>
-            </button>
-            <button
-              onClick={() => onOpenCreate("request")}
-              title="현장 상태 요청"
-              className="rounded-2xl bg-foreground/5 p-3.5 text-foreground/45 transition-all hover:bg-foreground/10 hover:text-foreground active:scale-95"
-            >
-              <HelpCircle size={20} />
-            </button>
-            <button
-              onClick={onToggleHeight}
-              title={isExpanded ? "접기" : "펼치기"}
-              className="flex items-center justify-center rounded-2xl bg-secondary p-3.5 text-white shadow-lg shadow-secondary/30 transition-all active:scale-95"
-            >
-              {isExpanded ? <ChevronDown size={20} strokeWidth={3} /> : <ChevronUp size={20} strokeWidth={3} />}
+              <div className={`relative w-6 h-3 rounded-full transition-colors duration-300 ${showHistory ? 'bg-secondary' : 'bg-foreground/10'}`}>
+                <div className={`absolute top-0.5 w-2 h-2 bg-white rounded-full transition-all duration-300 ${showHistory ? 'left-3.5' : 'left-0.5'}`} />
+              </div>
             </button>
           </div>
         </div>

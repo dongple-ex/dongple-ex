@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { getStatusTheme } from "@/lib/statusTheme";
-import { normalizeStatus } from "@/services/statusService";
 
 /**
  * 실시간 제보 상태 마커

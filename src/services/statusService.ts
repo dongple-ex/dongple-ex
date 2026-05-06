@@ -176,11 +176,10 @@ export async function postLiveStatus(payload: Partial<LiveStatus>) {
   const createdStatus = data[0] as LiveStatus;
   console.log("[StatusService] Successfully created status:", createdStatus.id);
   
-  try {
-    await createStatusResponseNotifications(createdStatus);
-  } catch (notifError) {
+  // 알림 생성은 백그라운드에서 처리 (사용자 대기 방지)
+  createStatusResponseNotifications(createdStatus).catch(notifError => {
     console.warn("[StatusService] Notification creation failed (non-critical):", notifError);
-  }
+  });
   
   return createdStatus;
 }
