@@ -13,6 +13,7 @@ import { useLocationStore } from "@/lib/store/locationStore";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { getEventPeriodPhase, getEventStatusBlock } from "@/lib/eventPeriod";
 import { saveRecentMapPlace } from "@/lib/mapRecentPlaces";
+import { getPersistentUserId } from "@/lib/auth-utils";
 import { 
     Home, Trees, Coffee, Store, PartyPopper
 } from "lucide-react";
@@ -135,12 +136,7 @@ function MapContent() {
         let finalUserId = userId;
 
         if (!finalUserId) {
-            let guestId = localStorage.getItem("dongple_guest_id");
-            if (!guestId) {
-                guestId = `guest_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
-                localStorage.setItem("dongple_guest_id", guestId);
-            }
-            finalUserId = guestId;
+            finalUserId = getPersistentUserId();
         }
 
         try {
@@ -148,11 +144,13 @@ function MapContent() {
             if (isSuccess) {
                 await loadData();
                 alert("확인이 반영되었습니다!");
+            } else {
+                alert("이미 확인하신 정보입니다.");
             }
             return isSuccess;
         } catch (error) {
             console.error("Verify failed:", error);
-            alert("이미 확인하셨거나 오류가 발생했습니다.");
+            alert("오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
             return false;
         }
     };
@@ -378,10 +376,6 @@ function MapContent() {
     }, [initMap]);
 
     const handleOpenCreateAt = useCallback((mode: string, lat: number, lng: number, address: string, placeName?: string) => {
-        if (!isAuthenticated) {
-            requireAuth({ type: "path", href: typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "/map" });
-            return;
-        }
         openGlobalBottomSheet("liveCreate", {
             mode,
             address,
@@ -389,7 +383,7 @@ function MapContent() {
             longitude: lng,
             defaultPlaceName: placeName || (address ? address.split(' ').slice(-2).join(' ') : "우리 동네")
         });
-    }, [isAuthenticated, openGlobalBottomSheet, requireAuth]);
+    }, [openGlobalBottomSheet]);
 
     useEffect(() => {
         if (!isMapReady || !mapRef.current) return;

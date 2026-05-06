@@ -9,38 +9,42 @@ type StatusTheme = {
   badgeText: string;
   indicator: string;
   card: string;
+  color: string;
 };
 
 export const STATUS_THEME: Record<StatusLabel, StatusTheme> = {
   여유: {
-    tone: "bg-emerald-100 text-emerald-700",
+    tone: "bg-emerald-50 text-emerald-700",
     text: "text-emerald-700",
-    border: "border-emerald-200",
-    hover: "hover:bg-emerald-200",
-    ring: "ring-emerald-300",
-    badgeText: "text-emerald-500",
+    border: "border-emerald-500",
+    hover: "hover:bg-emerald-100",
+    ring: "ring-emerald-400",
+    badgeText: "text-emerald-600",
     indicator: "bg-emerald-500",
     card: "bg-emerald-50/80 border-emerald-100 shadow-emerald-900/5",
+    color: "#10b981", // emerald-500
   },
   보통: {
-    tone: "bg-amber-100 text-amber-700",
-    text: "text-amber-700",
-    border: "border-amber-200",
-    hover: "hover:bg-amber-200",
-    ring: "ring-amber-300",
-    badgeText: "text-amber-500",
-    indicator: "bg-amber-500",
-    card: "bg-amber-50/80 border-amber-100 shadow-amber-900/5",
+    tone: "bg-yellow-50 text-yellow-700",
+    text: "text-yellow-700",
+    border: "border-yellow-500",
+    hover: "hover:bg-yellow-100",
+    ring: "ring-yellow-400",
+    badgeText: "text-yellow-600",
+    indicator: "bg-yellow-500",
+    card: "bg-yellow-50/80 border-yellow-100 shadow-yellow-900/5",
+    color: "#eab308", // yellow-500
   },
   혼잡: {
-    tone: "bg-rose-100 text-rose-700",
+    tone: "bg-rose-50 text-rose-700",
     text: "text-rose-700",
-    border: "border-rose-200",
-    hover: "hover:bg-rose-200",
-    ring: "ring-rose-300",
-    badgeText: "text-rose-500",
+    border: "border-rose-500",
+    hover: "hover:bg-rose-100",
+    ring: "ring-rose-400",
+    badgeText: "text-rose-600",
     indicator: "bg-rose-500",
     card: "bg-rose-50/80 border-rose-100 shadow-rose-900/5",
+    color: "#f43f5e", // rose-500
   },
   요청: {
     tone: "bg-sky-100 text-sky-700",
@@ -51,6 +55,7 @@ export const STATUS_THEME: Record<StatusLabel, StatusTheme> = {
     badgeText: "text-sky-500",
     indicator: "bg-sky-500",
     card: "bg-sky-50/80 border-sky-100 shadow-sky-900/5",
+    color: "#0ea5e9", // sky-500
   },
 };
 

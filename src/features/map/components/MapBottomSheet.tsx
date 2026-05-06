@@ -49,30 +49,28 @@ export default function MapBottomSheet({
       >
         <div className="mb-4 h-1.5 w-12 rounded-full bg-foreground/10" />
         <div className="flex w-full items-center justify-between px-8">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-1 flex-col">
+            <div className="flex items-center">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/80">Step 2. Check now</span>
-              {/* 과거 이력 스위치 */}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleHistory();
-                }}
-                className="flex items-center gap-2 group"
-              >
-                <div className={`relative w-8 h-4 rounded-full transition-colors duration-300 ${showHistory ? 'bg-secondary' : 'bg-foreground/10'}`}>
-                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-300 ${showHistory ? 'left-4.5' : 'left-0.5'}`} />
-                </div>
-                <span className={`text-[10px] font-black transition-colors ${showHistory ? 'text-secondary' : 'text-foreground/30 group-hover:text-foreground/50'}`}>과거 이력 포함</span>
-              </button>
             </div>
             <h3 className="flex items-center text-2xl font-black tracking-normal text-foreground">
               지금 상태 확인
               <span className="ml-2.5 rounded-full bg-secondary/10 px-2.5 py-0.5 text-[14px] font-black text-secondary">{markers.length}</span>
             </h3>
-            <p className="mt-1 text-[12px] font-bold text-foreground/45">붐비는지, 여유로운지, 누군가 확인을 요청했는지 봅니다.</p>
           </div>
-          <div className="flex gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleHistory();
+              }}
+              className="mr-1.5 flex items-center gap-1.5 group"
+            >
+              <div className={`relative w-7 h-3.5 rounded-full transition-colors duration-300 ${showHistory ? 'bg-secondary' : 'bg-foreground/10'}`}>
+                <div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-all duration-300 ${showHistory ? 'left-4' : 'left-0.5'}`} />
+              </div>
+              <span className={`text-[10px] font-black transition-colors ${showHistory ? 'text-secondary' : 'text-foreground/30 group-hover:text-foreground/50'}`}>과거 이력</span>
+            </button>
             <button
               onClick={() => onOpenCreate("request")}
               title="현장 상태 요청"

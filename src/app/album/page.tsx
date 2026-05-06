@@ -59,9 +59,6 @@ export default function JourneyAlbumPage() {
     }
   };
 
-  useEffect(() => {
-    initAuth();
-  }, [initAuth]);
 
   useEffect(() => {
     if (!isAuthInitialized || isAuthenticated) return;
@@ -69,10 +66,11 @@ export default function JourneyAlbumPage() {
   }, [isAuthInitialized, isAuthenticated, requireAuth]);
 
   useEffect(() => {
+    if (!isAuthInitialized) return;
     const sync = () => setMemories(getAlbumMemories());
     sync();
     return subscribeAlbumMemories(sync);
-  }, []);
+  }, [isAuthInitialized]);
 
   const filteredMemories = useMemo(() => {
     if (activeFilter === "favorite") return memories.filter((item) => item.favorite);
