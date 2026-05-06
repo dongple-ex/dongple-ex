@@ -123,9 +123,14 @@ export default function MapBottomSheet({
                         <Clock size={10} className="mr-1" />
                         {timeAgo}
                       </div>
-                      {isTrustHigh && !isExpired && (
-                        <span className="flex items-center rounded-md bg-sky-500/5 px-2 py-0.5 text-[9px] font-black uppercase tracking-tight text-sky-500">
-                          <ShieldCheck size={10} className="mr-0.5" /> 신뢰 높음
+                      {!isExpired && (
+                        <span className={`flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-tight border ${
+                          card.trust_score >= 1.2 
+                            ? "bg-sky-500/10 text-sky-500 border-sky-500/20" 
+                            : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                        }`}>
+                          <ShieldCheck size={10} className="mr-0.5" /> 
+                          신뢰도 {Math.min(99, Math.floor(60 + (card.trust_score - 1.0) * 40))}%
                         </span>
                       )}
                     </div>
@@ -138,12 +143,10 @@ export default function MapBottomSheet({
                         {card.is_request ? "확인 요청 중" : `${normalized} 상태`}
                       </div>
 
-                      {card.verified_count > 0 && (
-                        <div className="flex items-center text-[11px] font-bold text-foreground/40">
-                          <CheckCircle2 size={12} className="mr-1 text-secondary opacity-60" />
-                          {card.verified_count}명이 확인
-                        </div>
-                      )}
+                      <div className="flex items-center text-[11px] font-bold text-foreground/40">
+                        <CheckCircle2 size={12} className="mr-1 text-secondary opacity-60" />
+                        {card.verified_count}명이 확인
+                      </div>
                     </div>
                   </div>
 

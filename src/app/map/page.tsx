@@ -132,19 +132,27 @@ function MapContent() {
     }, [loadData]);
 
     const handleVerify = async (statusId: string) => {
-        if (!isAuthenticated) {
-            requireAuth({ type: "path", href: "/map" });
-            return false;
+        let finalUserId = userId;
+
+        if (!finalUserId) {
+            let guestId = localStorage.getItem("dongple_guest_id");
+            if (!guestId) {
+                guestId = `guest_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
+                localStorage.setItem("dongple_guest_id", guestId);
+            }
+            finalUserId = guestId;
         }
+
         try {
-            const isSuccess = await verifyStatusWithTrust(statusId, userId);
+            const isSuccess = await verifyStatusWithTrust(statusId, finalUserId);
             if (isSuccess) {
                 await loadData();
-                alert("인증되었습니다.");
+                alert("확인이 반영되었습니다!");
             }
             return isSuccess;
         } catch (error) {
             console.error("Verify failed:", error);
+            alert("이미 확인하셨거나 오류가 발생했습니다.");
             return false;
         }
     };
