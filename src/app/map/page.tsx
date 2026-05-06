@@ -644,7 +644,7 @@ function MapContent() {
                 </div>
             </div>
 
-            <div className="relative flex-1 w-full bg-gray-100 overflow-hidden" style={{ minHeight: '300px' }}>
+            <div className="relative flex-1 w-full bg-background overflow-hidden" style={{ minHeight: '300px' }}>
                 <div 
                     id="map-container" 
                     className="w-full h-full" 

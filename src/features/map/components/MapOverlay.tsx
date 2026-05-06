@@ -50,7 +50,7 @@ export default function MapOverlay({
                         className={`px-4 py-2.5 rounded-2xl text-[13px] font-black whitespace-nowrap transition-all border flex items-center space-x-2 ${
                             selectedCategory === cat.id
                             ? "bg-secondary text-white border-secondary shadow-lg shadow-secondary/20"
-                            : "bg-nav-bg/80 backdrop-blur-xl text-foreground/50 border-border hover:bg-card-bg"
+                            : "bg-nav-bg backdrop-blur-xl text-foreground/50 border-border hover:bg-card-bg"
                         }`}
                     >
                         <cat.icon size={14} />

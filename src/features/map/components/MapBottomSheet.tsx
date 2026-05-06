@@ -38,7 +38,7 @@ export default function MapBottomSheet({
 
   return (
     <div
-      className="absolute bottom-0 left-0 z-[60] flex w-full flex-col rounded-t-[36px] border-t border-border bg-nav-bg/95 shadow-2xl backdrop-blur-3xl transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]"
+      className="absolute bottom-0 left-0 z-[60] flex w-full flex-col rounded-t-[36px] border-t border-border bg-nav-bg shadow-2xl backdrop-blur-3xl transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]"
       style={{ height: `${sheetHeight}vh` }}
     >
       <div
@@ -106,8 +106,8 @@ export default function MapBottomSheet({
                 id={`card-${card.id}`}
                 onClick={() => onCardClick(card.id, card.latitude || 37.3015, card.longitude || 126.9930)}
                 layout
-                className={`relative overflow-hidden rounded-[30px] border border-border bg-card-bg/45 p-5 transition-all duration-500 ${
-                  expandedCardId === card.id ? "border-secondary/20 bg-card-bg shadow-xl ring-2 ring-secondary/20" : "hover:bg-card-bg/65"
+                className={`relative overflow-hidden rounded-[30px] border border-border bg-card-bg p-5 transition-all duration-500 ${
+                  expandedCardId === card.id ? "border-secondary/20 bg-card-bg shadow-xl ring-2 ring-secondary/20" : "hover:bg-card-bg"
                 } ${isExpired ? 'opacity-70' : ''}`}
               >
                 <div className="relative z-10 flex items-start justify-between">
