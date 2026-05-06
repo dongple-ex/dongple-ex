@@ -16,7 +16,7 @@ export default function LiveBoardTickerv2() {
   const [liveUpdates, setLiveUpdates] = useState<LiveUpdateItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const openBottomSheet = useUIStore((state) => state.openBottomSheet);
-  const { userId, isAuthenticated } = useAuthStore();
+  const { userId } = useAuthStore();
   const requireAuth = useRequireAuth();
   const regionName = useLocationStore((state) => state.regionName);
 
@@ -50,24 +50,32 @@ export default function LiveBoardTickerv2() {
   const theme = getStatusTheme(current.status, current.is_request);
 
   const handleAgree = async () => {
-    if (!isAuthenticated) {
-      requireAuth({ type: "path", href: "/" });
-      return;
+    let finalUserId: string | null = userId;
+
+    if (!finalUserId) {
+      let guestId = localStorage.getItem("dongple_guest_id");
+      if (!guestId) {
+        guestId = `guest_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
+        localStorage.setItem("dongple_guest_id", guestId);
+      }
+      finalUserId = guestId;
     }
-    const success = await verifyStatusWithTrust(current.id, userId);
-    if (!success) {
-      alert("이미 확인했거나 처리 중 문제가 생겼습니다.");
-      return;
+
+    try {
+      const success = await verifyStatusWithTrust(current.id, finalUserId);
+      if (success) {
+        loadData();
+        alert("확인이 반영되었습니다!");
+      } else {
+        alert("이미 확인하셨거나 처리 중 문제가 생겼습니다.");
+      }
+    } catch (error) {
+      console.error("Agree failed:", error);
+      alert("이미 확인하셨거나 오류가 발생했습니다.");
     }
-    loadData();
   };
 
   const handleDisagree = () => {
-    if (!isAuthenticated) {
-      requireAuth({ type: "path", href: "/" });
-      return;
-    }
-
     const defaultStatus = normalizeStatus(current.status) === "여유" ? "보통" : "여유";
 
     openBottomSheet("liveReply", {
@@ -76,6 +84,15 @@ export default function LiveBoardTickerv2() {
       onSubmit: async ({ selectedStatus, replyText }: { selectedStatus: string; replyText: string }) => {
         const nextStatusColor =
           selectedStatus === "여유" ? "text-emerald-500" : selectedStatus === "보통" ? "text-amber-500" : "text-rose-500";
+
+        let finalUserId: string | null = userId;
+        if (!finalUserId) {
+          finalUserId = localStorage.getItem("dongple_guest_id");
+          if (!finalUserId) {
+            finalUserId = `guest_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
+            localStorage.setItem("dongple_guest_id", finalUserId);
+          }
+        }
 
         await postLiveStatus({
           place_name: current.place_name,
@@ -87,7 +104,10 @@ export default function LiveBoardTickerv2() {
           latitude: current.latitude,
           longitude: current.longitude,
           message: replyText,
+          user_id: finalUserId,
         });
+
+        loadData();
       },
     });
   };
