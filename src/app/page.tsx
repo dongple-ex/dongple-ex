@@ -2,18 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowRight,
-  CheckCircle2,
+  ChevronRight,
   Clock3,
+  Coffee,
   Heart,
   LayoutGrid,
   List,
   MapPinned,
   MessageSquare,
+  PartyPopper,
   PencilLine,
   Search,
   ShieldCheck,
   Star,
+  Trees,
   TrendingUp,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -213,14 +215,19 @@ export default function Home() {
               이 앱은 장소 추천 앱이 아니라, “갈 이유”와 “지금 상태”와 “다음에 다시 볼 기록”을 이어주는 앱입니다.
             </p>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {FLOW_STEPS.map((step) => {
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {FLOW_STEPS.map((step, idx) => {
               const Icon = step.icon;
               return (
-                <div key={step.title} className="min-w-[138px] rounded-2xl bg-nav-bg px-3 py-3">
-                  <Icon size={16} className="text-secondary" />
-                  <strong className="mt-2 block text-[13px] font-black">{step.title}</strong>
-                  <span className="mt-1 block text-[12px] font-semibold leading-snug text-foreground/50">{step.text}</span>
+                <div key={step.title} className="flex items-center gap-2 shrink-0">
+                  <div className="min-w-[138px] rounded-2xl bg-nav-bg px-3 py-3">
+                    <Icon size={16} className="text-secondary" />
+                    <strong className="mt-2 block text-[13px] font-black">{step.title}</strong>
+                    <span className="mt-1 block text-[12px] font-semibold leading-snug text-foreground/50">{step.text}</span>
+                  </div>
+                  {idx < FLOW_STEPS.length - 1 && (
+                    <ChevronRight size={14} className="text-foreground/20 shrink-0" />
+                  )}
                 </div>
               );
             })}
@@ -230,15 +237,12 @@ export default function Home() {
 
       <section className="px-6 pt-5">
         <div className="rounded-[26px] border border-border bg-card-bg p-5 shadow-sm">
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-widest text-secondary">Today Discovery</p>
-              <h2 className="mt-1.5 text-[22px] font-black">오늘 발견한 곳</h2>
-              <p className="mt-2 text-[13px] font-medium leading-relaxed text-foreground/55">
-                카드 하나에서 정보의 성격, 지금 상태, 다음 행동까지 바로 판단합니다.
-              </p>
-            </div>
-            <MessageSquare className="mt-1 shrink-0 text-secondary" size={24} />
+          <div className="mb-4">
+            <p className="text-[11px] font-black uppercase tracking-widest text-secondary">Today Discovery</p>
+            <h2 className="mt-1.5 text-[22px] font-black">오늘 발견한 곳</h2>
+            <p className="mt-2 text-[13px] font-medium leading-relaxed text-foreground/55">
+              카드 하나에서 정보의 성격, 지금 상태, 다음 행동까지 바로 판단합니다.
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -256,13 +260,10 @@ export default function Home() {
 
       <section className="px-6 pt-5">
         <div className="rounded-[26px] border border-border bg-card-bg p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-widest text-secondary">Next Stop</p>
-              <h2 className="mt-1.5 text-[22px] font-black">다시 볼 장소</h2>
-              <p className="mt-2 text-[13px] font-medium text-foreground/55">검색했거나 저장한 장소를 지도에서 바로 이어봅니다.</p>
-            </div>
-            <MapPinned className="mt-1 shrink-0 text-secondary" size={26} />
+          <div className="mb-4">
+            <p className="text-[11px] font-black uppercase tracking-widest text-secondary">Next Stop</p>
+            <h2 className="mt-1.5 text-[22px] font-black">다시 볼 장소</h2>
+            <p className="mt-2 text-[13px] font-medium text-foreground/55">검색했거나 저장한 장소를 지도에서 바로 이어봅니다.</p>
           </div>
 
           {mapHubItems.length > 0 ? (
@@ -312,15 +313,15 @@ export default function Home() {
             <p className="text-[10px] font-black uppercase tracking-widest text-secondary">Community Feed</p>
             <h2 className="mt-2 text-xl font-black">가볼 이유 찾기</h2>
           </div>
-          <Link href="/news" className="text-[12px] font-black text-secondary">
-            전체 보기
+          <Link
+            href="/news"
+            className="flex items-center text-[12px] font-black text-secondary hover:underline"
+          >
+            전체보기 <ArrowRight size={14} className="ml-1" />
           </Link>
         </div>
 
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[12px] font-bold leading-relaxed text-foreground/45">
-            소식은 최종 목적지가 아니라 출발점입니다. 마음에 드는 글을 열고 지도에서 지금 상태를 확인하세요.
-          </p>
+        <div className="flex items-center justify-end">
           <div className="flex shrink-0 rounded-xl bg-foreground/5 p-1">
             <button onClick={() => setViewMode("list")} className={`rounded-lg p-1.5 ${viewMode === "list" ? "bg-card-bg text-secondary shadow-sm" : "text-foreground/40"}`} aria-label="목록 보기">
               <List size={16} />
@@ -370,7 +371,12 @@ function DiscoveryCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-card-bg px-2.5 py-1 text-[10px] font-black text-secondary shadow-sm">{item.type}</span>
-            <span className="rounded-full bg-foreground/5 px-2.5 py-1 text-[10px] font-black text-foreground/45">{item.category}</span>
+            <span className="inline-flex items-center rounded-full bg-foreground/5 px-2.5 py-1 text-[10px] font-black text-foreground/45">
+              {item.category === "행사" && <PartyPopper size={10} className="mr-1 text-secondary" />}
+              {item.category === "카페" && <Coffee size={10} className="mr-1 text-secondary" />}
+              {item.category === "산책" && <Trees size={10} className="mr-1 text-secondary" />}
+              {item.category}
+            </span>
           </div>
           <h3 className="mt-3 text-[17px] font-black leading-tight text-foreground">{item.title}</h3>
           <p className="mt-1 text-[12px] font-bold text-foreground/45">{item.place}</p>

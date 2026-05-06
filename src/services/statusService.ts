@@ -108,13 +108,21 @@ export function getEventStatusSummary(event: EventLike, statuses: LiveStatus[]):
   };
 }
 
-export async function fetchLiveStatus() {
-  const { data, error } = await supabase
+export async function fetchLiveStatus(includeExpired = false) {
+  let query = supabase
     .from("live_status")
     .select("*")
-    .eq("is_hidden", false)
-    .gt("expires_at", new Date().toISOString())
-    .order("created_at", { ascending: false });
+    .eq("is_hidden", false);
+
+  if (!includeExpired) {
+    query = query.gt("expires_at", new Date().toISOString());
+  } else {
+    // 과거 이력을 볼 때는 최근 48시간 이내의 기록만 가져옴 (너무 오래된 데이터 방지)
+    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    query = query.gt("created_at", fortyEightHoursAgo);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) throw error;
 
@@ -141,17 +149,39 @@ export async function fetchLiveStatus() {
 }
 
 export async function postLiveStatus(payload: Partial<LiveStatus>) {
+  if (!payload.place_name || !payload.status) {
+    console.error("[StatusService] Missing required fields:", payload);
+    throw new Error("필수 정보가 누락되었습니다.");
+  }
+
+  if (payload.latitude === 0 || payload.longitude === 0) {
+    console.warn("[StatusService] Suspicious coordinates (0,0):", payload);
+  }
+
   const expiresAt = payload.expires_at || new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
   const initialTrust = payload.tourapi_content_id ? 1.2 : 1.0;
+
+  console.log("[StatusService] Inserting live status:", payload);
 
   const { data, error } = await supabase
     .from("live_status")
     .insert([{ ...payload, expires_at: expiresAt, trust_score: initialTrust }])
     .select();
 
-  if (error) throw error;
+  if (error) {
+    console.error("[StatusService] Insert error:", error);
+    throw error;
+  }
+  
   const createdStatus = data[0] as LiveStatus;
-  await createStatusResponseNotifications(createdStatus);
+  console.log("[StatusService] Successfully created status:", createdStatus.id);
+  
+  try {
+    await createStatusResponseNotifications(createdStatus);
+  } catch (notifError) {
+    console.warn("[StatusService] Notification creation failed (non-critical):", notifError);
+  }
+  
   return createdStatus;
 }
 

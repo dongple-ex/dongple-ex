@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { motion } from "framer-motion";
 import { MapPinned, Sparkles } from "lucide-react";
@@ -11,7 +11,7 @@ export default function HeroSection() {
         className="absolute inset-0 bg-cover bg-center"
         style={{
           backgroundImage:
-            "linear-gradient(180deg, rgba(10,18,15,.16), rgba(10,18,15,.76)), url('https://images.unsplash.com/photo-1577086664693-894d8405334a?auto=format&fit=crop&w=1400&q=80')",
+            "linear-gradient(180deg, rgba(10,18,15,.16), rgba(10,18,15,.76)), url('https://www.suwon.go.kr/webcontent/ckeditor/2026/5/4/d88dc018-7cb8-429f-a49c-478f47654b43.jpg')",
         }}
       />
       <motion.div
@@ -21,7 +21,7 @@ export default function HeroSection() {
       >
         <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1.5 backdrop-blur-md">
           <Sparkles size={14} className="text-amber-200" />
-          <span className="text-[11px] font-black tracking-tight">내발문자: 발견 → 확인 → 기록</span>
+          <span className="text-[11px] font-black tracking-tight">내발문자: 내 발자국이 머문 자리</span>
         </div>
 
         <h1 className="text-[31px] font-black leading-[1.12] tracking-normal md:text-[38px]">

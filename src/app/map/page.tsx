@@ -89,6 +89,7 @@ function MapContent() {
     const [isDragging, setIsDragging] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState("전체");
     const [isMapReady, setIsMapReady] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
 
     // Click-to-Pin states
     const [clickedLatLng, setClickedLatLng] = useState<MapPoint | null>(null);
@@ -111,20 +112,20 @@ function MapContent() {
     const startY = useRef(0);
     const startHeight = useRef(35);
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
-            const data = await fetchLiveStatus();
+            const data = await fetchLiveStatus(showHistory);
             setMarkers(data);
         } catch (error) {
             console.error("Data load failed:", error);
         }
-    };
+    }, [showHistory]);
 
     useEffect(() => {
         loadData();
         const sub = subscribeLiveUpdates(loadData);
         return () => { sub.unsubscribe(); };
-    }, []);
+    }, [loadData]);
 
     const handleVerify = async (statusId: string) => {
         if (!isAuthenticated) {
@@ -402,9 +403,9 @@ function MapContent() {
             handledInitialActionRef.current = true;
             const center = mapRef.current.getCenter();
             const { lat, lng } = getLatLngPoint(center);
-            handleOpenCreateAt("share", lat, lng, storeAddress);
+            handleOpenCreateAt("share", lat, lng, addressParam || "");
         }
-    }, [handleOpenCreateAt, isMapReady, searchParams, storeAddress]);
+    }, [isMapReady, searchParams]); // storeAddress, handleOpenCreateAt 제거 (무한 루프 방지)
 
     const visiblePlaceMarkers = useMemo(
         () => markers.filter((marker) => !marker.event_id && !marker.tourapi_content_id),
@@ -415,17 +416,20 @@ function MapContent() {
         if (!window.kakao?.maps || !mapRef.current) return;
         const map = mapRef.current;
 
-        console.log("[Map] Rendering markers start. visiblePlaceMarkers:", visiblePlaceMarkers.length, "officialEvents:", officialEvents.length);
+        if (clickMarkerRef.current) {
+            const currentPos = clickMarkerRef.current.getPosition();
+            if (clickedLatLng && currentPos.getLat() === clickedLatLng.lat && currentPos.getLng() === clickedLatLng.lng) {
+                // 이미 같은 위치에 마커가 있으면 스킵 (깜빡임 방지)
+            } else {
+                clickMarkerRef.current.setMap(null);
+                clickMarkerRef.current = null;
+            }
+        }
 
         clearRenderedMarkers();
 
-        if (clickMarkerRef.current) {
-            clickMarkerRef.current.setMap(null);
-            clickMarkerRef.current = null;
-        }
-
         // 1. Click-to-Pin Marker
-        if (clickedLatLng) {
+        if (clickedLatLng && !clickMarkerRef.current) {
             const el = document.createElement('div');
             el.addEventListener('click', (e) => e.stopPropagation());
             el.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -655,6 +659,8 @@ function MapContent() {
                 sheetHeight={sheetHeight}
                 markers={visiblePlaceMarkers}
                 expandedCardId={expandedCardId}
+                showHistory={showHistory}
+                onToggleHistory={() => setShowHistory(!showHistory)}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}

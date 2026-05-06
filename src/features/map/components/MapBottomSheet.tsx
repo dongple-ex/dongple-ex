@@ -12,6 +12,8 @@ interface MapBottomSheetProps {
   onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
   markers: LiveStatus[];
   expandedCardId: string | null;
+  showHistory: boolean;
+  onToggleHistory: () => void;
   onCardClick: (id: string, lat: number, lng: number) => void;
   onOpenCreate: (mode: string, lat?: number, lng?: number, address?: string, placeName?: string) => void;
   onVerify: (id: string) => Promise<boolean>;
@@ -25,6 +27,8 @@ export default function MapBottomSheet({
   onPointerUp,
   markers,
   expandedCardId,
+  showHistory,
+  onToggleHistory,
   onCardClick,
   onOpenCreate,
   onVerify,
@@ -46,7 +50,22 @@ export default function MapBottomSheet({
         <div className="mb-4 h-1.5 w-12 rounded-full bg-foreground/10" />
         <div className="flex w-full items-center justify-between px-8">
           <div className="flex flex-col">
-            <span className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-secondary/80">Step 2. Check now</span>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/80">Step 2. Check now</span>
+              {/* 과거 이력 스위치 */}
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleHistory();
+                }}
+                className="flex items-center gap-2 group"
+              >
+                <div className={`relative w-8 h-4 rounded-full transition-colors duration-300 ${showHistory ? 'bg-secondary' : 'bg-foreground/10'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-300 ${showHistory ? 'left-4.5' : 'left-0.5'}`} />
+                </div>
+                <span className={`text-[10px] font-black transition-colors ${showHistory ? 'text-secondary' : 'text-foreground/30 group-hover:text-foreground/50'}`}>과거 이력 포함</span>
+              </button>
+            </div>
             <h3 className="flex items-center text-2xl font-black tracking-normal text-foreground">
               지금 상태 확인
               <span className="ml-2.5 rounded-full bg-secondary/10 px-2.5 py-0.5 text-[14px] font-black text-secondary">{markers.length}</span>
@@ -79,6 +98,7 @@ export default function MapBottomSheet({
             const timeAgo = formatUpdatedAgo(card.created_at);
             const isTrustHigh = card.trust_score >= 1.1;
             const theme = getStatusTheme(card.status, card.is_request);
+            const isExpired = new Date(card.expires_at).getTime() < Date.now();
 
             return (
               <motion.div
@@ -88,17 +108,22 @@ export default function MapBottomSheet({
                 layout
                 className={`relative overflow-hidden rounded-[30px] border border-border bg-card-bg/45 p-5 transition-all duration-500 ${
                   expandedCardId === card.id ? "border-secondary/20 bg-card-bg shadow-xl ring-2 ring-secondary/20" : "hover:bg-card-bg/65"
-                }`}
+                } ${isExpired ? 'opacity-70' : ''}`}
               >
                 <div className="relative z-10 flex items-start justify-between">
                   <div className="flex-1">
                     <div className="mb-3 flex flex-wrap items-center gap-2">
                       <span className="rounded-md bg-foreground/5 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-foreground/35">{card.category}</span>
+                      {isExpired && (
+                        <span className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-tight text-amber-600 border border-amber-500/20">
+                          과거 기록
+                        </span>
+                      )}
                       <div className="flex items-center text-[10px] font-bold text-foreground/40">
                         <Clock size={10} className="mr-1" />
                         {timeAgo}
                       </div>
-                      {isTrustHigh && (
+                      {isTrustHigh && !isExpired && (
                         <span className="flex items-center rounded-md bg-sky-500/5 px-2 py-0.5 text-[9px] font-black uppercase tracking-tight text-sky-500">
                           <ShieldCheck size={10} className="mr-0.5" /> 신뢰 높음
                         </span>
