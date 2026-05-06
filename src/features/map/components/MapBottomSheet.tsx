@@ -48,14 +48,14 @@ export default function MapBottomSheet({
         onPointerUp={onPointerUp}
       >
         <div className="mb-4 h-1.5 w-12 rounded-full bg-foreground/10" />
-        <div className="flex w-full items-center justify-between px-8">
+        <div className="flex w-full items-center justify-between px-6">
           <div className="flex flex-1 flex-col">
             <div className="flex items-center">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/80">Step 2. Check now</span>
             </div>
-            <h3 className="flex items-center text-2xl font-black tracking-normal text-foreground">
+            <h3 className="flex items-center text-[22px] font-black tracking-tighter text-foreground whitespace-nowrap">
               지금 상태 확인
-              <span className="ml-2.5 rounded-full bg-secondary/10 px-2.5 py-0.5 text-[14px] font-black text-secondary">{markers.length}</span>
+              <span className="ml-2 rounded-full bg-secondary/10 px-2.5 py-0.5 text-[14px] font-black text-secondary">{markers.length}</span>
             </h3>
           </div>
           <div className="flex items-center gap-2.5">
