@@ -3,7 +3,7 @@
 import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Building2, ChevronLeft, CloudSun, Coffee, HeartPulse, Landmark, LayoutList, MapPinned, PencilLine, Search, Store } from "lucide-react";
+import { Building2, ChevronLeft, CloudSun, Coffee, HeartPulse, Landmark, MapPinned, Store } from "lucide-react";
 import Link from "next/link";
 import CategorizedNewsCarousel from "@/components/news/CategorizedNewsCarousel";
 import { useLocationStore } from "@/lib/store/locationStore";
@@ -81,15 +81,6 @@ function NewsContent() {
   );
 }
 
-function FlowCard({ icon, eyebrow, label }: { icon: React.ReactNode; eyebrow: string; label: string }) {
-  return (
-    <div className="flex flex-col items-center rounded-2xl bg-nav-bg px-2 py-3.5 text-center">
-      <div className="mb-1.5 flex h-5 items-center justify-center text-secondary">{icon}</div>
-      <p className="text-[9px] font-black uppercase tracking-wider text-foreground/30">{eyebrow}</p>
-      <p className="mt-1 text-[11px] font-bold leading-[1.3] break-keep">{label}</p>
-    </div>
-  );
-}
 
 export default function NewsPage() {
   return (
