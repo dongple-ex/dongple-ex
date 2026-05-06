@@ -113,7 +113,10 @@ type KakaoMapsSdk = {
         content: HTMLElement;
         xAnchor: number;
         yAnchor: number;
-    }) => { setMap: (map: KakaoMapInstance | null) => void };
+    }) => { 
+        setMap: (map: KakaoMapInstance | null) => void;
+        getPosition: () => KakaoLatLng;
+    };
     event: {
         addListener: (
             target: KakaoMapInstance,

@@ -28,6 +28,10 @@ type KakaoMaps = NonNullable<Window["kakao"]>["maps"];
 type KakaoLatLng = InstanceType<KakaoMaps["LatLng"]>;
 type KakaoMapInstance = InstanceType<KakaoMaps["Map"]>;
 type RenderMarkers = () => void;
+type KakaoOverlay = { 
+    setMap: (map: KakaoMapInstance | null) => void;
+    getPosition: () => KakaoLatLng;
+};
 
 type SearchResultItem = {
     title: string;
@@ -40,7 +44,7 @@ type SearchResultItem = {
 type OfficialEventMarker = Awaited<ReturnType<typeof fetchOfficialEvents>>[number];
 
 type MarkerEntry = {
-    marker: { setMap: (map: KakaoMapInstance | null) => void };
+    marker: KakaoOverlay;
     root: ReturnType<typeof createRoot> | null;
 };
 
@@ -99,7 +103,7 @@ function MapContent() {
 
     const mapRef = useRef<KakaoMapInstance | null>(null);
     const markersRef = useRef<MarkerEntry[]>([]);
-    const clickMarkerRef = useRef<{ setMap: (map: KakaoMapInstance | null) => void } | null>(null);
+    const clickMarkerRef = useRef<KakaoOverlay | null>(null);
     const handledInitialActionRef = useRef(false);
     const [officialEvents, setOfficialEvents] = useState<OfficialEventMarker[]>([]);
     const officialEventsRef = useRef<OfficialEventMarker[]>([]);
@@ -405,7 +409,7 @@ function MapContent() {
             const { lat, lng } = getLatLngPoint(center);
             handleOpenCreateAt("share", lat, lng, addressParam || "");
         }
-    }, [isMapReady, searchParams]); // storeAddress, handleOpenCreateAt 제거 (무한 루프 방지)
+    }, [handleOpenCreateAt, isMapReady, searchParams]); // storeAddress 제거 (무한 루프 방지)
 
     const visiblePlaceMarkers = useMemo(
         () => markers.filter((marker) => !marker.event_id && !marker.tourapi_content_id),

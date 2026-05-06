@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArrowRight,
   ChevronRight,
+  CheckCircle2,
   Clock3,
   Coffee,
   Heart,
