@@ -96,7 +96,6 @@ export default function MapBottomSheet({
           markers.map((card) => {
             const normalized = normalizeStatus(card.status);
             const timeAgo = formatUpdatedAgo(card.created_at);
-            const isTrustHigh = card.trust_score >= 1.1;
             const theme = getStatusTheme(card.status, card.is_request);
             const isExpired = new Date(card.expires_at).getTime() < Date.now();
 
