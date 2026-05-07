@@ -507,6 +507,7 @@ function MapContent() {
                         status={m.status} 
                         isRequest={m.is_request} 
                         isSelected={isSelected} 
+                        isExpired={new Date(m.expires_at).getTime() < Date.now()}
                     />
                 </div>
             );
