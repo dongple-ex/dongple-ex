@@ -164,23 +164,29 @@ export default function MapBottomSheet({
                     )}
 
                     <div className="flex gap-2.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onVerify(card.id);
-                        }}
-                        className="flex-1 rounded-[20px] bg-foreground py-4 text-[14px] font-black text-background shadow-lg shadow-foreground/10 transition-all hover:scale-[1.02] active:scale-95"
-                      >
-                        맞아요
-                      </button>
+                      {!card.is_request && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onVerify(card.id);
+                          }}
+                          className="flex-1 rounded-[20px] bg-foreground py-4 text-[14px] font-black text-background shadow-lg shadow-foreground/10 transition-all hover:scale-[1.02] active:scale-95"
+                        >
+                          맞아요
+                        </button>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onOpenCreate("share", card.latitude, card.longitude, undefined, card.place_name);
                         }}
-                        className="flex-1 rounded-[20px] bg-foreground/5 py-4 text-[13px] font-black text-foreground/60 transition-all hover:bg-foreground/10"
+                        className={`rounded-[20px] py-4 font-black transition-all ${
+                          card.is_request 
+                            ? "flex-1 bg-secondary text-white text-[14px] shadow-lg shadow-secondary/20 hover:scale-[1.02] active:scale-95" 
+                            : "flex-1 bg-foreground/5 text-[13px] text-foreground/60 hover:bg-foreground/10"
+                        }`}
                       >
-                        새 상태 공유
+                        {card.is_request ? "내가 알려주기" : "새 상태 공유"}
                       </button>
                     </div>
                   </motion.div>
