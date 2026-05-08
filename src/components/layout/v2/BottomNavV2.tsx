@@ -5,11 +5,13 @@ import { motion } from "framer-motion";
 import { Footprints, Home, LayoutList, MapPinned, Plus } from "lucide-react";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useUIStore } from "@/lib/store/uiStore";
+import { useNotificationStore } from "@/lib/store/notificationStore";
 import Link from "next/link";
 
 export default function BottomNavV2() {
   const pathname = usePathname();
   const requireAuth = useRequireAuth();
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
 
   const navItems = [
     { icon: Home, label: "홈", path: "/" },
@@ -57,6 +59,11 @@ export default function BottomNavV2() {
                 <span className={`text-[10px] font-black ${isActive ? "text-secondary" : "text-foreground/40"}`}>
                   {item.label}
                 </span>
+                {unreadCount > 0 && (
+                  <span className="absolute right-3 top-2 flex min-h-[14px] min-w-[14px] items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black leading-none text-white shadow-sm">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
                 {isActive && <motion.div layoutId="navTab" className="h-1 w-1 rounded-full bg-secondary" />}
               </button>
             );

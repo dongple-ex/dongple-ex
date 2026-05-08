@@ -10,6 +10,7 @@ import { useAuthStore } from "@/lib/store/authStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { AlbumMemory, getAlbumMemories, subscribeAlbumMemories, toggleAlbumFavorite } from "@/lib/albumMemory";
+import NotificationBell from "@/features/notifications/components/NotificationBell";
 
 type AlbumFilter = "all" | "status" | "post" | "place" | "favorite";
 
@@ -101,9 +102,12 @@ export default function JourneyAlbumPage() {
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-secondary">Memory Archive</p>
             <h1 className="mt-1 text-lg font-black">내 발자국이 머문 자리</h1>
           </div>
-          <button className="-mr-2 p-2 text-secondary transition-transform active:scale-95" aria-label="공유">
-            <Share2 size={22} />
-          </button>
+          <div className="-mr-2 flex items-center gap-1">
+            <NotificationBell />
+            <button className="p-2 text-secondary transition-transform active:scale-95" aria-label="공유">
+              <Share2 size={22} />
+            </button>
+          </div>
         </div>
       </header>
 
