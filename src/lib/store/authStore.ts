@@ -214,9 +214,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     signOut: async () => {
         const authClient = getAuthClient();
-        if (authClient.auth) {
-            const { error } = await authClient.auth.signOut();
-            if (error) throw error;
+        try {
+            if (authClient.auth) {
+                await authClient.auth.signOut();
+            }
+        } catch (err) {
+            console.warn("Supabase signOut failed (proceeding with local clear):", err);
         }
 
         const anonymousId = getPersistentUserId();

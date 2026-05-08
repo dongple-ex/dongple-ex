@@ -287,7 +287,7 @@ async function fetchMatchingStatusRequests(response: LiveStatus) {
 }
 
 export async function createStatusResponseNotifications(response: LiveStatus) {
-  if (response.is_request) return;
+  if (!response || response.is_request) return;
 
   const responseAuthorId = response.user_id || null;
   const requests = uniqueStatusRequests(await fetchMatchingStatusRequests(response));
