@@ -8,7 +8,6 @@ import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useAuthStore } from "@/lib/store/authStore";
 import { getVillageWeather, WeatherData } from "@/services/api";
-import NotificationBell from "@/features/notifications/components/NotificationBell";
 
 interface HeaderProps {
   isSearchMode?: boolean;
@@ -114,7 +113,6 @@ export default function Header({
                 <span>{weather.temp}</span>
               </div>
             )}
-            <NotificationBell />
             
             <button 
               onClick={() => isAuthenticated ? router.push("/album") : openBottomSheet("authPrompt")}

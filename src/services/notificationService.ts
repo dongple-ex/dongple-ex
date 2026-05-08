@@ -315,3 +315,30 @@ export async function createStatusResponseNotifications(response: LiveStatus) {
     }),
   );
 }
+
+export interface TrustNotificationInput {
+  userId: string;
+  placeName: string;
+  newScore: number;
+  statusId: string;
+}
+
+export async function createTrustNotification(input: TrustNotificationInput) {
+  if (!input.userId) return null;
+  
+  // 0.2 단위로 알림 구간 설정 (0.8, 1.0, 1.2 등)
+  const scoreLevel = Math.floor(input.newScore * 5); 
+  
+  return createNotification({
+    user_id: input.userId,
+    type: "trust",
+    title: "신뢰도가 상승했어요",
+    content: `"${input.placeName}" 상태 정보가 검증되어 신뢰도가 올랐습니다.`,
+    link_url: `/map?place=${encodeURIComponent(input.placeName)}`,
+    metadata: {
+      status_id: input.statusId,
+      new_score: input.newScore,
+    },
+    dedupe_key: `trust:${input.statusId}:${scoreLevel}`,
+  });
+}

@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { createStatusResponseNotifications } from "@/services/notificationService";
+import { createStatusResponseNotifications, createTrustNotification } from "@/services/notificationService";
 export { normalizeStatus } from "@/lib/statusTheme";
 import { normalizeStatus } from "@/lib/statusTheme";
 
@@ -192,6 +192,24 @@ export async function verifyStatusWithTrust(statusId: string, userId: string) {
     });
 
     if (rpcError) throw rpcError;
+    
+    if (isSuccess) {
+      const { data: statusData } = await supabase
+        .from("live_status")
+        .select("user_id, place_name, trust_score")
+        .eq("id", statusId)
+        .single();
+        
+      if (statusData && statusData.user_id && statusData.user_id !== userId) {
+        createTrustNotification({
+          userId: statusData.user_id,
+          placeName: statusData.place_name,
+          newScore: statusData.trust_score,
+          statusId: statusId
+        }).catch(err => console.warn("Trust notification failed:", err));
+      }
+    }
+
     return isSuccess;
   } catch (err) {
     console.error("verifyStatusWithTrust error:", err);

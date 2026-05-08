@@ -11,9 +11,10 @@ interface StatusMarkerProps {
     status: string;
     isRequest: boolean;
     isSelected: boolean;
+    isExpired?: boolean;
 }
 
-export function StatusMarker({ status, isRequest, isSelected }: StatusMarkerProps) {
+export function StatusMarker({ status, isRequest, isSelected, isExpired }: StatusMarkerProps) {
     const theme = getStatusTheme(status, isRequest);
 
     return (
@@ -28,30 +29,32 @@ export function StatusMarker({ status, isRequest, isSelected }: StatusMarkerProp
                 transform: 'translate(-50%, -50%)'
             }}
         >
-            {/* 상단 상태 인디케이터 점 (Status Light) */}
-            <div className="flex flex-col items-center mb-1">
-                {isRequest && (
+            {/* 상단 상태 인디케이터 점 (Status Light) - 과거 이력이면 숨김 */}
+            {!isExpired && (
+                <div className="flex flex-col items-center mb-1">
+                    {isRequest && (
+                        <motion.div 
+                            initial={{ y: 5, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            className={`mb-1 px-2 py-0.5 rounded-full text-[9px] font-black shadow-md border whitespace-nowrap ${theme.tone} ${theme.text}`}
+                            style={{ borderColor: theme.color }}
+                        >
+                            상태요청
+                        </motion.div>
+                    )}
                     <motion.div 
-                        initial={{ y: 5, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        className={`mb-1 px-2 py-0.5 rounded-full text-[9px] font-black shadow-md border whitespace-nowrap ${theme.tone} ${theme.text}`}
-                        style={{ borderColor: theme.color }}
-                    >
-                        상태요청
-                    </motion.div>
-                )}
-                <motion.div 
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.8, 1, 0.8] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className={`w-3 h-3 rounded-full border-2 border-white shadow-sm`}
-                    style={{ backgroundColor: theme.color }}
-                />
-            </div>
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.8, 1, 0.8] }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        className={`w-3 h-3 rounded-full border-2 border-white shadow-sm`}
+                        style={{ backgroundColor: theme.color }}
+                    />
+                </div>
+            )}
 
             {/* 메인 아이콘 컨테이너 */}
             <div 
-                className={`relative w-10 h-10 bg-white rounded-full border-[3.5px] shadow-sm flex items-center justify-center transition-colors`}
-                style={{ borderColor: theme.color }}
+                className={`relative w-10 h-10 bg-white rounded-full border-[3.5px] shadow-sm flex items-center justify-center transition-colors ${isExpired ? 'opacity-80' : ''}`}
+                style={{ borderColor: isExpired ? '#A1887F' : theme.color }}
             >
                 <Image
                     src="/favicon_marker.png"
