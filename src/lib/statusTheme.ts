@@ -68,16 +68,10 @@ export function normalizeStatus(status: string) {
   const normalized: Record<string, StatusLabel> = {
     여유: "여유",
     한산: "여유",
-    "?쒖궛": "여유",
-    "?ъ쑀": "여유",
     보통: "보통",
-    "蹂댄넻": "보통",
     혼잡: "혼잡",
     붐빔: "혼잡",
-    "遺먮퉼": "혼잡",
-    "?쇱옟": "혼잡",
     요청: "요청",
-    "?붿껌": "요청",
   };
 
   return normalized[status] || "보통";
