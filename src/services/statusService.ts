@@ -161,9 +161,8 @@ export async function postLiveStatus(payload: Partial<LiveStatus>) {
   const expiresAt = payload.expires_at || new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
   
   // DB 스키마에 trust_score 컬럼이 없는 경우가 많으므로 안전하게 처리
-  // 만약 DB에 존재한다면 payload에 포함되어 올 것이나, 여기서는 명시적으로 제외하거나
-  // 존재 여부를 확신할 수 없으므로 기본 payload만 사용
-  const { trust_score, ...restPayload } = payload as any;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { trust_score, ...restPayload } = payload as Partial<LiveStatus> & { trust_score?: number };
 
   console.log("[StatusService] Inserting live status for:", payload.place_name);
 

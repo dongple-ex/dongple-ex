@@ -312,8 +312,13 @@ export default function JourneyAlbumPage() {
             <button
               onClick={async () => {
                 if (confirm("로그아웃 하시겠습니까?")) {
-                  await signOut();
-                  router.push("/");
+                  try {
+                    await signOut();
+                    router.replace("/");
+                  } catch (err) {
+                    console.error("Logout failed:", err);
+                    router.replace("/");
+                  }
                 }
               }}
               className="mt-3 flex w-full items-center justify-between rounded-2xl bg-rose-500/5 p-4 transition-all hover:bg-rose-500/10 active:scale-95"

@@ -81,6 +81,12 @@ interface MockSupabaseClient {
     };
   };
   rpc: () => Promise<{ data: null; error: null }>;
+  auth: {
+    getSession: () => Promise<{ data: { session: null }; error: null }>;
+    onAuthStateChange: (callback: unknown) => { data: { subscription: { unsubscribe: () => void } } };
+    signInWithOAuth: (options: unknown) => Promise<{ error: null }>;
+    signOut: () => Promise<{ error: null }>;
+  };
 }
 
 const mockSupabase: MockSupabaseClient = {
@@ -103,7 +109,13 @@ const mockSupabase: MockSupabaseClient = {
       subscribe: () => ({ unsubscribe: () => {} })
     })
   }),
-  rpc: () => Promise.resolve({ data: null, error: null })
+  rpc: () => Promise.resolve({ data: null, error: null }),
+  auth: {
+    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    signInWithOAuth: () => Promise.resolve({ error: null }),
+    signOut: () => Promise.resolve({ error: null }),
+  }
 };
 
 if (!supabaseUrl || !supabaseAnonKey) {

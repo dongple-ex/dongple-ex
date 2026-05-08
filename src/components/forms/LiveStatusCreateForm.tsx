@@ -131,7 +131,7 @@ export default function LiveStatusCreateForm({
         user_id: userId,
       });
 
-      const created = (await Promise.race([postPromise, timeoutPromise])) as any;
+      const created = (await Promise.race([postPromise, timeoutPromise])) as import("@/services/statusService").LiveStatus;
 
       saveAlbumMemory({
         sourceId: created.id,
@@ -158,9 +158,9 @@ export default function LiveStatusCreateForm({
         latitude: finalLat,
         longitude: finalLng,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("상황 공유 등록 실패:", error);
-      if (error.message === "timeout") {
+      if (error instanceof Error && error.message === "timeout") {
         alert("등록 시간이 너무 오래 걸립니다. 네트워크 연결을 확인하고 다시 시도해주세요.");
       } else {
         alert("등록 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
