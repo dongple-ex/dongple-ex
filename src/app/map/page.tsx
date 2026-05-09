@@ -411,8 +411,8 @@ function MapContent() {
         }
     }, [handleOpenCreateAt, isMapReady, searchParams]); // storeAddress 제거 (무한 루프 방지)
 
-    const visiblePlaceMarkers = useMemo(
-        () => markers.filter((marker) => !marker.event_id && !marker.tourapi_content_id),
+    const visibleStatuses = useMemo(
+        () => markers,
         [markers],
     );
 
@@ -460,9 +460,16 @@ function MapContent() {
             markersRef.current.push({ marker, root });
         }
 
-        // 2. Live Status Markers
-        visiblePlaceMarkers
+        // 2. Live Status Markers (Event와 연결되지 않은 일반 장소 상태만 지도에 표시)
+        visibleStatuses
             .filter(m => {
+                // 이미 공식 행사 마커가 있는 경우 지도에 중복 마커를 표시하지 않음
+                const isLinkedToOfficial = officialEvents.some(event => 
+                    String(event.id) === String(m.event_id || m.tourapi_content_id) || 
+                    event.title === m.place_name
+                );
+                if (isLinkedToOfficial) return false;
+
                 if (selectedCategory === "전체") return true;
                 if (selectedCategory === "행사") return Boolean(m.event_id || m.tourapi_content_id);
                 if (selectedCategory === "카페") return m.category === "카페" || m.category === "카페/식당";
@@ -609,7 +616,7 @@ function MapContent() {
             markersRef.current.push({ marker, root });
         });
         }
-    }, [clickedAddress, clickedLatLng, clickedPlaceName, expandedCardId, markers, visiblePlaceMarkers, officialEvents, selectedCategory, selectedEventId, clearRenderedMarkers, handleOpenCreateAt, openGlobalBottomSheet]);
+    }, [clickedAddress, clickedLatLng, clickedPlaceName, expandedCardId, markers, visibleStatuses, officialEvents, selectedCategory, selectedEventId, clearRenderedMarkers, handleOpenCreateAt, openGlobalBottomSheet]);
 
     useEffect(() => {
         renderMarkersRef.current = renderMarkers;
@@ -662,7 +669,7 @@ function MapContent() {
 
             <MapBottomSheet 
                 sheetHeight={sheetHeight}
-                markers={visiblePlaceMarkers}
+                markers={visibleStatuses}
                 expandedCardId={expandedCardId}
                 showHistory={showHistory}
                 onToggleHistory={() => setShowHistory(!showHistory)}

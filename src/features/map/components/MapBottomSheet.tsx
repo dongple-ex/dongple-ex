@@ -150,9 +150,17 @@ export default function MapBottomSheet({
                     </div>
                   </div>
 
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px] bg-foreground/5 text-foreground/20">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCardClick(card.id, card.latitude || 37.3015, card.longitude || 126.9930);
+                      onToggleHeight(); // 접기
+                    }}
+                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px] bg-secondary/10 text-secondary transition-all hover:bg-secondary/20 active:scale-95"
+                    title="지도에서 위치 보기"
+                  >
                     <MapPin size={24} />
-                  </div>
+                  </button>
                 </div>
 
                 {expandedCardId === card.id && (

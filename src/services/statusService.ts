@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { createStatusResponseNotifications, createTrustNotification } from "@/services/notificationService";
-export { normalizeStatus } from "@/lib/statusTheme";
+import { normalizeStatus } from "@/lib/statusTheme";
+export { normalizeStatus };
 
 interface LiveStatusHistoryItem {
   status: string;
@@ -80,13 +81,15 @@ function isStatusLinkedToEvent(status: LiveStatus, event: EventLike) {
 
 export function getEventStatusSummary(event: EventLike, statuses: LiveStatus[]): EventStatusSummary | null {
   const linkedStatuses = statuses
-    .filter((status) => !status.is_request && isStatusLinkedToEvent(status, event))
+    .filter((status) => isStatusLinkedToEvent(status, event))
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   if (linkedStatuses.length === 0) return null;
 
   const latest = linkedStatuses[0];
-  const statusScores = linkedStatuses.map((status) => STATUS_ORDER[normalizeStatus(status.status)] ?? 1);
+  const nonRequestStatuses = linkedStatuses.filter(s => !s.is_request);
+  const statusScores = (nonRequestStatuses.length > 0 ? nonRequestStatuses : linkedStatuses)
+    .map((status) => STATUS_ORDER[normalizeStatus(status.status)] ?? 1);
   const averageScore = statusScores.reduce((sum, score) => sum + score, 0) / statusScores.length;
   const level = averageScore >= 1.5 ? "혼잡" : averageScore <= 0.5 ? "여유" : "보통";
   const topTags = linkedStatuses.map((status) => status.message?.trim()).filter(Boolean).slice(0, 2) as string[];
@@ -114,7 +117,9 @@ export async function fetchLiveStatus(includeExpired = false) {
     .eq("is_hidden", false);
 
   if (!includeExpired) {
-    query = query.gt("expires_at", new Date().toISOString());
+    // 서버와 클라이언트 간의 미세한 시간 차이를 고려하여 5분 정도의 여유를 둠
+    const bufferTime = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    query = query.gt("expires_at", bufferTime);
   } else {
     // 과거 이력을 볼 때는 최근 48시간 이내의 기록만 가져옴 (너무 오래된 데이터 방지)
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();

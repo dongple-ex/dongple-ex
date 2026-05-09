@@ -12,10 +12,13 @@ export default function LoginModal() {
         setIsSubmitting(provider);
         try {
             await signInWithProvider(provider);
+            // OAuth redirect usually happens here, so UI won't reset on success unless it fails to redirect
         } catch (error) {
             console.error("OAuth sign in failed:", error);
             alert("로그인을 시작하지 못했습니다. 잠시 후 다시 시도해주세요.");
-            setIsSubmitting(null);
+        } finally {
+            // Give some time for redirect to happen before resetting
+            setTimeout(() => setIsSubmitting(null), 5000);
         }
     };
 
@@ -40,21 +43,21 @@ export default function LoginModal() {
             <div className="space-y-3">
                 <button
                     type="button"
-                    onClick={() => handleSignIn("kakao")}
-                    disabled={Boolean(isSubmitting)}
-                    className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#FEE500] px-4 py-4 text-[15px] font-black text-[#191919] shadow-lg shadow-yellow-500/10 transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-60"
-                >
-                    <MessageCircle size={20} fill="currentColor" />
-                    {isSubmitting === "kakao" ? "카카오 인증 준비 중..." : "카카오톡으로 계속하기"}
-                </button>
-                <button
-                    type="button"
                     onClick={() => handleSignIn("google")}
                     disabled={Boolean(isSubmitting)}
                     className="flex w-full items-center justify-center gap-3 rounded-2xl border border-border bg-card-bg px-4 py-4 text-[15px] font-black text-foreground shadow-sm transition-all hover:bg-foreground/5 active:scale-[0.98] disabled:opacity-60"
                 >
                     <Mail size={20} />
                     {isSubmitting === "google" ? "Google 인증 준비 중..." : "Google 이메일로 계속하기"}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => handleSignIn("kakao")}
+                    disabled={Boolean(isSubmitting)}
+                    className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#FEE500] px-4 py-4 text-[15px] font-black text-[#191919] shadow-lg shadow-yellow-500/10 transition-all hover:brightness-95 active:scale-[0.98] disabled:opacity-60"
+                >
+                    <MessageCircle size={20} fill="currentColor" />
+                    {isSubmitting === "kakao" ? "카카오 인증 준비 중..." : "카카오톡으로 계속하기"}
                 </button>
             </div>
 

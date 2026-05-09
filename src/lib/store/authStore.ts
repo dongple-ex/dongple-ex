@@ -139,7 +139,8 @@ async function syncProfile(user: User | null, anonymousId: string, publicId: str
 
 function getRedirectTo() {
     if (typeof window === "undefined") return undefined;
-    return window.location.origin;
+    // Next.js App Router에서 OAuth 콜백을 처리하기 위한 경로
+    return `${window.location.origin}/auth/callback`;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -206,7 +207,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
         const { error } = await authClient.auth.signInWithOAuth({
             provider,
-            options: { redirectTo: getRedirectTo() },
+            options: {
+                redirectTo: getRedirectTo(),
+                // 카카오 로그인 시 이메일 권한(KOE205) 문제를 방지하기 위해 스코프를 명시적으로 지정
+                scopes: provider === "kakao" ? "profile_nickname profile_image" : undefined,
+            },
         });
 
         if (error) throw error;

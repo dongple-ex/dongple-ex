@@ -633,7 +633,7 @@ function RecordHub() {
 
 
 function PostDetailView() {
-    const { bottomSheetData, openBottomSheet } = useUIStore();
+    const { bottomSheetData, openBottomSheet, closeBottomSheet } = useUIStore();
     const { userId, isAuthenticated } = useAuthStore();
     const requireAuth = useRequireAuth();
     const isOfficial = bottomSheetData?.is_official;
@@ -868,6 +868,7 @@ function PostDetailView() {
                 <div className="grid grid-cols-3 gap-2">
                     <Link
                         href={mapDetailHref}
+                        onClick={closeBottomSheet}
                         className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-foreground px-2 text-center text-[12px] font-black leading-tight text-background"
                     >
                         지도에서 위치 보기
