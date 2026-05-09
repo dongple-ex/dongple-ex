@@ -167,7 +167,7 @@ function isReadOnlyPostDetailData(data: unknown) {
 }
 
 export default function BottomSheet() {
-  const { isBottomSheetOpen, bottomSheetContent, bottomSheetData, closeBottomSheet, openBottomSheet } = useUIStore();
+  const { isBottomSheetOpen, bottomSheetContent, bottomSheetData, closeBottomSheet } = useUIStore();
   const { userId, publicId, isAnonymous, isAuthenticated } = useAuthStore();
   const requireAuth = useRequireAuth();
   const [commentText, setCommentText] = useState("");
@@ -401,7 +401,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
 
     const handleOpenLocationSearch = () => {
         openBottomSheet("locationSearch", {
-            onSelectLocation: (loc: any) => {
+            onSelectLocation: (loc: { title: string; address: string; latitude: number; longitude: number }) => {
                 setSelectedLocation(loc);
                 openBottomSheet("write", { 
                     ...bottomSheetData,
@@ -685,7 +685,7 @@ function RecordHub() {
 }
 
 function PostDetailView() {
-    const { bottomSheetData, openBottomSheet, closeBottomSheet } = useUIStore();
+    const { bottomSheetData, closeBottomSheet } = useUIStore();
     const { userId, isAuthenticated } = useAuthStore();
     const requireAuth = useRequireAuth();
     const isOfficial = bottomSheetData?.is_official;
