@@ -48,7 +48,11 @@ CREATE TABLE IF NOT EXISTS public.posts (
     score DECIMAL(3, 2) DEFAULT 0.5,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     likes_count INTEGER DEFAULT 0,
-    comments_count INTEGER DEFAULT 0
+    comments_count INTEGER DEFAULT 0,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    place_name TEXT,
+    address TEXT
 );
 
 -- 4. 사용자 프로필 및 평판 테이블
