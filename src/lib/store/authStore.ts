@@ -95,28 +95,46 @@ async function syncProfile(user: User | null, anonymousId: string, publicId: str
     const userId = user?.id || anonymousId;
 
     try {
+        const profileData = {
+            user_id: userId,
+            nickname: profileSeed.nickname,
+            public_id: publicId,
+            provider: profileSeed.provider,
+            email: profileSeed.email,
+            avatar_url: profileSeed.avatar_url,
+            last_active_at: new Date().toISOString(),
+        };
+
         const { data, error } = await supabase
             .from("profiles")
-            .upsert(
-                [
-                    {
-                        user_id: userId,
-                        // id: user?.id || null, // 컬럼 부재 시 주석 처리
-                        nickname: profileSeed.nickname,
-                        public_id: publicId,
-                        provider: profileSeed.provider,
-                        email: profileSeed.email,
-                        avatar_url: profileSeed.avatar_url,
-                        last_active_at: new Date().toISOString(),
-                    },
-                ],
-                { onConflict: "user_id" },
-            )
+            .upsert([profileData], { onConflict: "user_id" })
             .select()
             .single();
 
         if (error) {
-            console.warn("Profile sync error (expected for new users):", error.message);
+            // 컬럼 부재 시(Bad Request 400) 필수 정보만으로 재시도
+            if (error.code === "PGRST204" || error.message.includes("avatar_url") || error.message.includes("column")) {
+                const minimalData = {
+                    user_id: userId,
+                    nickname: profileSeed.nickname,
+                    public_id: publicId,
+                    last_active_at: new Date().toISOString(),
+                };
+                const { data: retryData, error: retryError } = await supabase
+                    .from("profiles")
+                    .upsert([minimalData], { onConflict: "user_id" })
+                    .select()
+                    .single();
+                
+                if (retryError) throw retryError;
+                if (retryData) return {
+                    ...profileSeed,
+                    nickname: retryData.nickname || profileSeed.nickname,
+                    is_verified: Boolean(retryData.is_verified),
+                    trust_score: Number(retryData.trust_score || 0.5),
+                };
+            }
+            console.warn("Profile sync error:", error.message);
             return profileSeed;
         }
 

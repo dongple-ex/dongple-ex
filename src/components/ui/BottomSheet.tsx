@@ -152,8 +152,8 @@ function getContentIdFromData(data?: ApiRecord) {
 
 function getContentTypeIdFromData(data?: ApiRecord) {
   if (!data) return "";
-  if (typeof data.contentTypeId === "string") return data.contentTypeId;
-  if (typeof data.contenttypeid === "string") return data.contenttypeid;
+  if (typeof data.contentId === "string") return data.contentId;
+  if (typeof data.contentid === "string") return data.contentid;
   const meta = isApiRecord(data.meta) ? data.meta : undefined;
   return formatApiValue(meta?.contenttypeid || data.category_code || data.category);
 }
@@ -167,7 +167,7 @@ function isReadOnlyPostDetailData(data: unknown) {
 }
 
 export default function BottomSheet() {
-  const { isBottomSheetOpen, bottomSheetContent, bottomSheetData, closeBottomSheet } = useUIStore();
+  const { isBottomSheetOpen, bottomSheetContent, bottomSheetData, closeBottomSheet, openBottomSheet } = useUIStore();
   const { userId, publicId, isAnonymous, isAuthenticated } = useAuthStore();
   const requireAuth = useRequireAuth();
   const [commentText, setCommentText] = useState("");
@@ -362,15 +362,24 @@ export default function BottomSheet() {
   );
 }
 
-
 const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: boolean) => void; showInlineSubmit?: boolean }>(({ onStateChange, showInlineSubmit = false }, ref) => {
-    const { closeBottomSheet } = useUIStore();
+    const { closeBottomSheet, openBottomSheet, bottomSheetData } = useUIStore();
     const { userId, publicId, profile, isAnonymous, toggleAnonymous, initAuth } = useAuthStore();
-    const [title, setTitle] = useState("");
-    const [content, setContent] = useState("");
-    const [postType, setPostType] = useState("동네질문");
-    const [category, setCategory] = useState("기타");
+    
+    // 복원을 위한 초기 데이터 처리
+    const initialData = bottomSheetData?.initialData || {};
+    
+    const [title, setTitle] = useState(initialData.title || "");
+    const [content, setContent] = useState(initialData.content || "");
+    const [postType, setPostType] = useState(initialData.postType || "동네질문");
+    const [category, setCategory] = useState(initialData.category || "기타");
     const [createdMemoryHref, setCreatedMemoryHref] = useState<string | null>(null);
+    const [selectedLocation, setSelectedLocation] = useState<{
+        title: string;
+        address: string;
+        latitude: number;
+        longitude: number;
+    } | null>(initialData.selectedLocation || null);
 
     useEffect(() => {
         onStateChange(content.trim().length > 0);
@@ -390,6 +399,18 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
         "산책로/공원", "카페/맛집", "독서/학습", "데이트", "기타"
     ];
 
+    const handleOpenLocationSearch = () => {
+        openBottomSheet("locationSearch", {
+            onSelectLocation: (loc: any) => {
+                setSelectedLocation(loc);
+                openBottomSheet("write", { 
+                    ...bottomSheetData,
+                    initialData: { title, content, postType, category, isAnonymous, selectedLocation: loc } 
+                });
+            }
+        });
+    };
+
     const handleSubmit = async () => {
         if (!content.trim()) {
             alert("내용을 입력해주세요.");
@@ -405,7 +426,11 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 user_id: userId || undefined,
                 public_id: publicId,
                 is_anonymous: isAnonymous,
-                score: postType === "정보공유" ? 0.6 : 0.5
+                score: postType === "정보공유" ? 0.6 : 0.5,
+                latitude: selectedLocation?.latitude,
+                longitude: selectedLocation?.longitude,
+                place_name: selectedLocation?.title,
+                address: selectedLocation?.address
             });
             saveAlbumMemory({
                 sourceId: createdPost.id,
@@ -413,7 +438,10 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 title: createdPost.title || `${postType} 기록`,
                 subtitle: postType,
                 description: content.trim(),
-                locationLabel: createdPost.title || category,
+                locationLabel: selectedLocation?.title || createdPost.title || category,
+                address: selectedLocation?.address,
+                latitude: selectedLocation?.latitude,
+                longitude: selectedLocation?.longitude,
                 category,
                 createdAt: createdPost.created_at,
             });
@@ -500,6 +528,35 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                             </button>
                         ))}
                     </div>
+                </div>
+
+                <div className="pt-1">
+                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider ml-1 mb-2 block">장소 태그 (선택)</label>
+                    {selectedLocation ? (
+                        <div className="flex items-center justify-between bg-secondary/5 border border-secondary/20 p-3 rounded-2xl">
+                            <div className="flex items-center space-x-2 overflow-hidden">
+                                <MapPin size={16} className="text-secondary shrink-0" />
+                                <div className="truncate">
+                                    <p className="text-[13px] font-black text-foreground truncate">{selectedLocation.title}</p>
+                                    <p className="text-[10px] text-gray-400 truncate">{selectedLocation.address}</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setSelectedLocation(null)}
+                                className="p-1.5 text-gray-300 hover:text-rose-500"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={handleOpenLocationSearch}
+                            className="w-full flex items-center justify-center space-x-2 py-3 border-2 border-dashed border-border rounded-2xl text-[12px] font-black text-gray-400 hover:border-secondary hover:text-secondary transition-all"
+                        >
+                            <MapPin size={14} />
+                            <span>위치 추가하기</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -614,11 +671,7 @@ function RecordHub() {
                     <h4 className="mt-1 text-[17px] font-black text-foreground">
                         {activeTab === "status" ? "지금 본 상태를 지도에 남기기" : "경험과 정보를 소식으로 남기기"}
                     </h4>
-                    <p className="mt-1.5 text-[12px] font-medium leading-relaxed text-foreground/55">
-                        {activeTab === "status"
-                            ? "혼잡도, 대기, 분위기처럼 지금 판단에 필요한 정보는 지도와 내발문자에 함께 이어집니다."
-                            : "방문 경험, 추천, 질문처럼 맥락이 필요한 이야기는 소식에 남고 내 기록으로 쌓입니다."}
-                    </p>
+
                 </div>
 
                 {activeTab === "status" ? (
@@ -630,7 +683,6 @@ function RecordHub() {
         </div>
     );
 }
-
 
 function PostDetailView() {
     const { bottomSheetData, openBottomSheet, closeBottomSheet } = useUIStore();
@@ -769,17 +821,16 @@ function PostDetailView() {
         }))
         .filter((row) => row.value);
     const displayContent = detailSummary || detailOverview || compactText(bottomSheetData?.content, 180) || (isOfficial ? "행사 상세 정보가 준비 중입니다." : "내용이 없습니다.");
-    const detailTitle = formatApiValue(bottomSheetData?.title || bottomSheetData?.content).trim() || "기억한 장소";
+    const detailTitle = formatApiValue(bottomSheetData?.title || bottomSheetData?.content || bottomSheetData?.place_name).trim() || "기억한 장소";
     const detailLat = Number(formatApiValue(bottomSheetData?.latitude || apiMeta?.mapy));
     const detailLng = Number(formatApiValue(bottomSheetData?.longitude || apiMeta?.mapx));
     
-    // 좌표 유효성 검사 (WGS84 범위 내 인지 확인)
     const isWgs84 = Number.isFinite(detailLat) && Number.isFinite(detailLng) && detailLat >= 33 && detailLat <= 39 && detailLng >= 124 && detailLng <= 132;
-    
     const hasDetailLocation = isWgs84;
     const mapDetailHref = hasDetailLocation
         ? `/map?lat=${detailLat}&lng=${detailLng}&title=${encodeURIComponent(detailTitle)}&address=${encodeURIComponent(officialAddress || "")}`
         : "/map";
+
     const handleRememberPlace = () => {
         if (!isAuthenticated) {
             requireAuth({ type: "bottomSheet", content: "postDetail", data: bottomSheetData });
@@ -800,12 +851,13 @@ function PostDetailView() {
         });
         setIsRemembered(true);
     };
+
     const handleOpenRecordForDetail = () => {
         requireAuth({ type: "bottomSheet", content: "liveCreate", data: {
             mode: "share",
             eventId: isOfficial ? bottomSheetData?.eventId || bottomSheetData?.id : undefined,
             defaultPlaceName: detailTitle,
-            address: officialAddress,
+            address: officialAddress || bottomSheetData?.address,
             latitude: hasDetailLocation ? detailLat : undefined,
             longitude: hasDetailLocation ? detailLng : undefined,
         }});
@@ -831,10 +883,10 @@ function PostDetailView() {
                     {bottomSheetData?.title || bottomSheetData?.content?.substring(0, 30)}
                 </h2>
                 {!isOfficial && !isApiBacked && (
-                  <>
+                  <div className="flex space-x-2">
                     <button 
                         onClick={handleLike}
-                        className={`ml-3 flex flex-col items-center px-4 py-2.5 rounded-2xl transition-all border ${
+                        className={`flex flex-col items-center px-4 py-2.5 rounded-2xl transition-all border ${
                             isLiked ? "bg-red-50 text-red-500 border-red-100 shadow-sm" : "bg-nav-bg text-gray-300 border-border hover:border-gray-300"
                         }`}
                     >
@@ -843,7 +895,7 @@ function PostDetailView() {
                     </button>
                     <button 
                         onClick={handleReport}
-                        className={`ml-2 flex flex-col items-center px-4 py-2.5 rounded-2xl transition-all border ${
+                        className={`flex flex-col items-center px-4 py-2.5 rounded-2xl transition-all border ${
                             isReported ? "bg-gray-100 text-gray-400 border-gray-200" : "bg-nav-bg text-gray-300 border-border hover:border-gray-300 hover:text-orange-500"
                         }`}
                         disabled={isReported}
@@ -851,21 +903,12 @@ function PostDetailView() {
                         <Flag size={20} fill={isReported ? "currentColor" : "none"} />
                         <span className="text-[10px] font-black mt-1">{isReported ? "신고됨" : "신고"}</span>
                     </button>
-                  </>
-                )}
-                {!isOfficial && !isApiBacked && (
-                    <button 
-                        onClick={() => requireAuth({ type: "bottomSheet", content: "contentReport", data: { targetId: bottomSheetData.id, targetType: "POST" } })}
-                        className="ml-3 p-2 text-gray-300 hover:text-red-400 transition-colors"
-                        title="신고하기"
-                    >
-                        <AlertTriangle size={20} />
-                    </button>
+                  </div>
                 )}
             </div>
 
-            {(isOfficial || isApiBacked) && (
-                <div className="grid grid-cols-3 gap-2">
+            {(hasDetailLocation) && (
+                <div className={`grid ${!isOfficial && !isApiBacked ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
                     <Link
                         href={mapDetailHref}
                         onClick={closeBottomSheet}
@@ -879,19 +922,21 @@ function PostDetailView() {
                         disabled={isOfficial && !canShareEventStatus}
                         className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-secondary px-2 text-center text-[12px] font-black leading-tight text-white disabled:bg-foreground/10 disabled:text-foreground/35"
                     >
-                        {isOfficial && !canShareEventStatus ? "행사 시작 후 기록" : "기록으로 남기기"}
+                        {isOfficial && !canShareEventStatus ? "행사 시작 후 기록" : "지금 현장 공유하기"}
                     </button>
-                    <button
-                        type="button"
-                        onClick={handleRememberPlace}
-                        className={`inline-flex min-h-[48px] items-center justify-center rounded-2xl border px-2 text-center text-[12px] font-black leading-tight ${
-                            isRemembered
-                                ? "border-secondary/20 bg-secondary/10 text-secondary"
-                                : "border-border bg-card-bg text-foreground/70"
-                        }`}
-                    >
-                        {isRemembered ? "기억됨" : "내발문자에 기억"}
-                    </button>
+                    {(isOfficial || isApiBacked) && (
+                        <button
+                            type="button"
+                            onClick={handleRememberPlace}
+                            className={`inline-flex min-h-[48px] items-center justify-center rounded-2xl border px-2 text-center text-[12px] font-black leading-tight ${
+                                isRemembered
+                                    ? "border-secondary/20 bg-secondary/10 text-secondary"
+                                    : "border-border bg-card-bg text-foreground/70"
+                            }`}
+                        >
+                            {isRemembered ? "기억됨" : "내발문자에 기억"}
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -915,26 +960,13 @@ function PostDetailView() {
                                 행사 기간: {eventStartDate} ~ {eventEndDate}
                             </p>
                         )}
-                        {canShareEventStatus ? (
+                        {canShareEventStatus && (
                             <button
-                                onClick={() =>
-                                    openBottomSheet("liveCreate", {
-                                        mode: "share",
-                                        eventId: bottomSheetData?.eventId || bottomSheetData?.id,
-                                        defaultPlaceName: bottomSheetData?.defaultPlaceName || bottomSheetData?.title,
-                                        address: officialAddress,
-                                        latitude: bottomSheetData?.latitude,
-                                        longitude: bottomSheetData?.longitude,
-                                    })
-                                }
+                                onClick={handleOpenRecordForDetail}
                                 className="mt-3 inline-flex items-center justify-center rounded-2xl bg-secondary px-4 py-3 text-[13px] font-black text-white shadow-lg shadow-secondary/20"
                             >
                                 이 행사 현장 공유하기
                             </button>
-                        ) : (
-                            <div className="mt-3 inline-flex items-center justify-center rounded-2xl bg-foreground/10 px-4 py-3 text-[13px] font-black text-foreground/35">
-                                행사 시작 후 공유 가능
-                            </div>
                         )}
                     </div>
                 </div>
@@ -962,6 +994,12 @@ function PostDetailView() {
             ) : (
                 <div className={`pt-2 pb-6 text-foreground leading-relaxed text-[15px] ${!isOfficial && "border-b border-border"} min-h-[100px] whitespace-pre-wrap opacity-90 font-medium`}>
                     {displayContent}
+                    {bottomSheetData?.place_name && (
+                        <div className="mt-4 flex items-center space-x-1.5 text-secondary font-black text-[12px]">
+                            <MapPin size={14} />
+                            <span>{bottomSheetData.place_name}</span>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -1053,7 +1091,6 @@ function PostDetailView() {
     );
 }
 
-
 function ApiInfoRow({ label, value }: OfficialInfoRow) {
     return (
         <div className="rounded-2xl border border-secondary/10 bg-card-bg/80 px-3 py-2.5">
@@ -1063,7 +1100,6 @@ function ApiInfoRow({ label, value }: OfficialInfoRow) {
     );
 }
 
-
 function InfoPill({ label, value }: OfficialInfoRow) {
     return (
         <div className="min-h-[74px] rounded-2xl border border-secondary/10 bg-card-bg/85 px-3 py-3">
@@ -1072,7 +1108,6 @@ function InfoPill({ label, value }: OfficialInfoRow) {
         </div>
     );
 }
-
 
 function LiveCreateForm() {
     const { bottomSheetData, closeBottomSheet } = useUIStore();
@@ -1098,7 +1133,6 @@ function LiveCreateForm() {
         />
     );
 }
-
 
 function LiveReplyForm() {
     const { bottomSheetData, closeBottomSheet } = useUIStore();
@@ -1215,7 +1249,7 @@ function LiveDetailView() {
 
 function LocationSearchView() {
     const { regionName, setLocation, fetchLocation, isLoading: isLocating } = useLocationStore();
-    const { closeBottomSheet } = useUIStore();
+    const { bottomSheetData, closeBottomSheet } = useUIStore();
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<SearchPlaceResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -1238,13 +1272,29 @@ function LocationSearchView() {
         const lng = parseFloat(item.mapx);
         
         try {
-            // 상세 주소 및 지역명(동 단위) 가져오기
             const addrResult = await getAddressFromCoords(lat, lng);
+            if (bottomSheetData?.onSelectLocation) {
+                bottomSheetData.onSelectLocation({
+                    title: item.title,
+                    address: addrResult.fullAddress,
+                    latitude: lat,
+                    longitude: lng
+                });
+                return;
+            }
             setLocation(lat, lng, addrResult.fullAddress, addrResult.regionName);
             closeBottomSheet();
         } catch (error) {
             console.error("Failed to set selected location:", error);
-            // 폴백: 장소 이름이라도 사용
+            if (bottomSheetData?.onSelectLocation) {
+                bottomSheetData.onSelectLocation({
+                    title: item.title,
+                    address: item.roadAddress || item.address,
+                    latitude: lat,
+                    longitude: lng
+                });
+                return;
+            }
             setLocation(lat, lng, item.roadAddress || item.address, item.title);
             closeBottomSheet();
         }
@@ -1344,7 +1394,7 @@ function LocationSearchView() {
 
 function ReportView() {
     const { bottomSheetData, closeBottomSheet } = useUIStore();
-    const { authUserId, isAuthenticated } = useAuthStore();
+    const { userId, authUserId, isAuthenticated } = useAuthStore();
     const requireAuth = useRequireAuth();
     const [reason, setReason] = useState<ReportReason | "">("");
     const [submitting, setSubmitting] = useState(false);
@@ -1354,14 +1404,14 @@ function ReportView() {
 
     const handleReport = async () => {
         if (!reason || !bottomSheetData?.targetId) return;
-        if (!isAuthenticated || !authUserId) {
+        if (!isAuthenticated) {
             requireAuth({ type: "bottomSheet", content: "contentReport", data: bottomSheetData });
             return;
         }
         
         setSubmitting(true);
         try {
-            await reportContent(authUserId, bottomSheetData.targetId, bottomSheetData.targetType, reason);
+            await reportContent(authUserId || userId, bottomSheetData.targetId, bottomSheetData.targetType, reason);
             setDone(true);
             setTimeout(() => {
                 closeBottomSheet();

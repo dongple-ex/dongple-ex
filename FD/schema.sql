@@ -56,6 +56,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     user_id TEXT PRIMARY KEY, -- 'u-...' 형식 또는 auth.users의 UUID
     nickname TEXT NOT NULL,
     public_id TEXT UNIQUE,
+    email TEXT,
+    avatar_url TEXT,
+    provider TEXT,
     trust_score NUMERIC(4, 2) NOT NULL DEFAULT 0.50,
     verified_count INTEGER NOT NULL DEFAULT 0,
     posts_count INTEGER NOT NULL DEFAULT 0,
