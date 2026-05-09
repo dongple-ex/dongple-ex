@@ -48,7 +48,11 @@ CREATE TABLE IF NOT EXISTS public.posts (
     score DECIMAL(3, 2) DEFAULT 0.5,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     likes_count INTEGER DEFAULT 0,
-    comments_count INTEGER DEFAULT 0
+    comments_count INTEGER DEFAULT 0,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    place_name TEXT,
+    address TEXT
 );
 
 -- 4. 사용자 프로필 및 평판 테이블
@@ -56,6 +60,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     user_id TEXT PRIMARY KEY, -- 'u-...' 형식 또는 auth.users의 UUID
     nickname TEXT NOT NULL,
     public_id TEXT UNIQUE,
+    email TEXT,
+    avatar_url TEXT,
+    provider TEXT,
     trust_score NUMERIC(4, 2) NOT NULL DEFAULT 0.50,
     verified_count INTEGER NOT NULL DEFAULT 0,
     posts_count INTEGER NOT NULL DEFAULT 0,

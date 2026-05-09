@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { MapPinned, Sparkles } from "lucide-react";
+import { MapPinned, Newspaper } from "lucide-react";
 import Link from "next/link";
 
 export default function HeroSection() {
@@ -17,20 +17,21 @@ export default function HeroSection() {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 mx-auto flex min-h-[365px] max-w-md flex-col justify-end px-6 pb-12 pt-16 text-white"
+        className="relative z-10 mx-auto flex min-h-[365px] max-w-md flex-col px-6 pb-12 pt-12 text-white"
       >
         <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1.5 backdrop-blur-md">
-          <Sparkles size={14} className="text-amber-200" />
+          <img src="/favicon_marker.png" alt="내발문자" className="h-3.5 w-3.5 object-contain" />
           <span className="text-[11px] font-black tracking-tight">내발문자: 내 발자국이 머문 자리</span>
         </div>
 
-        <h1 className="text-[31px] font-black leading-[1.12] tracking-normal md:text-[38px]">
-          가볼 곳을 발견하고,
-          <br />
-          지금 상태를 확인하고,
-          <br />
-          다시 꺼내보세요.
-        </h1>
+        <div className="mt-auto">
+          <h1 className="text-[31px] font-black leading-[1.12] tracking-normal md:text-[38px]">
+            가볼 곳을 발견하고,
+            <br />
+            지금 상태를 확인하고,
+            <br />
+            다시 꺼내보세요.
+          </h1>
 
 
         <div className="mt-6 flex gap-2.5">
@@ -38,6 +39,7 @@ export default function HeroSection() {
             href="/news"
             className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-[13px] font-black text-[#193b2d]"
           >
+            <Newspaper size={16} className="mr-1.5" />
             가볼 곳 찾기
           </Link>
           <Link
@@ -48,7 +50,8 @@ export default function HeroSection() {
             지금 상태 보기
           </Link>
         </div>
-      </motion.div>
+      </div>
+    </motion.div>
     </section>
   );
 }

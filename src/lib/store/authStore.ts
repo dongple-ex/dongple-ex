@@ -95,28 +95,46 @@ async function syncProfile(user: User | null, anonymousId: string, publicId: str
     const userId = user?.id || anonymousId;
 
     try {
+        const profileData = {
+            user_id: userId,
+            nickname: profileSeed.nickname,
+            public_id: publicId,
+            provider: profileSeed.provider,
+            email: profileSeed.email,
+            avatar_url: profileSeed.avatar_url,
+            last_active_at: new Date().toISOString(),
+        };
+
         const { data, error } = await supabase
             .from("profiles")
-            .upsert(
-                [
-                    {
-                        user_id: userId,
-                        // id: user?.id || null, // 컬럼 부재 시 주석 처리
-                        nickname: profileSeed.nickname,
-                        public_id: publicId,
-                        provider: profileSeed.provider,
-                        email: profileSeed.email,
-                        avatar_url: profileSeed.avatar_url,
-                        last_active_at: new Date().toISOString(),
-                    },
-                ],
-                { onConflict: "user_id" },
-            )
+            .upsert([profileData], { onConflict: "user_id" })
             .select()
             .single();
 
         if (error) {
-            console.warn("Profile sync error (expected for new users):", error.message);
+            // 컬럼 부재 시(Bad Request 400) 필수 정보만으로 재시도
+            if (error.code === "PGRST204" || error.message.includes("avatar_url") || error.message.includes("column")) {
+                const minimalData = {
+                    user_id: userId,
+                    nickname: profileSeed.nickname,
+                    public_id: publicId,
+                    last_active_at: new Date().toISOString(),
+                };
+                const { data: retryData, error: retryError } = await supabase
+                    .from("profiles")
+                    .upsert([minimalData], { onConflict: "user_id" })
+                    .select()
+                    .single();
+                
+                if (retryError) throw retryError;
+                if (retryData) return {
+                    ...profileSeed,
+                    nickname: retryData.nickname || profileSeed.nickname,
+                    is_verified: Boolean(retryData.is_verified),
+                    trust_score: Number(retryData.trust_score || 0.5),
+                };
+            }
+            console.warn("Profile sync error:", error.message);
             return profileSeed;
         }
 
@@ -139,7 +157,8 @@ async function syncProfile(user: User | null, anonymousId: string, publicId: str
 
 function getRedirectTo() {
     if (typeof window === "undefined") return undefined;
-    return window.location.origin;
+    // Next.js App Router에서 OAuth 콜백을 처리하기 위한 경로
+    return `${window.location.origin}/auth/callback`;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -206,7 +225,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
         const { error } = await authClient.auth.signInWithOAuth({
             provider,
-            options: { redirectTo: getRedirectTo() },
+            options: {
+                redirectTo: getRedirectTo(),
+                // 카카오 로그인 시 이메일 권한(KOE205) 문제를 방지하기 위해 스코프를 명시적으로 지정
+                scopes: provider === "kakao" ? "profile_nickname profile_image" : undefined,
+            },
         });
 
         if (error) throw error;

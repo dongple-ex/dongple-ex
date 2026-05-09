@@ -8,12 +8,16 @@ export interface Post {
     post_type: string;
     category: string;
     user_id: string | null;
-    public_id: string | null;  // 익명 식별자
-    is_anonymous: boolean;     // 익명 여부
-    score: number;             // 신뢰도 점수 (0.0 ~ 1.0)
+    public_id: string | null;
+    is_anonymous: boolean;
+    score: number;
     created_at: string;
     likes_count: number;
     comments_count: number;
+    latitude?: number;
+    longitude?: number;
+    place_name?: string;
+    address?: string;
 }
 
 /**
@@ -21,7 +25,6 @@ export interface Post {
  */
 export async function fetchPosts(limit = 10) {
     try {
-        // 우선 컬럼 존재 여부를 확인합니다.
         const { error: checkError } = await supabase
             .from("posts")
             .select("is_hidden")
@@ -33,7 +36,6 @@ export async function fetchPosts(limit = 10) {
             .order("created_at", { ascending: false })
             .limit(limit);
 
-        // 에러가 없으면 (컬럼이 있으면) 필터 적용
         if (!checkError) {
             query = query.eq("is_hidden", false);
         }
@@ -43,7 +45,6 @@ export async function fetchPosts(limit = 10) {
         return data as Post[];
     } catch (err) {
         console.error("fetchPosts resilience fallback:", err);
-        // 폴백: 필터 없이 전체 조회
         const { data, error } = await supabase
             .from("posts")
             .select("*")
@@ -63,7 +64,7 @@ export async function fetchPostsByCategory(category: string, limit = 10) {
         .from("posts")
         .select("*")
         .eq("category", category)
-        .gte("score", 0.2) // Hide low reputation posts
+        .gte("score", 0.2)
         .order("created_at", { ascending: false })
         .limit(limit);
 
@@ -105,9 +106,12 @@ export async function createPost(payload: {
     user_id?: string,
     public_id?: string,
     is_anonymous?: boolean,
-    score?: number 
+    score?: number,
+    latitude?: number,
+    longitude?: number,
+    place_name?: string,
+    address?: string
 }) {
-    // 지침서 5-B: 사용자 제보 기본 가중치 0.5, 동플 게시물 0.6
     const finalScore = payload.score ?? 0.6; 
     
     const { data, error } = await supabase
@@ -149,10 +153,9 @@ export async function likePost(postId: string) {
     });
 
     if (error) {
-        // RPC가 없는 경우 대비한 폴백
         const { error: updateError } = await supabase
             .from("posts")
-            .update({ likes_count: supabase.rpc('increment', { row_id: postId }) }) // 예시 구문
+            .update({ likes_count: supabase.rpc('increment', { row_id: postId }) })
             .eq("id", postId);
         
         if (updateError) throw updateError;
@@ -163,11 +166,9 @@ export async function likePost(postId: string) {
  * 댓글 목록 조회
  */
 export async function fetchComments(postId: string) {
-    // UUID 유효성 검사 (PostgreSQL uuid 타입 오류 방지)
     const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(postId);
     
     if (!postId || !isValidUuid) {
-        console.warn(`유효하지 않은 postId로 댓글 조회를 시도했습니다: ${postId}`);
         return [];
     }
 
@@ -201,7 +202,6 @@ export async function createComment(payload: {
 
     if (error) throw error;
 
-    // 댓글 수 증가
     await supabase.rpc('increment_comment_count', {
         p_post_id: payload.post_id
     });
@@ -209,8 +209,8 @@ export async function createComment(payload: {
     await createReplyNotification({
         postId: payload.post_id,
         commentId: data[0].id,
-        commentContent: payload.content,
         commenterUserId: payload.user_id,
+        commentContent: payload.content,
     });
 
     return data[0];
@@ -227,5 +227,5 @@ export async function reportPost(postId: string, userId: string, reason: string 
     });
 
     if (error) throw error;
-    return data as boolean; // 새롭게 신고됨 여부
+    return data as boolean;
 }

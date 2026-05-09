@@ -318,10 +318,10 @@ export default function JourneyAlbumPage() {
                 if (confirm("로그아웃 하시겠습니까?")) {
                   try {
                     await signOut();
-                    router.replace("/");
+                    window.location.href = "/";
                   } catch (err) {
                     console.error("Logout failed:", err);
-                    router.replace("/");
+                    window.location.href = "/";
                   }
                 }
               }}

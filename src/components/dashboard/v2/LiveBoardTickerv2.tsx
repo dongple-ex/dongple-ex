@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, MapPin, Plus, Zap } from "lucide-react";
+import { ArrowUpRight, MapPin, Plus } from "lucide-react";
 import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useAuthStore } from "@/lib/store/authStore";
@@ -120,7 +120,7 @@ export default function LiveBoardTickerv2() {
       >
         <div className="flex items-center">
           <div className="flex aspect-square min-w-[62px] flex-col items-center justify-center rounded-[22px] bg-foreground p-3 text-background">
-            <Zap size={18} className="mb-1 text-amber-300" />
+            <div className="mb-1.5 h-2 w-2 animate-pulse rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
             <span className="text-[10px] font-black uppercase leading-none">Live</span>
           </div>
 
