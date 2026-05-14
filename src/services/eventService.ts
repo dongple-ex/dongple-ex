@@ -33,6 +33,7 @@ export interface OfficialEvent {
     thumbnail_url: string;
     trust_score: number;
     meta?: EventMeta;
+    facilities?: Array<{ label: string; value: string; type: string }>;
     source?: string;
 }
 
@@ -60,6 +61,29 @@ async function fetchTourApiEvents(keyword?: string, category?: string): Promise<
         return data.items || [];
     } catch (err) {
         console.error('TourAPI live fetch failed:', err);
+        return [];
+    }
+}
+
+export async function fetchTourApiLocation(lat: number, lng: number, radius = 2000, category?: string): Promise<OfficialEvent[]> {
+    try {
+        const params = new URLSearchParams({
+            mapX: String(lng),
+            mapY: String(lat),
+            radius: String(radius)
+        });
+        if (category && category !== 'all') params.set('contentTypeId', category);
+
+        const response = await fetch(`/api/tour/location?${params.toString()}`, {
+            cache: 'no-store'
+        });
+
+        if (!response.ok) return [];
+
+        const data = (await response.json()) as TourApiEventsResponse;
+        return data.items || [];
+    } catch (err) {
+        console.error('TourAPI location fetch failed:', err);
         return [];
     }
 }
