@@ -52,6 +52,7 @@ type TourDetail = {
   summary?: string;
   overview?: string;
   highlights?: OfficialInfoRow[];
+  facilities?: Array<{ label: string; value: string; type: string }>;
   info?: TourDetailInfo[];
   images?: string[];
   source?: string;
@@ -996,6 +997,25 @@ function PostDetailView() {
                             {secondaryHighlights.map(({ key, ...row }) => (
                                 <ApiInfoRow key={key} {...row} />
                             ))}
+                        </div>
+                    )}
+
+                    {tourDetail?.facilities && tourDetail.facilities.length > 0 && (
+                        <div className="mt-4 space-y-2.5 border-t border-border/50 pt-4">
+                            <p className="text-[11px] font-black text-foreground/45">편의 시설 및 접근성</p>
+                            <div className="flex flex-wrap gap-2">
+                                {tourDetail.facilities.map((fac, idx) => (
+                                    <div key={idx} className="flex items-center rounded-xl border border-secondary/20 bg-card-bg/80 px-3 py-1.5 text-[12px] font-bold shadow-sm">
+                                        <span className="text-secondary whitespace-nowrap">{fac.label}</span>
+                                        {fac.value && (
+                                            <>
+                                                <div className="mx-2 h-3 w-[1px] bg-border shrink-0" />
+                                                <span className="text-foreground/70">{compactText(fac.value, 30)}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
 

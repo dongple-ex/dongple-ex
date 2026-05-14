@@ -233,15 +233,19 @@ export async function GET(request: NextRequest) {
   });
 
   try {
-    const [commonItems, introItems, infoItems, imageItems] = await Promise.all([
+    const [commonItems, introItems, infoItems, imageItems, petItems, withTourItems] = await Promise.all([
       fetchTourEndpoint(baseUrl, serviceKey, "detailCommon2", commonParams).catch(() => []),
       contentTypeId ? fetchTourEndpoint(baseUrl, serviceKey, "detailIntro2", typedParams).catch(() => []) : Promise.resolve([]),
       contentTypeId ? fetchTourEndpoint(baseUrl, serviceKey, "detailInfo2", typedParams).catch(() => []) : Promise.resolve([]),
       fetchTourEndpoint(baseUrl, serviceKey, "detailImage2", imageParams).catch(() => []),
+      fetchTourEndpoint(baseUrl, serviceKey, "detailPetTour2", commonParams).catch(() => []),
+      fetchTourEndpoint(baseUrl, serviceKey, "detailWithTour2", commonParams).catch(() => []),
     ]);
 
     const common = commonItems[0] || {};
     const intro = introItems[0] || {};
+    const pet = petItems[0] || {};
+    const withTour = withTourItems[0] || {};
     const info = infoItems
       .map((item) => ({
         name: firstNonEmpty(item.infoname, item.serialnum),
@@ -254,15 +258,39 @@ export async function GET(request: NextRequest) {
 
     const summary = compactSummary(common.overview) || buildFallbackSummary(common, intro, contentTypeId);
 
+    const facilities: Array<{ label: string; value: string; type: string }> = [];
+
+    const parkingInfo = firstNonEmpty(intro.parking, intro.parkingculture, intro.parkingfood, intro.parkingfestival, intro.parkingleports, intro.parkingshopping);
+    if (parkingInfo && (parkingInfo.includes("가능") || parkingInfo.includes("있음") || parkingInfo.includes("무료") || parkingInfo.includes("공영"))) {
+        facilities.push({ label: "주차 가능", value: parkingInfo, type: "parking" });
+    } else if (parkingInfo && !parkingInfo.includes("불가") && !parkingInfo.includes("없음")) {
+        facilities.push({ label: "주차장", value: parkingInfo, type: "parking" });
+    }
+
+    if (pet.acmpyTypeCd && String(pet.acmpyTypeCd).includes("가능")) {
+        facilities.push({ label: "펫 프렌들리", value: firstNonEmpty(pet.acmpyNeedMtr), type: "pet" });
+    }
+
+    if (withTour.wheelchair && !String(withTour.wheelchair).includes("불가") && !String(withTour.wheelchair).includes("없음")) {
+        facilities.push({ label: "휠체어 접근/대여", value: String(withTour.wheelchair), type: "wheelchair" });
+    }
+    
+    if (withTour.stroller && !String(withTour.stroller).includes("불가") && !String(withTour.stroller).includes("없음")) {
+        facilities.push({ label: "유아차 대여", value: String(withTour.stroller), type: "stroller" });
+    }
+
     return NextResponse.json({
       title: firstNonEmpty(common.title),
       summary,
       overview: stripHtml(common.overview),
       highlights: buildHighlights(common, intro, contentTypeId),
+      facilities,
       info,
       images,
       common,
       intro,
+      pet,
+      withTour,
       source: "TOURAPI",
     });
   } catch (error) {

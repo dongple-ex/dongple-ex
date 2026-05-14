@@ -14,6 +14,7 @@ interface AuthProfile {
     avatar_url?: string | null;
     email?: string | null;
     provider?: string | null;
+    is_admin?: boolean;
 }
 
 type AuthClient = typeof supabase & {
@@ -45,6 +46,7 @@ interface AuthState {
     signInWithProvider: (provider: AuthProvider) => Promise<void>;
     signOut: () => Promise<void>;
     updateNickname: (newNickname: string) => Promise<void>;
+    isAdmin: boolean;
 }
 
 let authSubscription: { unsubscribe: () => void } | null = null;
@@ -87,6 +89,7 @@ function getProfileSeed(user: User | null, publicId: string): AuthProfile {
         avatar_url: avatarUrl,
         email: user.email,
         provider: getProvider(user),
+        is_admin: user.email === 'admin@dongple.com' || user.email === 'sorin.co.kr@gmail.com' || false, // Fallback admin check
     };
 }
 
@@ -130,6 +133,7 @@ async function syncProfile(user: User | null, anonymousId: string, publicId: str
             avatar_url: data.avatar_url || profileSeed.avatar_url,
             email: data.email || profileSeed.email,
             provider: data.provider || profileSeed.provider,
+            is_admin: Boolean(data.is_admin ?? profileSeed.is_admin),
         } satisfies AuthProfile;
     } catch (err) {
         console.error("Critical profile sync failure:", err);
@@ -151,6 +155,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     isAnonymous: true,
     isAuthenticated: false,
     isAuthInitialized: false,
+    isAdmin: false,
 
     setProfile: (profile) => set({ profile }),
 
@@ -176,6 +181,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isAnonymous: !user,
             isAuthenticated: Boolean(user),
             isAuthInitialized: true,
+            isAdmin: Boolean(profile?.is_admin),
         });
 
         if (!authClient.auth || authSubscription) return;
@@ -194,6 +200,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 isAnonymous: !nextUser,
                 isAuthenticated: Boolean(nextUser),
                 isAuthInitialized: true,
+                isAdmin: Boolean(nextProfile?.is_admin),
             });
         }).data.subscription;
     },
@@ -230,6 +237,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isAnonymous: true,
             isAuthenticated: false,
             isAuthInitialized: true,
+            isAdmin: false,
         });
     },
 
