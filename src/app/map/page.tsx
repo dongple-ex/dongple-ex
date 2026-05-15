@@ -12,9 +12,10 @@ import { useAuthStore } from "@/lib/store/authStore";
 import { useLocationStore } from "@/lib/store/locationStore";
 import { getEventPeriodPhase, getEventStatusBlock } from "@/lib/eventPeriod";
 import { saveRecentMapPlace } from "@/lib/mapRecentPlaces";
+import { AlbumMemory, getAlbumMemories } from "@/lib/albumMemory";
 import { getPersistentUserId } from "@/lib/auth-utils";
 import { 
-    Home, Trees, Coffee, Store, PartyPopper
+    Home, Trees, Coffee, Store, PartyPopper, Route
 } from "lucide-react";
 
 // New Components
@@ -32,6 +33,26 @@ type KakaoOverlay = {
     setMap: (map: KakaoMapInstance | null) => void;
     getPosition: () => KakaoLatLng;
 };
+type KakaoPolyline = {
+    setMap: (map: KakaoMapInstance | null) => void;
+};
+type KakaoLatLngBounds = {
+    extend: (latLng: KakaoLatLng) => void;
+};
+type KakaoMapWithBounds = KakaoMapInstance & {
+    setBounds: (bounds: KakaoLatLngBounds) => void;
+};
+type KakaoDrawingMaps = KakaoMaps & {
+    LatLngBounds: new () => KakaoLatLngBounds;
+    Polyline: new (options: {
+        path: KakaoLatLng[];
+        strokeWeight: number;
+        strokeColor: string;
+        strokeOpacity: number;
+        strokeStyle: string;
+        map?: KakaoMapInstance;
+    }) => KakaoPolyline;
+};
 
 type SearchResultItem = {
     title: string;
@@ -42,6 +63,14 @@ type SearchResultItem = {
 };
 
 type OfficialEventMarker = Awaited<ReturnType<typeof fetchOfficialEvents>>[number];
+
+type JourneyPoint = MapPoint & {
+    id: string;
+    title: string;
+    address?: string;
+    createdAt: string;
+    type: AlbumMemory["type"];
+};
 
 type MarkerEntry = {
     marker: KakaoOverlay;
@@ -56,9 +85,12 @@ const CATEGORIES = [
     { id: "공원", label: "공원", icon: Trees },
 ];
 
+const isValidMapCoordinate = (lat?: number, lng?: number) =>
+    Number.isFinite(lat) && Number.isFinite(lng) && lat! >= 33 && lat! <= 39 && lng! >= 124 && lng! <= 132;
+
 const createLatLng = (lat: number, lng: number) => {
     // 좌표 유효성 검사 (WGS84 범위 내 인지 확인)
-    const isValid = isFinite(lat) && isFinite(lng) && lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132;
+    const isValid = isValidMapCoordinate(lat, lng);
     if (!isValid) {
         console.warn(`[Map] Invalid coordinates detected: lat=${lat}, lng=${lng}. Falling back to default.`);
         return new window.kakao!.maps.LatLng(37.2995, 126.9912); // 수원 정자동 기본값
@@ -82,6 +114,7 @@ function MapContent() {
         setLocation 
     } = useLocationStore();
     const { userId } = useAuthStore();
+    const journeyParam = searchParams.get("journey");
 
     const [markers, setMarkers] = useState<LiveStatus[]>([]);
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
@@ -92,7 +125,8 @@ function MapContent() {
     const [isDragging, setIsDragging] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState("전체");
     const [isMapReady, setIsMapReady] = useState(false);
-    const [showHistory, setShowHistory] = useState(false);
+    const [showHistory, setShowHistory] = useState(true);
+    const [albumJourneyMemories, setAlbumJourneyMemories] = useState<AlbumMemory[]>([]);
 
     // Click-to-Pin states
     const [clickedLatLng, setClickedLatLng] = useState<MapPoint | null>(null);
@@ -103,6 +137,7 @@ function MapContent() {
     const mapRef = useRef<KakaoMapInstance | null>(null);
     const markersRef = useRef<MarkerEntry[]>([]);
     const clickMarkerRef = useRef<KakaoOverlay | null>(null);
+    const journeyLineRef = useRef<KakaoPolyline | null>(null);
     const handledInitialActionRef = useRef(false);
     const [officialEvents, setOfficialEvents] = useState<OfficialEventMarker[]>([]);
     const officialEventsRef = useRef<OfficialEventMarker[]>([]);
@@ -129,6 +164,15 @@ function MapContent() {
         const sub = subscribeLiveUpdates(loadData);
         return () => { sub.unsubscribe(); };
     }, [loadData]);
+
+    useEffect(() => {
+        if (journeyParam !== "album") {
+            setAlbumJourneyMemories([]);
+            return;
+        }
+
+        setAlbumJourneyMemories(getAlbumMemories());
+    }, [journeyParam]);
 
     const handleVerify = async (statusId: string) => {
         let finalUserId = userId;
@@ -175,6 +219,10 @@ function MapContent() {
             if (clickMarkerRef.current) {
                 clickMarkerRef.current.setMap(null);
                 clickMarkerRef.current = null;
+            }
+            if (journeyLineRef.current) {
+                journeyLineRef.current.setMap(null);
+                journeyLineRef.current = null;
             }
         };
     }, [clearRenderedMarkers]);
@@ -386,13 +434,15 @@ function MapContent() {
     useEffect(() => {
         if (!isMapReady || !mapRef.current) return;
 
-        const latParam = Number(searchParams.get("lat"));
-        const lngParam = Number(searchParams.get("lng"));
+        const latRaw = searchParams.get("lat");
+        const lngRaw = searchParams.get("lng");
+        const latParam = latRaw === null ? NaN : Number(latRaw);
+        const lngParam = lngRaw === null ? NaN : Number(lngRaw);
         const titleParam = searchParams.get("title") || "";
         const addressParam = searchParams.get("address") || "";
         const modeParam = searchParams.get("mode");
 
-        if (Number.isFinite(latParam) && Number.isFinite(lngParam)) {
+        if (isValidMapCoordinate(latParam, lngParam)) {
             mapRef.current.setCenter(createLatLng(latParam, lngParam));
             mapRef.current.setLevel(3);
             setClickedLatLng({ lat: latParam, lng: lngParam });
@@ -416,21 +466,108 @@ function MapContent() {
         [markers],
     );
 
+    const journeyPoints = useMemo<JourneyPoint[]>(() => {
+        if (journeyParam !== "album") return [];
+
+        return albumJourneyMemories
+            .filter((memory) => isValidMapCoordinate(memory.latitude, memory.longitude))
+            .slice()
+            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+            .map((memory) => ({
+                id: memory.id,
+                title: memory.locationLabel || memory.title,
+                address: memory.address || memory.subtitle,
+                lat: Number(memory.latitude),
+                lng: Number(memory.longitude),
+                createdAt: memory.createdAt,
+                type: memory.type,
+            }));
+    }, [albumJourneyMemories, journeyParam]);
+    const isJourneyMode = journeyPoints.length >= 2;
+
+    useEffect(() => {
+        if (!isMapReady || !mapRef.current || journeyPoints.length < 2 || !window.kakao?.maps) return;
+
+        const maps = window.kakao.maps as KakaoDrawingMaps;
+        const bounds = new maps.LatLngBounds();
+        journeyPoints.forEach((point) => bounds.extend(createLatLng(point.lat, point.lng)));
+        (mapRef.current as KakaoMapWithBounds).setBounds(bounds);
+        setClickedLatLng(null);
+        setSelectedEventId(null);
+        setExpandedCardId(null);
+        setSheetHeight(28);
+    }, [isMapReady, journeyPoints]);
+
     const renderMarkers = useCallback(() => {
         if (!window.kakao?.maps || !mapRef.current) return;
         const map = mapRef.current;
 
         if (clickMarkerRef.current) {
-            const currentPos = clickMarkerRef.current.getPosition();
-            if (clickedLatLng && currentPos.getLat() === clickedLatLng.lat && currentPos.getLng() === clickedLatLng.lng) {
-                // 이미 같은 위치에 마커가 있으면 스킵 (깜빡임 방지)
-            } else {
-                clickMarkerRef.current.setMap(null);
-                clickMarkerRef.current = null;
-            }
+            clickMarkerRef.current.setMap(null);
+            clickMarkerRef.current = null;
+        }
+
+        if (journeyLineRef.current) {
+            journeyLineRef.current.setMap(null);
+            journeyLineRef.current = null;
         }
 
         clearRenderedMarkers();
+
+        // Album Journey Route
+        if (isJourneyMode) {
+            const maps = window.kakao.maps as KakaoDrawingMaps;
+            const path = journeyPoints.map((point) => createLatLng(point.lat, point.lng));
+            journeyLineRef.current = new maps.Polyline({
+                path,
+                strokeWeight: 5,
+                strokeColor: "#2F8F68",
+                strokeOpacity: 0.86,
+                strokeStyle: "solid",
+                map,
+            });
+
+            journeyPoints.forEach((point, index) => {
+                const el = document.createElement('div');
+                el.addEventListener('click', (e) => e.stopPropagation());
+                el.addEventListener('mousedown', (e) => e.stopPropagation());
+                el.addEventListener('touchstart', (e) => e.stopPropagation());
+                const root = createRoot(el);
+
+                root.render(
+                    <button
+                        type="button"
+                        className="pointer-events-auto flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-full border border-white/80 bg-foreground px-2 py-1 text-white shadow-xl"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setClickedLatLng({ lat: point.lat, lng: point.lng });
+                            setClickedAddress(point.address || point.title);
+                            setClickedPlaceName(point.title);
+                            setSelectedEventId(null);
+                            setExpandedCardId(null);
+                            setSheetHeight(35);
+                            map.panTo(createLatLng(point.lat, point.lng));
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                    >
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[10px] font-black text-white">
+                            {index + 1}
+                        </span>
+                        <span className="max-w-[92px] truncate text-[11px] font-black">{point.title}</span>
+                    </button>
+                );
+
+                const marker = new window.kakao.maps.CustomOverlay({
+                    position: createLatLng(point.lat, point.lng),
+                    map,
+                    content: el,
+                    xAnchor: 0,
+                    yAnchor: 0,
+                });
+                markersRef.current.push({ marker, root });
+            });
+        }
 
         // 1. Click-to-Pin Marker
         if (clickedLatLng && !clickMarkerRef.current) {
@@ -616,7 +753,7 @@ function MapContent() {
             markersRef.current.push({ marker, root });
         });
         }
-    }, [clickedAddress, clickedLatLng, clickedPlaceName, expandedCardId, markers, visibleStatuses, officialEvents, selectedCategory, selectedEventId, clearRenderedMarkers, handleOpenCreateAt, openGlobalBottomSheet]);
+    }, [clickedAddress, clickedLatLng, clickedPlaceName, expandedCardId, markers, visibleStatuses, officialEvents, selectedCategory, selectedEventId, journeyPoints, isJourneyMode, clearRenderedMarkers, handleOpenCreateAt, openGlobalBottomSheet]);
 
     useEffect(() => {
         renderMarkersRef.current = renderMarkers;
@@ -649,6 +786,18 @@ function MapContent() {
                         searchResults={searchResults}
                         onSelectPlace={handleSelectPlace}
                     />
+
+                    {isJourneyMode && (
+                        <div className="pointer-events-auto rounded-[24px] border border-secondary/15 bg-card-bg/95 px-4 py-3 shadow-xl backdrop-blur-xl">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-secondary">Album Journey</p>
+                                    <p className="mt-1 text-[13px] font-black text-foreground">{journeyPoints.length}개 지점을 시간순으로 연결했어요.</p>
+                                </div>
+                                <Route size={18} className="shrink-0 text-secondary" />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

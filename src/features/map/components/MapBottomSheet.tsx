@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { CheckCircle2, ChevronDown, ChevronUp, Clock, HelpCircle, MapPin, ShieldCheck } from "lucide-react";
-import { LiveStatus, formatUpdatedAgo, normalizeStatus } from "@/services/statusService";
+import { LiveStatus, formatUpdatedAgo, getActiveLiveStatusCount, normalizeStatus } from "@/services/statusService";
 import { getStatusTheme } from "@/lib/statusTheme";
 
 interface MapBottomSheetProps {
@@ -35,6 +35,8 @@ export default function MapBottomSheet({
   onToggleHeight,
 }: MapBottomSheetProps) {
   const isExpanded = sheetHeight > 50;
+  const activeCount = getActiveLiveStatusCount(markers);
+  const recentCount = Math.max(0, markers.length - activeCount);
 
   return (
     <div
@@ -57,6 +59,9 @@ export default function MapBottomSheet({
               지금 상태 확인
               <span className="ml-2 rounded-full bg-secondary/10 px-2.5 py-0.5 text-[14px] font-black text-secondary">{markers.length}</span>
             </h3>
+            <p className="mt-1 text-[11px] font-bold text-foreground/35">
+              라이브 {activeCount}곳 · 최근 기록 {recentCount}곳
+            </p>
           </div>
           <div className="flex flex-col items-end gap-y-1.5">
             <div className="flex items-center gap-1.5">
@@ -83,7 +88,7 @@ export default function MapBottomSheet({
               }}
               className="flex items-center gap-1.5 group pr-0.5"
             >
-              <span className={`text-[10px] font-black transition-colors ${showHistory ? 'text-secondary' : 'text-foreground/30 group-hover:text-foreground/50'}`}>과거 이력</span>
+              <span className={`text-[10px] font-black transition-colors ${showHistory ? 'text-secondary' : 'text-foreground/30 group-hover:text-foreground/50'}`}>최근 기록 포함</span>
               <div className={`relative w-6 h-3 rounded-full transition-colors duration-300 ${showHistory ? 'bg-secondary' : 'bg-foreground/10'}`}>
                 <div className={`absolute top-0.5 w-2 h-2 bg-white rounded-full transition-all duration-300 ${showHistory ? 'left-3.5' : 'left-0.5'}`} />
               </div>
@@ -116,7 +121,7 @@ export default function MapBottomSheet({
                       <span className="rounded-md bg-foreground/5 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-foreground/35">{card.category}</span>
                       {isExpired && (
                         <span className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-tight text-amber-600 border border-amber-500/20">
-                          과거 기록
+                          최근 기록
                         </span>
                       )}
                       <div className="flex items-center text-[10px] font-bold text-foreground/40">
@@ -140,7 +145,7 @@ export default function MapBottomSheet({
                     <div className="flex flex-wrap items-center gap-3">
                       <div className={`flex items-center rounded-xl border px-3 py-1.5 text-[12px] font-black shadow-sm backdrop-blur-md ${theme.tone} ${theme.border}`}>
                         <div className={`mr-2 h-2 w-2 rounded-full ${theme.indicator} ${expandedCardId === card.id ? "animate-pulse" : ""}`} />
-                        {card.is_request ? "확인 요청 중" : `${normalized} 상태`}
+                        {card.is_request ? "확인 요청 중" : isExpired ? `${normalized} 기록` : `${normalized} 상태`}
                       </div>
 
                       <div className="flex items-center text-[11px] font-bold text-foreground/40">
@@ -172,7 +177,7 @@ export default function MapBottomSheet({
                     )}
 
                     <div className="flex gap-2.5">
-                      {!card.is_request && (
+                      {!card.is_request && !isExpired && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

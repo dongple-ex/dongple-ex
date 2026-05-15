@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { sortEventsByClosestDate } from '@/lib/eventSort';
 
 type EventMeta = Record<string, unknown>;
 
@@ -58,7 +59,7 @@ async function fetchTourApiEvents(keyword?: string, category?: string): Promise<
         }
 
         const data = (await response.json()) as TourApiEventsResponse;
-        return data.items || [];
+        return sortEventsByClosestDate(data.items || []);
     } catch (err) {
         console.error('TourAPI live fetch failed:', err);
         return [];
@@ -81,7 +82,7 @@ export async function fetchTourApiLocation(lat: number, lng: number, radius = 20
         if (!response.ok) return [];
 
         const data = (await response.json()) as TourApiEventsResponse;
-        return data.items || [];
+        return sortEventsByClosestDate(data.items || []);
     } catch (err) {
         console.error('TourAPI location fetch failed:', err);
         return [];
@@ -100,7 +101,7 @@ export async function fetchOfficialEvents(keyword?: string, category?: string): 
     try {
         const liveEvents = await fetchTourApiEvents(keyword, category);
         if (liveEvents.length > 0) {
-            return liveEvents;
+            return sortEventsByClosestDate(liveEvents);
         }
 
         let queryBuilder = supabase
@@ -123,7 +124,7 @@ export async function fetchOfficialEvents(keyword?: string, category?: string): 
             return [];
         }
 
-        return mapDbEvents((data || []) as OfficialEventRow[]);
+        return sortEventsByClosestDate(mapDbEvents((data || []) as OfficialEventRow[]));
     } catch (err) {
         console.error('이벤트 서비스 오류:', err);
         return [];
