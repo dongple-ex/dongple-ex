@@ -1,13 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, MapPin, Plus } from "lucide-react";
+import { ArrowUpRight, Clock3, MapPin, Plus, Radio } from "lucide-react";
 import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useRequireAuth } from "@/lib/useRequireAuth";
-import { fetchLiveStatus, postLiveStatus, subscribeLiveUpdates, verifyStatusWithTrust } from "@/services/statusService";
+import {
+  fetchLiveStatus,
+  formatUpdatedAgo,
+  isLiveStatusActive,
+  postLiveStatus,
+  subscribeLiveUpdates,
+  verifyStatusWithTrust,
+} from "@/services/statusService";
 import { getStatusTheme, normalizeStatus } from "@/lib/statusTheme";
 
 type LiveUpdateItem = Awaited<ReturnType<typeof fetchLiveStatus>>[number];
@@ -15,6 +22,7 @@ type LiveUpdateItem = Awaited<ReturnType<typeof fetchLiveStatus>>[number];
 export default function LiveBoardTickerv2() {
   const [liveUpdates, setLiveUpdates] = useState<LiveUpdateItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const openBottomSheet = useUIStore((state) => state.openBottomSheet);
   const { userId } = useAuthStore();
   const requireAuth = useRequireAuth();
@@ -22,7 +30,7 @@ export default function LiveBoardTickerv2() {
 
   const loadData = async () => {
     try {
-      const data = await fetchLiveStatus();
+      const data = await fetchLiveStatus(true);
       setLiveUpdates(data);
     } catch (error) {
       console.error("Failed to load status:", error);
@@ -43,13 +51,71 @@ export default function LiveBoardTickerv2() {
     return () => clearInterval(timer);
   }, [liveUpdates.length]);
 
-  if (liveUpdates.length === 0) return null;
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (currentIndex >= liveUpdates.length) {
+      setCurrentIndex(0);
+    }
+  }, [currentIndex, liveUpdates.length]);
+
+  const activeCount = useMemo(() => liveUpdates.filter((item) => isLiveStatusActive(item, now)).length, [liveUpdates, now]);
+  const recentCount = Math.max(0, liveUpdates.length - activeCount);
+
+  if (liveUpdates.length === 0) {
+    return (
+      <section className="relative z-20 -mt-7 px-6">
+        <div className="rounded-[28px] border border-dashed border-secondary/25 bg-card-bg p-4 shadow-xl backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <div className="flex h-[62px] w-[62px] shrink-0 flex-col items-center justify-center rounded-[22px] bg-secondary/10 text-secondary">
+              <Radio size={19} />
+              <span className="mt-1 text-[10px] font-black uppercase leading-none">Ready</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/70">Live signal</p>
+              <h3 className="mt-1 text-[15px] font-black leading-tight text-foreground">아직 최근 현장 신호가 없어요</h3>
+              <p className="mt-1 text-[11px] font-bold leading-snug text-foreground/45">궁금한 장소를 요청하거나 지금 상태를 남기면 바로 라이브 보드에 올라옵니다.</p>
+            </div>
+            <button
+              onClick={() => requireAuth({ type: "bottomSheet", content: "liveCreate", data: { mode: "share" } })}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-foreground text-background shadow-lg transition-all hover:scale-105 active:scale-95"
+              title="현장 상태 공유"
+            >
+              <Plus size={17} />
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   const current = liveUpdates[currentIndex];
+  const isCurrentActive = isLiveStatusActive(current, now);
   const statusLabel = current.is_request ? "요청" : normalizeStatus(current.status);
   const theme = getStatusTheme(current.status, current.is_request);
+  const currentTimeAgo = formatUpdatedAgo(current.created_at);
+  const cardTone = isCurrentActive
+    ? theme.card
+    : "border-amber-100 bg-card-bg shadow-amber-900/5";
 
   const handleAgree = async () => {
+    if (!isCurrentActive) {
+      requireAuth({
+        type: "bottomSheet",
+        content: "liveCreate",
+        data: {
+          mode: "share",
+          defaultPlaceName: current.place_name,
+          latitude: current.latitude,
+          longitude: current.longitude,
+        },
+      });
+      return;
+    }
+
     let finalUserId: string | null = userId;
 
     if (!finalUserId) {
@@ -116,12 +182,24 @@ export default function LiveBoardTickerv2() {
     <section className="relative z-20 -mt-7 px-6">
       <div
         onClick={() => openBottomSheet("liveDetail", { detailItem: current })}
-        className={`group cursor-pointer rounded-[28px] border p-2 shadow-xl backdrop-blur-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] ${theme.card}`}
+        className={`group cursor-pointer overflow-hidden rounded-[28px] border p-2 shadow-xl backdrop-blur-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] ${cardTone}`}
       >
+        <div className="mb-2 flex items-center justify-between px-2 pt-1">
+          <div className="flex items-center gap-1.5">
+            <span className={`h-1.5 w-1.5 rounded-full ${isCurrentActive ? "animate-pulse bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]" : "bg-amber-500"}`} />
+            <span className={`text-[10px] font-black uppercase tracking-[0.18em] ${isCurrentActive ? "text-red-500" : "text-amber-600"}`}>
+              {isCurrentActive ? "Live now" : "Recent signal"}
+            </span>
+          </div>
+          <span className="flex items-center text-[10px] font-bold text-foreground/35">
+            <Clock3 size={10} className="mr-1" />
+            {currentTimeAgo}
+          </span>
+        </div>
         <div className="flex items-center">
-          <div className="flex aspect-square min-w-[62px] flex-col items-center justify-center rounded-[22px] bg-foreground p-3 text-background">
-            <div className="mb-1.5 h-2 w-2 animate-pulse rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-            <span className="text-[10px] font-black uppercase leading-none">Live</span>
+          <div className={`flex aspect-square min-w-[62px] flex-col items-center justify-center rounded-[22px] p-3 ${isCurrentActive ? "bg-foreground text-background" : "bg-amber-500/10 text-amber-700"}`}>
+            <div className={`mb-1.5 h-2 w-2 rounded-full ${isCurrentActive ? "animate-pulse bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" : "bg-amber-500"}`} />
+            <span className="text-[10px] font-black uppercase leading-none">{isCurrentActive ? "Live" : "최근"}</span>
           </div>
 
           <div className="flex-1 overflow-hidden px-3 py-1.5">
@@ -138,6 +216,11 @@ export default function LiveBoardTickerv2() {
                     <span className={`mr-1.5 h-1.5 w-1.5 animate-pulse rounded-full ${theme.indicator}`} />
                     {statusLabel}
                   </span>
+                  {!isCurrentActive && (
+                    <span className="rounded-full border border-amber-500/15 bg-amber-500/10 px-2 py-0.5 text-[10px] font-black text-amber-700">
+                      갱신 필요
+                    </span>
+                  )}
                   <span className="flex items-center text-[10px] font-bold text-foreground/40">
                     <MapPin size={10} className="mr-0.5" />
                     {current.category || "동네생활"}
@@ -158,15 +241,25 @@ export default function LiveBoardTickerv2() {
       </div>
 
       <div className="mt-3 flex items-center justify-between px-2 gap-3">
-        <p className="flex-1 text-[11px] font-bold leading-tight text-foreground/40 break-keep">
-          지금 {liveUpdates.length}곳의 현장 상태가 공유되고 있어요.
-        </p>
+        <div className="flex-1">
+          <p className="text-[11px] font-bold leading-tight text-foreground/45 break-keep">
+            지금 켜진 현장 {activeCount}곳, 최근 흐름 {recentCount}곳을 이어서 보고 있어요.
+          </p>
+          <div className="mt-2 flex items-center gap-1.5">
+            {liveUpdates.slice(0, 6).map((item) => (
+              <span
+                key={item.id}
+                className={`h-1.5 rounded-full transition-all ${isLiveStatusActive(item, now) ? "w-5 bg-red-500/70" : "w-2 bg-foreground/15"}`}
+              />
+            ))}
+          </div>
+        </div>
         <div className="flex gap-2 shrink-0 items-center">
           <button onClick={handleDisagree} className="rounded-full bg-foreground/5 px-3 py-1.5 text-[10px] font-black text-foreground/45 hover:text-rose-500 whitespace-nowrap transition-colors">
-            달라요
+            {isCurrentActive ? "달라요" : "갱신"}
           </button>
           <button onClick={handleAgree} className="rounded-full bg-secondary/10 px-3 py-1.5 text-[10px] font-black text-secondary hover:bg-secondary hover:text-white whitespace-nowrap transition-colors">
-            맞아요
+            {isCurrentActive ? "맞아요" : "새로"}
           </button>
           <button onClick={() => requireAuth({ type: "bottomSheet", content: "liveCreate", data: { mode: "share" } })} className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background shadow-lg hover:scale-105 active:scale-95 transition-all">
             <Plus size={16} />

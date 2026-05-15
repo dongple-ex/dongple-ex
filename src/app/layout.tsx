@@ -15,6 +15,11 @@ export const metadata: Metadata = {
     "동네의 행사, 장소, 현장 상태를 빠르게 확인하고 나중에 다시 가고 싶은 곳을 기록하는 생활 지도 서비스입니다.",
   keywords: ["내발문자", "동네 소식", "현장 상태", "장소 기록", "생활 지도"],
   metadataBase: new URL("https://dongple.vercel.app"),
+  icons: {
+    icon: [{ url: "/logo_s.png", type: "image/png" }],
+    shortcut: [{ url: "/logo_s.png", type: "image/png" }],
+    apple: [{ url: "/logo_s.png", type: "image/png" }],
+  },
   alternates: {
     canonical: "/",
   },

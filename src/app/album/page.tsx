@@ -81,6 +81,14 @@ export default function JourneyAlbumPage() {
 
   const favoriteMemories = useMemo(() => memories.filter((item) => item.favorite).slice(0, 3), [memories]);
   const bestMemory = favoriteMemories[0] || memories[0];
+  const journeyMemories = useMemo(
+    () =>
+      memories
+        .filter((memory) => Number.isFinite(memory.latitude) && Number.isFinite(memory.longitude))
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    [memories],
+  );
+  const journeyMapHref = journeyMemories.length >= 2 ? "/map?journey=album" : "/map";
 
   const stats = useMemo(() => {
     const placeCount = new Set(memories.map((item) => item.locationLabel || item.title)).size;
@@ -271,6 +279,60 @@ export default function JourneyAlbumPage() {
           ) : (
             <EmptyBlock title="아직 발자취가 비어 있어요." description="첫 기록을 남기면 내발문자가 시간순으로 발자취를 엮어줍니다." />
           )}
+        </section>
+
+        <section className="overflow-hidden rounded-[28px] border border-secondary/15 bg-card-bg shadow-sm">
+          <div className="bg-gradient-to-br from-secondary/10 via-card-bg to-accent/10 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-secondary">Journey Map</p>
+                <h3 className="mt-1 text-[20px] font-black">기록을 선으로 잇는 여정</h3>
+                <p className="mt-2 text-[13px] font-bold leading-relaxed text-foreground/55">
+                  좌표가 남아있는 장소를 시간순으로 연결해서 오늘까지의 이동 흐름을 지도에서 볼 수 있어요.
+                </p>
+              </div>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-secondary text-white shadow-lg shadow-secondary/25">
+                <Route size={20} />
+              </div>
+            </div>
+
+            {journeyMemories.length >= 2 ? (
+              <>
+                <div className="mt-5 rounded-[24px] border border-white/60 bg-background/70 p-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-foreground/35">Connected Points</p>
+                      <p className="mt-1 text-[24px] font-black text-secondary">{journeyMemories.length}곳</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[12px] font-black text-foreground/45">첫 기록</p>
+                      <p className="mt-1 text-[13px] font-black">{formatTime(journeyMemories[0].createdAt)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center gap-2 overflow-hidden">
+                    {journeyMemories.slice(0, 5).map((memory, index) => (
+                      <div key={memory.id} className="flex min-w-0 items-center gap-2">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-black text-white">
+                          {index + 1}
+                        </div>
+                        {index < Math.min(journeyMemories.length, 5) - 1 && <div className="h-px w-7 shrink-0 bg-secondary/35" />}
+                      </div>
+                    ))}
+                    {journeyMemories.length > 5 && <span className="text-[11px] font-black text-foreground/35">+{journeyMemories.length - 5}</span>}
+                  </div>
+                </div>
+                <Link href={journeyMapHref} className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-secondary px-4 py-3 text-[13px] font-black text-white shadow-lg shadow-secondary/20 transition-transform active:scale-95">
+                  <MapPinned size={16} className="mr-2" />
+                  지도에서 여정 보기
+                </Link>
+              </>
+            ) : (
+              <div className="mt-5 rounded-[24px] border border-dashed border-secondary/25 bg-background/60 p-4">
+                <p className="text-[13px] font-black text-foreground/70">연결할 좌표가 더 필요해요.</p>
+                <p className="mt-1 text-[12px] font-bold leading-relaxed text-foreground/45">장소가 담긴 기록이 2개 이상 모이면 지도에서 선으로 이어볼 수 있어요.</p>
+              </div>
+            )}
+          </div>
         </section>
 
         <section className="rounded-[28px] bg-secondary p-6 text-white shadow-xl shadow-secondary/20">

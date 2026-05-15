@@ -71,12 +71,12 @@ export default function OfficialEventSection() {
 
     return (
         <section className="space-y-4">
-            <div className="flex items-center justify-between px-4">
+            <div className="flex items-center justify-between px-6">
                 <div className="flex items-center space-x-2">
                     <PartyPopper size={20} className="text-secondary" />
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-secondary">지금 핫한 곳</p>
-                        <h2 className="text-lg font-black text-foreground">오늘 행사 현재 상태</h2>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-secondary">Official Events</p>
+                        <h2 className="text-lg font-black text-foreground">가까운 공식 일정</h2>
                     </div>
                 </div>
                 <Link
@@ -87,7 +87,7 @@ export default function OfficialEventSection() {
                 </Link>
             </div>
 
-            <div className="no-scrollbar flex space-x-4 overflow-x-auto px-4 pb-4">
+            <div className="no-scrollbar flex space-x-4 overflow-x-auto px-6 pb-4">
                 {events.map((event) => (
                     <EventSummaryCard
                         key={event.id}

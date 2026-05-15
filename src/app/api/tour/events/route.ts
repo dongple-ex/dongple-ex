@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sortEventsByClosestDate } from "@/lib/eventSort";
 
 type TourApiFestivalItem = {
   contentid?: string;
@@ -339,7 +340,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      items: normalized,
+      items: sortEventsByClosestDate(normalized),
       totalCount: payload?.response?.body?.totalCount || normalized.length,
       configured: true,
     });

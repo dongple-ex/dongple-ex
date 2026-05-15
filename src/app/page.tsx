@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
-  ChevronRight,
-  CheckCircle2,
   Clock3,
   Coffee,
   Heart,
@@ -13,7 +11,6 @@ import {
   MapPinned,
   MessageSquare,
   PartyPopper,
-  PencilLine,
   Search,
   ShieldCheck,
   Star,
@@ -33,14 +30,6 @@ import { useUIStore } from "@/lib/store/uiStore";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { fetchPosts, Post, subscribePosts } from "@/services/postService";
 
-const FLOW_STEPS = [
-  { title: "1. 소식", text: "오늘 갈 만한 이유를 찾습니다.", icon: Search },
-  { title: "2. 확인", text: "지도에서 지금 상태를 봅니다.", icon: MapPinned },
-  { title: "3. 요청", text: "모르면 현장 공유를 부탁합니다.", icon: MessageSquare },
-  { title: "4. 기록", text: "마음에 남은 곳을 저장합니다.", icon: PencilLine },
-  { title: "5. 다시 보기", text: "내발문자에서 꺼내봅니다.", icon: CheckCircle2 },
-];
-
 type DiscoveryStatus = "혼잡" | "보통" | "여유" | "요청";
 
 const DISCOVERY_CARDS: {
@@ -53,53 +42,57 @@ const DISCOVERY_CARDS: {
   updated: string;
   summary: string;
   tags: string[];
+  imageUrl: string;
   lat: number;
   lng: number;
   address: string;
 }[] = [
-    {
-      id: "today-hwaseong-night",
-      type: "공식+질문",
-      title: "화성행궁 야간개장, 지금 가도 줄이 길까요?",
-      place: "수원 화성행궁",
-      category: "행사",
-      status: "혼잡",
-      updated: "5분 전",
-      summary: "공식 행사는 진행 중이고, 현장 공유 기준 입장 대기와 사진 명소 주변이 붐비는 편이에요.",
-      tags: ["대기 있음", "사진 명소", "야간 행사"],
-      lat: 37.2811,
-      lng: 127.0135,
-      address: "경기 수원시 팔달구 정조로 825",
-    },
-    {
-      id: "today-cafe-street",
-      type: "후기+상태",
-      title: "행궁동 카페거리, 비 오는 날에도 걷기 괜찮을까요?",
-      place: "행궁동 카페거리",
-      category: "카페",
-      status: "보통",
-      updated: "12분 전",
-      summary: "골목은 비교적 여유롭지만 인기 카페는 대기가 조금 있어요. 포장이나 짧은 방문에 좋아요.",
-      tags: ["카페 대기", "골목 산책", "포장 추천"],
-      lat: 37.2834,
-      lng: 127.0148,
-      address: "경기 수원시 팔달구 행궁동",
-    },
-    {
-      id: "today-park-walk",
-      type: "추천",
-      title: "방화수류정 산책길, 지금은 한산한 편이에요.",
-      place: "방화수류정",
-      category: "산책",
-      status: "여유",
-      updated: "18분 전",
-      summary: "바람이 좋고 산책 인원이 많지 않아요. 해 질 무렵에는 사진 찍는 사람이 늘 수 있어요.",
-      tags: ["한산", "산책 추천", "노을"],
-      lat: 37.2878,
-      lng: 127.0177,
-      address: "경기 수원시 팔달구 수원천로392번길",
-    },
-  ];
+  {
+    id: "today-hwaseong-night",
+    type: "공식+질문",
+    title: "화성행궁 야간개장, 지금 가도 줄이 길까요?",
+    place: "수원 화성행궁",
+    category: "행사",
+    status: "혼잡",
+    updated: "5분 전",
+    summary: "공식 행사는 진행 중이고, 현장 공유 기준 입장 대기와 사진 명소 주변이 붐비는 편이에요.",
+    tags: ["대기 있음", "사진 명소", "야간 행사"],
+    imageUrl: "https://www.suwon.go.kr/webcontent/ckeditor/2026/5/4/d88dc018-7cb8-429f-a49c-478f47654b43.jpg",
+    lat: 37.2811,
+    lng: 127.0135,
+    address: "경기 수원시 팔달구 정조로 825",
+  },
+  {
+    id: "today-cafe-street",
+    type: "후기+상태",
+    title: "행궁동 카페거리, 비 오는 날에도 걷기 괜찮을까요?",
+    place: "행궁동 카페거리",
+    category: "카페",
+    status: "보통",
+    updated: "12분 전",
+    summary: "골목은 비교적 여유롭지만 인기 카페는 대기가 조금 있어요. 포장이나 짧은 방문에 좋아요.",
+    tags: ["카페 대기", "골목 산책", "포장 추천"],
+    imageUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=900&auto=format&fit=crop",
+    lat: 37.2834,
+    lng: 127.0148,
+    address: "경기 수원시 팔달구 행궁동",
+  },
+  {
+    id: "today-park-walk",
+    type: "추천",
+    title: "방화수류정 산책길, 지금은 한산한 편이에요.",
+    place: "방화수류정",
+    category: "산책",
+    status: "여유",
+    updated: "18분 전",
+    summary: "바람이 좋고 산책 인원이 많지 않아요. 해 질 무렵에는 사진 찍는 사람이 늘 수 있어요.",
+    tags: ["한산", "산책 추천", "노을"],
+    imageUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=900&auto=format&fit=crop",
+    lat: 37.2878,
+    lng: 127.0177,
+    address: "경기 수원시 팔달구 수원천로392번길",
+  },
+];
 
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -208,118 +201,94 @@ export default function Home() {
       <HeroSection />
       <LiveBoardTickerv2 />
 
-      <section className="px-6 pt-5">
-        <div className="rounded-[26px] border border-border bg-card-bg p-5 shadow-sm">
-          <div className="mb-4">
-            <p className="text-[11px] font-black uppercase tracking-widest text-secondary">How it works</p>
-            <h2 className="mt-1.5 text-[22px] font-black">내발문자는 이렇게 씁니다</h2>
-            <p className="mt-2 text-[13px] font-medium leading-relaxed text-foreground/55">
-              이 앱은 장소 추천 앱이 아니라, “갈 이유”와 “지금 상태”와 “다음에 다시 볼 기록”을 이어주는 앱입니다.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {FLOW_STEPS.map((step, idx) => {
-              const Icon = step.icon;
-              return (
-                <div key={step.title} className="flex items-center gap-2 shrink-0">
-                  <div className="min-w-[138px] rounded-2xl bg-nav-bg px-3 py-3">
-                    <Icon size={16} className="text-secondary" />
-                    <strong className="mt-2 block text-[13px] font-black">{step.title}</strong>
-                    <span className="mt-1 block text-[12px] font-semibold leading-snug text-foreground/50">{step.text}</span>
-                  </div>
-                  {idx < FLOW_STEPS.length - 1 && (
-                    <ChevronRight size={14} className="text-foreground/20 shrink-0" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+      <QuickActionStrip
+        onRequest={() => openBottomSheet("recordHub", { defaultTab: "request" })}
+      />
+
+      <section className="pt-8">
+        <div className="px-6">
+          <SectionHeading
+            eyebrow="Today Discovery"
+            title="오늘 바로 판단할 곳"
+            description="공식 일정과 현장 분위기를 함께 보고 움직일 곳을 고르세요."
+          />
+        </div>
+
+        <div className="no-scrollbar mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2">
+          {DISCOVERY_CARDS.map((item) => (
+            <DiscoveryCard
+              key={item.id}
+              item={item}
+              onSave={() => handleSaveDiscovery(item)}
+              onRequest={() => handleRequestDiscovery(item)}
+            />
+          ))}
         </div>
       </section>
 
-      <section className="px-6 pt-5">
-        <div className="rounded-[26px] border border-border bg-card-bg p-5 shadow-sm">
-          <div className="mb-4">
-            <p className="text-[11px] font-black uppercase tracking-widest text-secondary">Today Discovery</p>
-            <h2 className="mt-1.5 text-[22px] font-black">오늘 발견한 곳</h2>
-          </div>
-
-          <div className="space-y-3">
-            {DISCOVERY_CARDS.map((item) => (
-              <DiscoveryCard
-                key={item.id}
-                item={item}
-                onSave={() => handleSaveDiscovery(item)}
-                onRequest={() => handleRequestDiscovery(item)}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-6 pt-5">
-        <div className="rounded-[26px] border border-border bg-card-bg p-5 shadow-sm">
-          <div className="mb-4">
-            <p className="text-[11px] font-black uppercase tracking-widest text-secondary">Next Stop</p>
-            <h2 className="mt-1.5 text-[22px] font-black">다시 볼 장소</h2>
-          </div>
-
-          {mapHubItems.length > 0 ? (
-            <div className="mt-4 space-y-2">
-              {mapHubItems.map((item) => (
-                <Link key={item.id} href={item.href} className="flex items-center gap-3 rounded-2xl bg-nav-bg px-3.5 py-3 transition-colors hover:bg-foreground/5">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card-bg text-secondary">
-                    {item.icon === "favorite" ? <Heart size={16} fill="currentColor" /> : <Clock3 size={16} />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[14px] font-black">{item.title}</span>
-                    <span className="mt-0.5 block truncate text-[11px] font-bold text-foreground/45">{item.subtitle}</span>
-                  </span>
-                  <ArrowRight size={15} className="shrink-0 text-foreground/25" />
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-4 rounded-2xl border border-dashed border-border bg-nav-bg/60 px-4 py-4">
-              <p className="text-[13px] font-black text-foreground/65">아직 다시 볼 장소가 없어요.</p>
-              <p className="mt-1 text-[12px] font-medium text-foreground/45">소식에서 가볼 곳을 찾거나 지도에서 장소를 검색하면 여기에 쌓입니다.</p>
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
-            <Link href="/map" className="inline-flex items-center justify-center rounded-2xl bg-foreground px-5 py-3 text-[13px] font-black text-background">
-              지금 상태 확인하기
-              <ArrowRight size={16} className="ml-2" />
-            </Link>
-            <button
-              onClick={() => openBottomSheet("recordHub", { defaultTab: "request" })}
-              className="inline-flex items-center justify-center rounded-2xl border border-border px-5 py-3 text-[13px] font-black text-foreground/70"
-            >
-              현장 공유 요청
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <div className="mt-5">
+      <div className="mt-8">
         <OfficialEventSection />
       </div>
 
-      <section className="px-6 pb-4 pt-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-secondary">Community Feed</p>
-            <h2 className="mt-2 text-xl font-black">가볼 이유 찾기</h2>
+      <section className="px-6 pt-8">
+        <SectionHeading
+          eyebrow="Next Stop"
+          title="다시 볼 장소"
+          description="최근 검색하거나 저장한 장소를 빠르게 이어서 확인하세요."
+        />
+
+        {mapHubItems.length > 0 ? (
+          <div className="mt-4 space-y-2">
+            {mapHubItems.map((item) => (
+              <Link key={item.id} href={item.href} className="flex items-center gap-3 rounded-2xl border border-border bg-card-bg px-3.5 py-3 shadow-sm transition-colors hover:bg-foreground/5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-foreground/5 text-secondary">
+                  {item.icon === "favorite" ? <Heart size={16} fill="currentColor" /> : <Clock3 size={16} />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[14px] font-black">{item.title}</span>
+                  <span className="mt-0.5 block truncate text-[11px] font-bold text-foreground/45">{item.subtitle}</span>
+                </span>
+                <ArrowRight size={15} className="shrink-0 text-foreground/25" />
+              </Link>
+            ))}
           </div>
+        ) : (
+          <div className="mt-4 rounded-2xl border border-dashed border-border bg-nav-bg/60 px-4 py-4">
+            <p className="text-[13px] font-black text-foreground/65">아직 다시 볼 장소가 없어요.</p>
+            <p className="mt-1 text-[12px] font-medium text-foreground/45">소식에서 가볼 곳을 찾거나 지도에서 장소를 검색하면 여기에 쌓입니다.</p>
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
+          <Link href="/map" className="inline-flex items-center justify-center rounded-2xl bg-foreground px-5 py-3 text-[13px] font-black text-background">
+            지금 상태 확인하기
+            <ArrowRight size={16} className="ml-2" />
+          </Link>
+          <button
+            onClick={() => openBottomSheet("recordHub", { defaultTab: "request" })}
+            className="inline-flex items-center justify-center rounded-2xl border border-border px-5 py-3 text-[13px] font-black text-foreground/70"
+          >
+            현장 공유 요청
+          </button>
+        </div>
+      </section>
+
+      <section className="px-6 pb-4 pt-9">
+        <div className="flex items-end justify-between gap-4">
+          <SectionHeading
+            eyebrow="Community Feed"
+            title="가볼 이유 찾기"
+            description="동네 사람들이 남긴 짧은 이유와 반응입니다."
+          />
           <Link
             href="/news"
-            className="flex items-center text-[12px] font-black text-secondary hover:underline"
+            className="mb-0.5 flex shrink-0 items-center text-[12px] font-black text-secondary hover:underline"
           >
             전체보기 <ArrowRight size={14} className="ml-1" />
           </Link>
         </div>
 
-        <div className="flex items-center justify-end">
+        <div className="mt-5 flex items-center justify-end">
           <div className="flex shrink-0 rounded-xl bg-foreground/5 p-1">
             <button onClick={() => setViewMode("list")} className={`rounded-lg p-1.5 ${viewMode === "list" ? "bg-card-bg text-secondary shadow-sm" : "text-foreground/40"}`} aria-label="목록 보기">
               <List size={16} />
@@ -330,7 +299,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className={`mt-6 ${viewMode === "grid" ? "grid grid-cols-2 gap-4" : "space-y-4"}`}>
+        <div className={`mt-5 ${viewMode === "grid" ? "grid grid-cols-2 gap-4" : "space-y-4"}`}>
           {isLoading ? (
             [1, 2, 3, 4].map((i) => <div key={i} className="h-32 animate-pulse rounded-[24px] bg-foreground/5" />)
           ) : posts.length > 0 ? (
@@ -342,6 +311,54 @@ export default function Home() {
           )}
         </div>
       </section>
+    </div>
+  );
+}
+
+function QuickActionStrip({ onRequest }: { onRequest: () => void }) {
+  return (
+    <section className="px-6 pt-6">
+      <div className="grid grid-cols-3 gap-2">
+        <Link href="/news" className="flex min-h-[92px] flex-col justify-between rounded-2xl border border-border bg-card-bg p-3 shadow-sm transition-transform active:scale-[0.98]">
+          <Search size={18} className="text-accent" />
+          <span>
+            <span className="block text-[13px] font-black text-foreground">발견</span>
+            <span className="mt-0.5 block text-[10px] font-bold text-foreground/42">오늘의 이유</span>
+          </span>
+        </Link>
+        <Link href="/map" className="flex min-h-[92px] flex-col justify-between rounded-2xl border border-border bg-card-bg p-3 shadow-sm transition-transform active:scale-[0.98]">
+          <MapPinned size={18} className="text-secondary" />
+          <span>
+            <span className="block text-[13px] font-black text-foreground">상태</span>
+            <span className="mt-0.5 block text-[10px] font-bold text-foreground/42">지도 라이브</span>
+          </span>
+        </Link>
+        <button onClick={onRequest} className="flex min-h-[92px] flex-col justify-between rounded-2xl border border-border bg-foreground p-3 text-left text-background shadow-sm transition-transform active:scale-[0.98]">
+          <MessageSquare size={18} />
+          <span>
+            <span className="block text-[13px] font-black">요청</span>
+            <span className="mt-0.5 block text-[10px] font-bold text-background/60">현장 질문</span>
+          </span>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div>
+      <p className="text-[10px] font-black uppercase tracking-widest text-secondary">{eyebrow}</p>
+      <h2 className="mt-1.5 text-[22px] font-black leading-tight text-foreground">{title}</h2>
+      {description && <p className="mt-1.5 text-[12px] font-semibold leading-relaxed text-foreground/45">{description}</p>}
     </div>
   );
 }
@@ -364,44 +381,51 @@ function DiscoveryCard({
   const mapHref = buildMapHref(item.place, item.address, item.lat, item.lng);
 
   return (
-    <article className="rounded-[24px] border border-border bg-nav-bg/55 p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-card-bg px-2.5 py-1 text-[10px] font-black text-secondary shadow-sm">{item.type}</span>
-            <span className="inline-flex items-center rounded-full bg-foreground/5 px-2.5 py-1 text-[10px] font-black text-foreground/45">
-              {item.category === "행사" && <PartyPopper size={10} className="mr-1 text-secondary" />}
-              {item.category === "카페" && <Coffee size={10} className="mr-1 text-secondary" />}
-              {item.category === "산책" && <Trees size={10} className="mr-1 text-secondary" />}
-              {item.category}
-            </span>
-          </div>
-          <h3 className="mt-3 text-[17px] font-black leading-tight text-foreground">{item.title}</h3>
-          <p className="mt-1 text-[12px] font-bold text-foreground/45">{item.place}</p>
-        </div>
-        <StatusBadge status={item.status} updated={item.updated} />
-      </div>
-
-      <p className="mt-3 text-[13px] font-medium leading-relaxed text-foreground/62">{item.summary}</p>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {item.tags.map((tag) => (
-          <span key={tag} className="rounded-full border border-border bg-card-bg px-2.5 py-1 text-[11px] font-bold text-foreground/55">
-            {tag}
+    <article className="w-[312px] shrink-0 snap-start overflow-hidden rounded-[26px] border border-border bg-card-bg shadow-sm">
+      <div
+        className="relative h-36 bg-cover bg-center"
+        style={{ backgroundImage: `url(${item.imageUrl})` }}
+      >
+        <div className="absolute inset-0 bg-black/25" />
+        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+          <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black text-foreground shadow-sm">{item.type}</span>
+          <span className="inline-flex items-center rounded-full bg-black/35 px-2.5 py-1 text-[10px] font-black text-white backdrop-blur-md">
+            {item.category === "행사" && <PartyPopper size={10} className="mr-1 text-white" />}
+            {item.category === "카페" && <Coffee size={10} className="mr-1 text-white" />}
+            {item.category === "산책" && <Trees size={10} className="mr-1 text-white" />}
+            {item.category}
           </span>
-        ))}
+        </div>
+        <div className="absolute bottom-3 right-3">
+          <StatusBadge status={item.status} updated={item.updated} />
+        </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <button onClick={onSave} className="rounded-2xl bg-card-bg px-3 py-3 text-[12px] font-black text-foreground shadow-sm">
-          기록하기
-        </button>
-        <button onClick={onRequest} className="rounded-2xl bg-accent px-3 py-3 text-[12px] font-black text-white shadow-sm">
-          상황요청
-        </button>
-        <Link href={mapHref} className="inline-flex items-center justify-center rounded-2xl bg-foreground px-3 py-3 text-[12px] font-black text-background shadow-sm">
-          상태보기
-        </Link>
+      <div className="p-4">
+        <h3 className="text-[17px] font-black leading-tight text-foreground">{item.title}</h3>
+        <p className="mt-1 text-[12px] font-bold text-foreground/45">{item.place}</p>
+
+        <p className="mt-3 line-clamp-2 text-[13px] font-medium leading-relaxed text-foreground/62">{item.summary}</p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {item.tags.map((tag) => (
+            <span key={tag} className="rounded-full border border-border bg-background/60 px-2.5 py-1 text-[11px] font-bold text-foreground/55">
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <button onClick={onSave} className="rounded-2xl bg-foreground/5 px-2 py-3 text-[12px] font-black text-foreground">
+            기록
+          </button>
+          <button onClick={onRequest} className="rounded-2xl bg-accent px-2 py-3 text-[12px] font-black text-white shadow-sm">
+            요청
+          </button>
+          <Link href={mapHref} className="inline-flex items-center justify-center rounded-2xl bg-foreground px-2 py-3 text-[12px] font-black text-background shadow-sm">
+            상태
+          </Link>
+        </div>
       </div>
     </article>
   );
@@ -416,7 +440,7 @@ function StatusBadge({ status, updated }: { status: DiscoveryStatus; updated: st
   };
 
   return (
-    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black ${styles[status]}`}>
+    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black shadow-sm ${styles[status]}`}>
       {status} · {updated}
     </span>
   );
@@ -426,7 +450,7 @@ function FeedItem({ post, onClick }: { post: Post; onClick: () => void }) {
   const trust = getTrustLevel(post.score || 0.5);
 
   return (
-    <motion.div whileHover={{ y: -3 }} className="flex cursor-pointer flex-col rounded-[24px] border border-border bg-card-bg p-5 shadow-sm" onClick={onClick}>
+    <motion.article whileHover={{ y: -3 }} className="flex cursor-pointer flex-col rounded-[24px] border border-border bg-card-bg p-5 shadow-sm" onClick={onClick}>
       <div className="mb-3 flex items-center justify-between">
         <div className={`flex items-center rounded-full px-2 py-0.5 text-[9px] font-black ${trust.color}`}>
           {trust.icon}
@@ -447,7 +471,7 @@ function FeedItem({ post, onClick }: { post: Post; onClick: () => void }) {
         </span>
         <span className="flex-1 truncate text-right text-[9px] text-foreground/28">#{post.category}</span>
       </div>
-    </motion.div>
+    </motion.article>
   );
 }
 

@@ -49,11 +49,23 @@ type EventLike = {
   title: string;
 };
 
+const LIVE_STATUS_EXPIRE_BUFFER_MS = 5 * 60 * 1000;
+const RECENT_STATUS_WINDOW_HOURS = 48;
+
 const STATUS_ORDER: Record<string, number> = {
   여유: 0,
   보통: 1,
   혼잡: 2,
 };
+
+export function isLiveStatusActive(status: Pick<LiveStatus, "expires_at">, now = Date.now()) {
+  return new Date(status.expires_at).getTime() > now;
+}
+
+export function getActiveLiveStatusCount(statuses: Pick<LiveStatus, "expires_at">[]) {
+  const now = Date.now();
+  return statuses.filter((status) => isLiveStatusActive(status, now)).length;
+}
 
 export function formatUpdatedAgo(value: string) {
   const diffMs = Date.now() - new Date(value).getTime();
@@ -118,11 +130,11 @@ export async function fetchLiveStatus(includeExpired = false) {
 
   if (!includeExpired) {
     // 서버와 클라이언트 간의 미세한 시간 차이를 고려하여 5분 정도의 여유를 둠
-    const bufferTime = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const bufferTime = new Date(Date.now() - LIVE_STATUS_EXPIRE_BUFFER_MS).toISOString();
     query = query.gt("expires_at", bufferTime);
   } else {
     // 과거 이력을 볼 때는 최근 48시간 이내의 기록만 가져옴 (너무 오래된 데이터 방지)
-    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const fortyEightHoursAgo = new Date(Date.now() - RECENT_STATUS_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
     query = query.gt("created_at", fortyEightHoursAgo);
   }
 
@@ -162,7 +174,7 @@ export async function postLiveStatus(payload: Partial<LiveStatus>) {
     console.warn("[StatusService] Suspicious coordinates (0,0):", payload);
   }
 
-  const expiresAt = payload.expires_at || new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+  const expiresAt = payload.expires_at || new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString();
   
   // DB 스키마에 trust_score 컬럼이 없는 경우가 많으므로 안전하게 처리
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
