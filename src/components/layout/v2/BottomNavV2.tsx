@@ -6,12 +6,14 @@ import { Footprints, Home, LayoutList, MapPinned, Plus } from "lucide-react";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useNotificationStore } from "@/lib/store/notificationStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import Link from "next/link";
 
 export default function BottomNavV2() {
   const pathname = usePathname();
   const requireAuth = useRequireAuth();
   const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const isAnonymous = useAuthStore((state) => state.isAnonymous);
 
   const navItems = [
     { icon: Home, label: "홈", path: "/" },
@@ -53,13 +55,13 @@ export default function BottomNavV2() {
                 key={index}
                 type="button"
                 onClick={() => requireAuth({ type: "path", href: "/album" })}
-                className="flex flex-1 flex-col items-center justify-center gap-1"
+                className="flex flex-1 flex-col items-center justify-center gap-1 relative"
               >
                 <Icon size={22} className={isActive ? "text-secondary" : "text-foreground/40"} />
                 <span className={`text-[10px] font-black ${isActive ? "text-secondary" : "text-foreground/40"}`}>
                   {item.label}
                 </span>
-                {unreadCount > 0 && (
+                {!isAnonymous && unreadCount > 0 && (
                   <span className="absolute right-3 top-2 flex min-h-[14px] min-w-[14px] items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black leading-none text-white shadow-sm">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>

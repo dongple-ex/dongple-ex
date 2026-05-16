@@ -119,68 +119,64 @@ export default function WritePage() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="pt-4">
-          <IdentityHeader />
-        </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <IdentityHeader />
 
-        <div className="space-y-4 p-4">
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold ${
-                  category === cat ? "border-secondary bg-secondary text-white" : "border-border bg-card-bg text-foreground/65"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="지금 동네에서 나누고 싶은 이야기를 적어보세요."
-            className="h-48 w-full resize-none bg-transparent text-base outline-none placeholder:text-foreground/28"
-          />
-
-          {selectedImage && (
-            <div className="relative inline-block mt-2">
-              <div className="relative h-24 w-24 rounded-lg overflow-hidden border border-border">
-                <Image src={selectedImage} alt="Selected" fill className="object-cover" />
-              </div>
-              <button 
-                onClick={removeImage}
-                className="absolute -top-2 -right-2 rounded-full bg-foreground/80 p-1 text-background shadow-md"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
-
-          <div className="flex items-center gap-4 border-t border-border pt-4">
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              ref={fileInputRef} 
-              onChange={handleImageChange}
-            />
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 text-foreground/55"
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold ${
+                category === cat ? "border-secondary bg-secondary text-white" : "border-border bg-card-bg text-foreground/65"
+              }`}
             >
-              <Camera size={20} />
-              <span className="text-sm font-bold">사진 ({selectedImage ? 1 : 0}/1)</span>
+              {cat}
             </button>
-            <button className="flex items-center gap-2 text-foreground/55">
-              <MapPin size={20} />
-              <span className="text-sm font-bold">장소</span>
+          ))}
+        </div>
+
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="지금 동네에서 나누고 싶은 이야기를 적어보세요."
+          className="min-h-[200px] w-full resize-none bg-transparent text-base outline-none placeholder:text-foreground/28"
+        />
+
+        {selectedImage && (
+          <div className="relative inline-block mt-2">
+            <div className="relative h-24 w-24 rounded-lg overflow-hidden border border-border">
+              <Image src={selectedImage} alt="Selected" fill className="object-cover" />
+            </div>
+            <button 
+              onClick={removeImage}
+              className="absolute -top-2 -right-2 rounded-full bg-foreground/80 p-1 text-background shadow-md"
+            >
+              <X size={14} />
             </button>
           </div>
-        </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-4 border-t border-border bg-background p-4 pb-safe">
+        <input 
+          type="file" 
+          accept="image/*" 
+          className="hidden" 
+          ref={fileInputRef} 
+          onChange={handleImageChange}
+        />
+        <button 
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-2 text-foreground/55 hover:text-secondary transition-colors"
+        >
+          <Camera size={24} />
+          <span className="text-sm font-bold">사진 ({selectedImage ? 1 : 0}/1)</span>
+        </button>
+        <button className="flex items-center gap-2 text-foreground/55 hover:text-secondary transition-colors">
+          <MapPin size={24} />
+          <span className="text-sm font-bold">장소</span>
+        </button>
       </div>
     </div>
   );
