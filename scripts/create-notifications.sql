@@ -98,7 +98,7 @@ BEGIN
   ) THEN
     ALTER TABLE public.notifications
       ADD CONSTRAINT notifications_type_check
-      CHECK (type IN ('reply', 'status_response', 'trust', 'system'))
+      CHECK (type IN ('reply', 'status_response', 'trust', 'place_update', 'system'))
       NOT VALID;
   END IF;
 END $$;

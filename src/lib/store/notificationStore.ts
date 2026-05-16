@@ -1,5 +1,11 @@
 import { create } from "zustand";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import {
+  getLocalInterestPlaceNotifications,
+  markAllLocalInterestPlaceNotificationsAsRead,
+  markLocalInterestPlaceNotificationAsRead,
+  saveLocalInterestPlaceNotification,
+} from "@/lib/interestPlaceNotifications";
 import { supabase } from "@/lib/supabase";
 import {
   fetchNotifications,
@@ -36,6 +42,23 @@ function upsertNotification(items: NotificationItem[], nextItem: NotificationIte
   return [nextItem, ...nextItems].slice(0, 50);
 }
 
+function isLocalNotification(item: NotificationItem | undefined) {
+  return Boolean(item?.metadata?.local);
+}
+
+function mergeNotifications(items: NotificationItem[]) {
+  const seen = new Set<string>();
+
+  return items
+    .filter((item) => {
+      if (!item.id || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 50);
+}
+
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   items: [],
   unreadCount: 0,
@@ -63,7 +86,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   fetch: async (userId) => {
     set({ isLoading: true, error: null });
     try {
-      const items = await fetchNotifications(userId);
+      const remoteItems = await fetchNotifications(userId);
+      const localItems = getLocalInterestPlaceNotifications(userId);
+      const items = mergeNotifications([...remoteItems, ...localItems]);
       set({
         items,
         unreadCount: getUnreadCount(items),
@@ -127,6 +152,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   markAsRead: async (id) => {
     if (!id) return;
 
+    const currentItem = get().items.find((item) => item.id === id);
     const readAt = new Date().toISOString();
     set((state) => {
       const items = state.items.map((item) =>
@@ -135,22 +161,34 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       return { items, unreadCount: getUnreadCount(items) };
     });
 
+    if (isLocalNotification(currentItem) && currentItem?.user_id) {
+      markLocalInterestPlaceNotificationAsRead(currentItem.user_id, id, readAt);
+      return;
+    }
+
     await markNotificationAsRead(id);
   },
 
   markAllAsRead: async (userId) => {
     if (!userId) return;
 
+    const hasRemoteUnread = get().items.some((item) => !item.is_read && !isLocalNotification(item));
     const readAt = new Date().toISOString();
     set((state) => {
       const items = state.items.map((item) => ({ ...item, is_read: true, read_at: item.read_at || readAt }));
       return { items, unreadCount: 0 };
     });
 
+    markAllLocalInterestPlaceNotificationsAsRead(userId, readAt);
+    if (!hasRemoteUnread) return;
     await markAllNotificationsAsRead(userId);
   },
 
   prepend: (notification) => {
+    if (isLocalNotification(notification)) {
+      saveLocalInterestPlaceNotification(notification);
+    }
+
     set((state) => {
       const items = upsertNotification(state.items, notification);
       return { items, unreadCount: getUnreadCount(items) };

@@ -1,6 +1,6 @@
 "use client";
 
-import { BellOff, CheckCheck, Megaphone, MessageCircle, ShieldCheck, TrafficCone } from "lucide-react";
+import { BellOff, CheckCheck, MapPinned, Megaphone, MessageCircle, ShieldCheck, TrafficCone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useNotificationStore } from "@/lib/store/notificationStore";
@@ -26,6 +26,7 @@ function getNotificationIcon(type: NotificationType) {
   if (type === "reply") return MessageCircle;
   if (type === "status_response") return TrafficCone;
   if (type === "trust") return ShieldCheck;
+  if (type === "place_update") return MapPinned;
   return Megaphone;
 }
 
@@ -33,6 +34,7 @@ function getIconClass(type: NotificationType) {
   if (type === "reply") return "bg-sky-50 text-sky-600";
   if (type === "status_response") return "bg-emerald-50 text-emerald-600";
   if (type === "trust") return "bg-amber-50 text-amber-600";
+  if (type === "place_update") return "bg-rose-50 text-rose-600";
   return "bg-violet-50 text-violet-600";
 }
 

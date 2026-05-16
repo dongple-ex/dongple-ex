@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { LiveStatus } from "@/services/statusService";
 
-export type NotificationType = "reply" | "status_response" | "trust" | "system";
+export type NotificationType = "reply" | "status_response" | "trust" | "place_update" | "system";
 
 export type NotificationMetadata = Record<string, unknown>;
 
@@ -56,7 +56,13 @@ export interface ReplyNotificationInput {
 const DEFAULT_NOTIFICATION_LIMIT = 50;
 
 function toNotificationType(value: unknown): NotificationType {
-  if (value === "reply" || value === "status_response" || value === "trust" || value === "system") {
+  if (
+    value === "reply" ||
+    value === "status_response" ||
+    value === "trust" ||
+    value === "place_update" ||
+    value === "system"
+  ) {
     return value;
   }
   return "system";

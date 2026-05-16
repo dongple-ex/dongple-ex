@@ -318,7 +318,7 @@ $$ LANGUAGE plpgsql;
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('reply', 'status_response', 'trust', 'system')),
+  type TEXT NOT NULL CHECK (type IN ('reply', 'status_response', 'trust', 'place_update', 'system')),
   title TEXT NOT NULL,
   content TEXT NOT NULL,
   link_url TEXT NOT NULL,
