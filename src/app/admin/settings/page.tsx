@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Clock3, Database, KeyRound, Radio, Settings, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, Database, KeyRound, Radio, Settings, ShieldCheck, Image as ImageIcon } from "lucide-react";
+import { useAdminSettingsStore } from "@/lib/store/adminSettingsStore";
 
 const OPERATING_RULES = [
     {
@@ -30,6 +33,8 @@ const CHECKLIST = [
 ];
 
 export default function AdminSettingsPage() {
+    const { imageUpload, setImageUploadSettings } = useAdminSettingsStore();
+
     return (
         <div className="p-8">
             <div className="mb-8">
@@ -60,23 +65,71 @@ export default function AdminSettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_0.8fr]">
-                <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
-                    <div className="border-b border-gray-100 px-5 py-4">
-                        <div className="flex items-center gap-2">
-                            <ShieldCheck className="h-5 w-5 text-indigo-600" />
-                            <h2 className="text-base font-bold text-gray-900">배포 전 체크리스트</h2>
-                        </div>
-                        <p className="mt-1 text-xs font-medium text-gray-500">운영 안정성과 권한 관리를 위해 필요한 항목입니다.</p>
-                    </div>
-                    <div className="divide-y divide-gray-100">
-                        {CHECKLIST.map((item) => (
-                            <div key={item} className="flex gap-3 px-5 py-4">
-                                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-                                <p className="text-sm font-medium leading-relaxed text-gray-700">{item}</p>
+                <div className="space-y-6">
+                    <section className="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
+                        <div className="flex items-center gap-2 mb-6">
+                            <div className="rounded-lg bg-indigo-50 p-2 text-indigo-700">
+                                <ImageIcon size={20} />
                             </div>
-                        ))}
-                    </div>
-                </section>
+                            <h2 className="text-lg font-bold text-gray-900">이미지 업로드 설정</h2>
+                        </div>
+                        <div className="space-y-5">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    최대 해상도 (가로/세로 픽셀)
+                                </label>
+                                <select 
+                                    value={imageUpload.maxWidth} 
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setImageUploadSettings({ maxWidth: val, maxHeight: val });
+                                    }}
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                >
+                                    <option value={400}>400x400 (매우 가벼움)</option>
+                                    <option value={600}>600x600 (현재 권장)</option>
+                                    <option value={800}>800x800 (표준)</option>
+                                    <option value={1200}>1200x1200 (고화질)</option>
+                                </select>
+                                <p className="mt-1.5 text-xs text-gray-500">사용자가 업로드하는 이미지가 이 크기를 넘으면 자동으로 축소됩니다.</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    압축 품질 (Quality)
+                                </label>
+                                <div className="flex items-center gap-4">
+                                    <input 
+                                        type="range" 
+                                        min="0.1" max="1.0" step="0.1" 
+                                        value={imageUpload.quality}
+                                        onChange={(e) => setImageUploadSettings({ quality: Number(e.target.value) })}
+                                        className="flex-1 accent-indigo-600"
+                                    />
+                                    <span className="w-12 text-right font-bold text-indigo-700">{Math.round(imageUpload.quality * 100)}%</span>
+                                </div>
+                                <p className="mt-1.5 text-xs text-gray-500">낮을수록 용량이 작아지지만 화질이 저하될 수 있습니다.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
+                        <div className="border-b border-gray-100 px-5 py-4">
+                            <div className="flex items-center gap-2">
+                                <ShieldCheck className="h-5 w-5 text-indigo-600" />
+                                <h2 className="text-base font-bold text-gray-900">배포 전 체크리스트</h2>
+                            </div>
+                            <p className="mt-1 text-xs font-medium text-gray-500">운영 안정성과 권한 관리를 위해 필요한 항목입니다.</p>
+                        </div>
+                        <div className="divide-y divide-gray-100">
+                            {CHECKLIST.map((item) => (
+                                <div key={item} className="flex gap-3 px-5 py-4">
+                                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                                    <p className="text-sm font-medium leading-relaxed text-gray-700">{item}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </div>
 
                 <aside className="space-y-5">
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">

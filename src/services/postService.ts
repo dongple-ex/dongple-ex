@@ -110,7 +110,8 @@ export async function createPost(payload: {
     latitude?: number,
     longitude?: number,
     place_name?: string,
-    address?: string
+    address?: string,
+    image_url?: string
 }) {
     const finalScore = payload.score ?? 0.6; 
     
