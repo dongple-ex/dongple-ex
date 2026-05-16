@@ -20,7 +20,7 @@ export default function WritePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const userId = useAuthStore(state => state.userId);
-  const userRole = useAuthStore(state => state.userRole);
+  const isAnonymous = useAuthStore(state => state.isAnonymous);
   const imageUploadSettings = useAdminSettingsStore(state => state.imageUpload);
 
   const compressImage = (file: File): Promise<string> => {
@@ -90,7 +90,7 @@ export default function WritePage() {
         category,
         post_type: "동네소식",
         user_id: userId,
-        is_anonymous: userRole === "anonymous",
+        is_anonymous: isAnonymous,
         image_url: selectedImage || undefined
       });
       router.push("/news");
