@@ -202,7 +202,7 @@ export default function Home() {
       <LiveBoardTickerv2 />
 
       <QuickActionStrip
-        onRequest={() => openBottomSheet("recordHub", { defaultTab: "request" })}
+        onRequest={() => openBottomSheet("liveCreate", { mode: "request" })}
       />
 
       <section className="pt-8">
@@ -265,7 +265,7 @@ export default function Home() {
             <ArrowRight size={16} className="ml-2" />
           </Link>
           <button
-            onClick={() => openBottomSheet("recordHub", { defaultTab: "request" })}
+            onClick={() => openBottomSheet("liveCreate", { mode: "request" })}
             className="inline-flex items-center justify-center rounded-2xl border border-border px-5 py-3 text-[13px] font-black text-foreground/70"
           >
             현장 공유 요청

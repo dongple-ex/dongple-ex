@@ -120,7 +120,7 @@ export function buildInterestPlaceNotification(input: InterestPlaceNotificationI
   const dedupeKey = `place_update:${input.sourceType}:${input.sourceId}`;
   const isPost = input.sourceType === "post";
   const isRequest = !!input.isRequest;
-  const preview = compactContent(input.title || input.content);
+  const preview = compactContent(isRequest ? input.content : input.title || input.content);
 
   let title = "관심장소 현장상황이 올라왔어요";
   let contentPrefix = `${input.placeName}의 현장상황이 새로 공유됐어요.`;

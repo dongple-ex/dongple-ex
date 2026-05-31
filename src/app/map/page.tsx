@@ -453,11 +453,11 @@ function MapContent() {
             setSheetHeight(35);
         }
 
-        if (modeParam === "share" && !handledInitialActionRef.current) {
+        if ((modeParam === "share" || modeParam === "request") && !handledInitialActionRef.current) {
             handledInitialActionRef.current = true;
             const center = mapRef.current.getCenter();
             const { lat, lng } = getLatLngPoint(center);
-            handleOpenCreateAt("share", lat, lng, addressParam || "");
+            handleOpenCreateAt(modeParam, lat, lng, addressParam || "");
         }
     }, [handleOpenCreateAt, isMapReady, searchParams]); // storeAddress 제거 (무한 루프 방지)
 
