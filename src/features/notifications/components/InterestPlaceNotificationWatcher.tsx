@@ -46,7 +46,7 @@ export default function InterestPlaceNotificationWatcher() {
     };
 
     const notifyForStatus = (status: Partial<LiveStatus>) => {
-      if (!status.id || status.user_id === userId || status.is_request) return;
+      if (!status.id || status.user_id === userId) return;
 
       const placeName = getStatusPlaceName(status);
       const matchingPlace = findMatchingInterestPlace(placeName, getInterestPlaceTargets(getAlbumMemories()));
@@ -60,6 +60,7 @@ export default function InterestPlaceNotificationWatcher() {
         title: status.status,
         content: status.message,
         createdAt: status.created_at,
+        isRequest: status.is_request,
       });
 
       if (!notification.dedupe_key || hasLocalInterestPlaceNotification(userId, notification.dedupe_key)) return;

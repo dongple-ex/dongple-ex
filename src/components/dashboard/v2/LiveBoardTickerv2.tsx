@@ -7,6 +7,7 @@ import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useRequireAuth } from "@/lib/useRequireAuth";
+import { getPersistentUserId } from "@/lib/auth-utils";
 import {
   fetchLiveStatus,
   formatUpdatedAgo,
@@ -116,16 +117,7 @@ export default function LiveBoardTickerv2() {
       return;
     }
 
-    let finalUserId: string | null = userId;
-
-    if (!finalUserId) {
-      let guestId = localStorage.getItem("dongple_guest_id");
-      if (!guestId) {
-        guestId = `guest_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
-        localStorage.setItem("dongple_guest_id", guestId);
-      }
-      finalUserId = guestId;
-    }
+    const finalUserId = userId || getPersistentUserId();
 
     try {
       const success = await verifyStatusWithTrust(current.id, finalUserId);
@@ -151,14 +143,7 @@ export default function LiveBoardTickerv2() {
         const nextStatusColor =
           selectedStatus === "여유" ? "text-emerald-500" : selectedStatus === "보통" ? "text-amber-500" : "text-rose-500";
 
-        let finalUserId: string | null = userId;
-        if (!finalUserId) {
-          finalUserId = localStorage.getItem("dongple_guest_id");
-          if (!finalUserId) {
-            finalUserId = `guest_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
-            localStorage.setItem("dongple_guest_id", finalUserId);
-          }
-        }
+        const finalUserId = userId || getPersistentUserId();
 
         await postLiveStatus({
           place_name: current.place_name,
