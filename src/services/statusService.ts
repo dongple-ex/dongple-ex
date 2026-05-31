@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { createStatusResponseNotifications, createTrustNotification } from "@/services/notificationService";
 import { normalizeStatus } from "@/lib/statusTheme";
+import { getPersistentUserId } from "@/lib/auth-utils";
 export { normalizeStatus };
 
 interface LiveStatusHistoryItem {
@@ -65,6 +66,11 @@ export function isLiveStatusActive(status: Pick<LiveStatus, "expires_at">, now =
 export function getActiveLiveStatusCount(statuses: Pick<LiveStatus, "expires_at">[]) {
   const now = Date.now();
   return statuses.filter((status) => isLiveStatusActive(status, now)).length;
+}
+
+function getFallbackUserId() {
+  if (typeof window === "undefined") return null;
+  return getPersistentUserId();
 }
 
 export function formatUpdatedAgo(value: string) {
@@ -175,7 +181,8 @@ export async function postLiveStatus(payload: Partial<LiveStatus>) {
   }
 
   const expiresAt = payload.expires_at || new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString();
-  
+  const userId = payload.user_id || getFallbackUserId();
+
   // DB 스키마에 trust_score 컬럼이 없는 경우가 많으므로 안전하게 처리
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { trust_score, ...restPayload } = payload as Partial<LiveStatus> & { trust_score?: number };
@@ -185,7 +192,7 @@ export async function postLiveStatus(payload: Partial<LiveStatus>) {
   try {
     const { data, error } = await supabase
       .from("live_status")
-      .insert([{ ...restPayload, expires_at: expiresAt }])
+      .insert([{ ...restPayload, user_id: userId, expires_at: expiresAt }])
       .select();
 
     if (error) {

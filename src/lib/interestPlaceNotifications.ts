@@ -19,6 +19,7 @@ type InterestPlaceNotificationInput = {
   title?: string | null;
   content?: string | null;
   createdAt?: string | null;
+  isRequest?: boolean | null;
 };
 
 const MAX_CONTENT_LENGTH = 72;
@@ -118,11 +119,19 @@ export function findMatchingInterestPlace(placeName: string | null | undefined, 
 export function buildInterestPlaceNotification(input: InterestPlaceNotificationInput): NotificationItem {
   const dedupeKey = `place_update:${input.sourceType}:${input.sourceId}`;
   const isPost = input.sourceType === "post";
+  const isRequest = !!input.isRequest;
   const preview = compactContent(input.title || input.content);
-  const title = isPost ? "관심장소에 새 소식이 왔어요" : "관심장소 현장상황이 올라왔어요";
-  const contentPrefix = isPost
-    ? `${input.placeName}에 새 소식이 올라왔어요.`
-    : `${input.placeName}의 현장상황이 새로 공유됐어요.`;
+
+  let title = "관심장소 현장상황이 올라왔어요";
+  let contentPrefix = `${input.placeName}의 현장상황이 새로 공유됐어요.`;
+
+  if (isPost) {
+    title = "관심장소에 새 소식이 왔어요";
+    contentPrefix = `${input.placeName}에 새 소식이 올라왔어요.`;
+  } else if (isRequest) {
+    title = "관심장소 정보 요청이 왔어요";
+    contentPrefix = `${input.placeName}의 현장 정보 요청이 올라왔어요.`;
+  }
 
   return {
     id: `local-${dedupeKey}`,
@@ -136,6 +145,7 @@ export function buildInterestPlaceNotification(input: InterestPlaceNotificationI
       source_id: input.sourceId,
       source_type: input.sourceType,
       place_name: input.placeName,
+      is_request: isRequest,
     },
     is_read: false,
     read_at: null,
