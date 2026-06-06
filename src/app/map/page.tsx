@@ -138,7 +138,7 @@ function MapContent() {
     const markersRef = useRef<MarkerEntry[]>([]);
     const clickMarkerRef = useRef<KakaoOverlay | null>(null);
     const journeyLineRef = useRef<KakaoPolyline | null>(null);
-    const handledInitialActionRef = useRef(false);
+    const handledInitialParamsRef = useRef(false);
     const [officialEvents, setOfficialEvents] = useState<OfficialEventMarker[]>([]);
     const officialEventsRef = useRef<OfficialEventMarker[]>([]);
     const renderMarkersRef = useRef<RenderMarkers>(() => {});
@@ -432,8 +432,10 @@ function MapContent() {
     }, [openGlobalBottomSheet]);
 
     useEffect(() => {
-        if (!isMapReady || !mapRef.current) return;
+        if (!isMapReady || !mapRef.current || handledInitialParamsRef.current) return;
 
+        const statusIdParam = searchParams.get("statusId");
+        const eventIdParam = searchParams.get("eventId");
         const latRaw = searchParams.get("lat");
         const lngRaw = searchParams.get("lng");
         const latParam = latRaw === null ? NaN : Number(latRaw);
@@ -442,7 +444,63 @@ function MapContent() {
         const addressParam = searchParams.get("address") || "";
         const modeParam = searchParams.get("mode");
 
-        if (isValidMapCoordinate(latParam, lngParam)) {
+        // 1. statusId 처리 (장소 마커 상세)
+        if (statusIdParam && markers.length > 0) {
+            const targetStatus = markers.find(m => String(m.id) === String(statusIdParam));
+            if (targetStatus && targetStatus.latitude && targetStatus.longitude) {
+                handledInitialParamsRef.current = true;
+                mapRef.current.setCenter(createLatLng(targetStatus.latitude, targetStatus.longitude));
+                mapRef.current.setLevel(3);
+                setExpandedCardId(targetStatus.id);
+                setSelectedEventId(null);
+                setClickedLatLng(null);
+                setSheetHeight(65);
+
+                setTimeout(() => {
+                    const card = document.getElementById(`card-${targetStatus.id}`);
+                    if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+                }, 500);
+            }
+        }
+        // 2. eventId 처리 (행사 상세)
+        else if (eventIdParam && officialEvents.length > 0) {
+            const targetEvent = officialEvents.find(e => String(e.id) === String(eventIdParam));
+            if (targetEvent) {
+                handledInitialParamsRef.current = true;
+                mapRef.current.setCenter(createLatLng(targetEvent.lat, targetEvent.lng));
+                mapRef.current.setLevel(3);
+                setSelectedEventId(targetEvent.id);
+                setExpandedCardId(null);
+                setClickedLatLng(null);
+                setSheetHeight(65);
+
+                const phase = getEventPeriodPhase(targetEvent.event_start_date, targetEvent.event_end_date);
+                const statusSummary = phase === "active" ? getEventStatusSummary(targetEvent, markers) : null;
+                const activeStatusText = statusSummary
+                    ? `[현장 상태]\n${statusSummary.label} (${statusSummary.updatedAgo})\n${statusSummary.latestMessage || "최근 현장 공유가 있습니다."}\n\n`
+                    : "[현장 상태]\n아직 공유된 현장 상태가 없습니다.\n행사 현장 공유로 첫 상태를 남겨보세요.\n\n";
+
+                openGlobalBottomSheet("postDetail", {
+                    id: targetEvent.id,
+                    eventId: targetEvent.id,
+                    defaultPlaceName: targetEvent.title,
+                    address: targetEvent.address,
+                    latitude: targetEvent.lat,
+                    longitude: targetEvent.lng,
+                    eventStartDate: targetEvent.event_start_date,
+                    eventEndDate: targetEvent.event_end_date,
+                    eventPhase: phase,
+                    title: targetEvent.title,
+                    content: `${targetEvent.address}\n일시: ${targetEvent.event_start_date} ~ ${targetEvent.event_end_date}\n\n${getEventStatusBlock(targetEvent.event_start_date, targetEvent.event_end_date, activeStatusText)}\n\n${targetEvent.description}`,
+                    is_official: true,
+                    source: targetEvent.source,
+                    meta: targetEvent.meta
+                });
+            }
+        }
+        // 3. 일반 좌표(lat, lng) 처리 (mode === 'share' 포함)
+        else if (isValidMapCoordinate(latParam, lngParam) && !statusIdParam && !eventIdParam) {
+            handledInitialParamsRef.current = true;
             mapRef.current.setCenter(createLatLng(latParam, lngParam));
             mapRef.current.setLevel(3);
             setClickedLatLng({ lat: latParam, lng: lngParam });
@@ -451,15 +509,35 @@ function MapContent() {
             setSelectedEventId(null);
             setExpandedCardId(null);
             setSheetHeight(35);
-        }
 
-        if (modeParam === "share" && !handledInitialActionRef.current) {
-            handledInitialActionRef.current = true;
+            if (modeParam === "share") {
+                const eventIdParamForShare = searchParams.get("eventId");
+                openGlobalBottomSheet("liveCreate", {
+                    mode: "share",
+                    eventId: eventIdParamForShare || undefined,
+                    defaultPlaceName: titleParam || undefined,
+                    address: addressParam || "",
+                    latitude: latParam,
+                    longitude: lngParam,
+                });
+            }
+        }
+        // 4. 일반 share 처리
+        else if (modeParam === "share" && !statusIdParam && !eventIdParam) {
+            handledInitialParamsRef.current = true;
             const center = mapRef.current.getCenter();
             const { lat, lng } = getLatLngPoint(center);
-            handleOpenCreateAt("share", lat, lng, addressParam || "");
+            const eventIdParamForShare = searchParams.get("eventId");
+            openGlobalBottomSheet("liveCreate", {
+                mode: "share",
+                eventId: eventIdParamForShare || undefined,
+                defaultPlaceName: titleParam || undefined,
+                address: addressParam || "",
+                latitude: lat,
+                longitude: lng,
+            });
         }
-    }, [handleOpenCreateAt, isMapReady, searchParams]); // storeAddress 제거 (무한 루프 방지)
+    }, [isMapReady, markers, officialEvents, searchParams, openGlobalBottomSheet, handleOpenCreateAt]);
 
     const visibleStatuses = useMemo(
         () => markers,

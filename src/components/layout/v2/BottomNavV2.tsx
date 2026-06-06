@@ -18,7 +18,7 @@ export default function BottomNavV2() {
     { icon: LayoutList, label: "소식", path: "/news" },
     { icon: Plus, label: "기록", isCenter: true },
     { icon: MapPinned, label: "지도", path: "/map" },
-    { icon: Footprints, label: "내발문자", path: "/album" },
+    { icon: Footprints, label: "내발문자", path: "/me" },
   ];
 
   return (
@@ -47,12 +47,12 @@ export default function BottomNavV2() {
             );
           }
 
-          if (item.path === "/album") {
+          if (item.path === "/me") {
             return (
               <button
                 key={index}
                 type="button"
-                onClick={() => requireAuth({ type: "path", href: "/album" })}
+                onClick={() => requireAuth({ type: "path", href: "/me" })}
                 className="flex flex-1 flex-col items-center justify-center gap-1"
               >
                 <Icon size={22} className={isActive ? "text-secondary" : "text-foreground/40"} />

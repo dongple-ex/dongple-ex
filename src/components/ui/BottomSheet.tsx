@@ -446,7 +446,7 @@ const WriteForm = forwardRef<{ submit: () => void }, { onStateChange: (ready: bo
                 category,
                 createdAt: createdPost.created_at,
             });
-            setCreatedMemoryHref("/album");
+            setCreatedMemoryHref("/me");
         } catch (error) {
             console.error("등록 실패:", error);
             alert("알 수 없는 오류로 등록에 실패했습니다.");
