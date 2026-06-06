@@ -331,7 +331,7 @@ export default function Home() {
                   </div>
                 )}
                 <div className="absolute left-3.5 top-3.5 flex flex-wrap gap-2">
-                  <span className="max-w-[180px] truncate rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-foreground shadow-sm">
+                  <span className="max-w-[180px] truncate rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-[#17201b] shadow-sm">
                     {miniPlaceName.trim() || "공유 완료"}
                   </span>
                   <span className="inline-flex items-center rounded-full bg-emerald-50/90 text-emerald-700 px-3 py-1.5 text-[11px] font-black backdrop-blur-md shadow-sm">
@@ -402,7 +402,7 @@ export default function Home() {
               >
                 <div className="absolute inset-0 bg-black/35" />
                 <div className="absolute left-3.5 top-3.5 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-foreground shadow-sm">
+                  <span className="rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-[#17201b] shadow-sm">
                     궁금해요?
                   </span>
                   <span className="inline-flex items-center rounded-full bg-amber-50/90 text-amber-700 px-3 py-1.5 text-[11px] font-black backdrop-blur-md shadow-sm">
@@ -509,7 +509,7 @@ export default function Home() {
               >
                 <div className="absolute inset-0 bg-black/35" />
                 <div className="absolute left-3.5 top-3.5 flex flex-wrap gap-2">
-                  <span className="max-w-[180px] truncate rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-foreground shadow-sm">
+                  <span className="max-w-[180px] truncate rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-[#17201b] shadow-sm">
                     {miniPlaceName.trim() || verifiedPlaceDisplay || "장소 입력 필요"}
                   </span>
                   <span className="inline-flex items-center rounded-full bg-emerald-50/90 text-emerald-700 px-3 py-1.5 text-[11px] font-black backdrop-blur-md shadow-sm">
@@ -607,7 +607,7 @@ export default function Home() {
               >
                 <div className="absolute inset-0 bg-black/35" />
                 <div className="absolute left-3.5 top-3.5 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-foreground shadow-sm">
+                  <span className="rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-[#17201b] shadow-sm">
                     팩트체크
                   </span>
                   <span className="inline-flex items-center rounded-full bg-black/35 px-3 py-1.5 text-[11px] font-black text-white backdrop-blur-md">
@@ -654,7 +654,7 @@ export default function Home() {
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   <button
                     onClick={() => handleVerifyStatus(latestActiveReport.id)}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-[20px] border border-border bg-white px-3 py-2.5 text-[13px] font-black text-foreground shadow-sm transition-all hover:bg-foreground/5 active:scale-95"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-[20px] border border-border bg-white px-3 py-2.5 text-[13px] font-black text-[#17201b] shadow-sm transition-all hover:bg-white/90 active:scale-95"
                   >
                     <CircleCheck size={15} />
                     맞아요
@@ -687,7 +687,7 @@ export default function Home() {
               >
                 <div className="absolute inset-0 bg-black/35" />
                 <div className="absolute left-3.5 top-3.5 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-foreground shadow-sm">
+                  <span className="rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-[#17201b] shadow-sm">
                     공식+질문
                   </span>
                   <span className="inline-flex items-center rounded-full bg-black/35 px-3 py-1.5 text-[11px] font-black text-white backdrop-blur-md">
