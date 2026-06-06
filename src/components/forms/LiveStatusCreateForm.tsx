@@ -193,7 +193,7 @@ export default function LiveStatusCreateForm({
             지도에서 보기
           </Link>
           <Link
-            href="/album"
+            href="/me"
             className="inline-flex items-center justify-center rounded-2xl border border-border bg-card-bg px-4 py-3 text-[13px] font-black text-foreground/70"
             onClick={onSuccess}
           >

@@ -1,488 +1,757 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
+  ArrowDown,
   ArrowRight,
-  Clock3,
-  Coffee,
-  Heart,
-  LayoutGrid,
-  List,
-  MapPinned,
-  MessageSquare,
+  CircleCheck,
+  CircleX,
   PartyPopper,
-  Search,
-  ShieldCheck,
-  Star,
-  Trees,
-  TrendingUp,
+  Radio,
+  Compass
 } from "lucide-react";
-import { motion } from "framer-motion";
 import Link from "next/link";
 
 import HeroSection from "@/components/dashboard/v2/HeroSection";
-import LiveBoardTickerv2 from "@/components/dashboard/v2/LiveBoardTickerv2";
-import OfficialEventSection from "@/features/events/components/OfficialEventSection";
-import { AlbumMemory, getAlbumMemories, saveAlbumMemory, subscribeAlbumMemories } from "@/lib/albumMemory";
-import { getRecentMapPlaces, RecentMapPlace, subscribeRecentMapPlaces } from "@/lib/mapRecentPlaces";
 import { useLocationStore } from "@/lib/store/locationStore";
 import { useUIStore } from "@/lib/store/uiStore";
-import { useRequireAuth } from "@/lib/useRequireAuth";
-import { fetchPosts, Post, subscribePosts } from "@/services/postService";
+import { useAuthStore } from "@/lib/store/authStore";
+import { getPersistentUserId } from "@/lib/auth-utils";
+import {
+  fetchLiveStatus,
+  isLiveStatusActive,
+  formatUpdatedAgo,
+  normalizeStatus,
+  subscribeLiveUpdates,
+  verifyStatusWithTrust,
+  postLiveStatus,
+  LiveStatus
+} from "@/services/statusService";
 
-type DiscoveryStatus = "혼잡" | "보통" | "여유" | "요청";
+const LOCATION_PROMPT_IMAGE =
+  "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=900&auto=format&fit=crop";
+const VERIFIED_LOCATION_FALLBACK_IMAGE =
+  "https://www.suwon.go.kr/webcontent/ckeditor/2026/5/4/d88dc018-7cb8-429f-a49c-478f47654b43.jpg";
 
-const DISCOVERY_CARDS: {
-  id: string;
-  type: string;
-  title: string;
-  place: string;
-  category: string;
-  status: DiscoveryStatus;
-  updated: string;
-  summary: string;
-  tags: string[];
-  imageUrl: string;
-  lat: number;
-  lng: number;
-  address: string;
-}[] = [
-  {
-    id: "today-hwaseong-night",
-    type: "공식+질문",
-    title: "화성행궁 야간개장, 지금 가도 줄이 길까요?",
-    place: "수원 화성행궁",
-    category: "행사",
-    status: "혼잡",
-    updated: "5분 전",
-    summary: "공식 행사는 진행 중이고, 현장 공유 기준 입장 대기와 사진 명소 주변이 붐비는 편이에요.",
-    tags: ["대기 있음", "사진 명소", "야간 행사"],
-    imageUrl: "https://www.suwon.go.kr/webcontent/ckeditor/2026/5/4/d88dc018-7cb8-429f-a49c-478f47654b43.jpg",
-    lat: 37.2811,
-    lng: 127.0135,
-    address: "경기 수원시 팔달구 정조로 825",
-  },
-  {
-    id: "today-cafe-street",
-    type: "후기+상태",
-    title: "행궁동 카페거리, 비 오는 날에도 걷기 괜찮을까요?",
-    place: "행궁동 카페거리",
-    category: "카페",
-    status: "보통",
-    updated: "12분 전",
-    summary: "골목은 비교적 여유롭지만 인기 카페는 대기가 조금 있어요. 포장이나 짧은 방문에 좋아요.",
-    tags: ["카페 대기", "골목 산책", "포장 추천"],
-    imageUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=900&auto=format&fit=crop",
-    lat: 37.2834,
-    lng: 127.0148,
-    address: "경기 수원시 팔달구 행궁동",
-  },
-  {
-    id: "today-park-walk",
-    type: "추천",
-    title: "방화수류정 산책길, 지금은 한산한 편이에요.",
-    place: "방화수류정",
-    category: "산책",
-    status: "여유",
-    updated: "18분 전",
-    summary: "바람이 좋고 산책 인원이 많지 않아요. 해 질 무렵에는 사진 찍는 사람이 늘 수 있어요.",
-    tags: ["한산", "산책 추천", "노을"],
-    imageUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=900&auto=format&fit=crop",
-    lat: 37.2878,
-    lng: 127.0177,
-    address: "경기 수원시 팔달구 수원천로392번길",
-  },
-];
+type TourLocationItem = {
+  title?: string;
+  thumbnail_url?: string;
+  image_url?: string;
+};
+
+function sanitizeLocationText(value?: string | null) {
+  const trimmed = value?.trim().replace(/\s+/g, " ");
+  if (!trimmed) return "";
+
+  const invalidHints = ["내 주변", "서비스 로드 중", "주소 정보 없음", "위치 확인", "Geolocation", "Failed"];
+  if (invalidHints.some((hint) => trimmed.includes(hint))) return "";
+
+  return trimmed;
+}
+
+function getVerifiedPlaceName(address?: string | null, regionName?: string | null) {
+  const region = sanitizeLocationText(regionName);
+  if (region) {
+    const parts = region.split(" ").filter(Boolean);
+    return parts.length > 2 ? parts.slice(-2).join(" ") : region;
+  }
+
+  return sanitizeLocationText(address);
+}
 
 export default function Home() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [memories, setMemories] = useState<AlbumMemory[]>([]);
-  const [recentPlaces, setRecentPlaces] = useState<RecentMapPlace[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const openBottomSheet = useUIStore((state) => state.openBottomSheet);
-  const requireAuth = useRequireAuth();
-  const regionName = useLocationStore((state) => state.regionName);
+  const { userId } = useAuthStore();
+  const { latitude: storeLat, longitude: storeLng, address: storeAddress, regionName: storeRegionName, fetchLocation } = useLocationStore();
 
-  const loadPosts = async () => {
-    setIsLoading(true);
+  const [liveStatuses, setLiveStatuses] = useState<LiveStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(Date.now());
+
+  // 위치 인증 및 미니 제보 관련 상태
+  const [isLocationVerified, setIsLocationVerified] = useState(false);
+  const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
+  const [miniPlaceName, setMiniPlaceName] = useState("");
+  const [miniStatus, setMiniStatus] = useState("보통");
+  const [miniMessage, setMiniMessage] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
+  const [isSubmittingMini, setIsSubmittingMini] = useState(false);
+  const [locationHeroImage, setLocationHeroImage] = useState(VERIFIED_LOCATION_FALLBACK_IMAGE);
+  const [locationHeroTitle, setLocationHeroTitle] = useState("");
+
+  // Default coordinates fallback: Suwon Hwaseong area
+  const userLat = storeLat || 37.2995;
+  const userLng = storeLng || 126.9912;
+  const verifiedPlaceDisplay = getVerifiedPlaceName(storeAddress, storeRegionName);
+  const verifiedAddressText = sanitizeLocationText(storeAddress);
+  const canSubmitMini = miniPlaceName.trim().length > 0 && !isSubmittingMini;
+
+  const loadData = async () => {
     try {
-      setPosts(await fetchPosts(10));
+      const statusData = await fetchLiveStatus(true);
+      setLiveStatuses(statusData);
     } catch (error) {
-      console.error("Failed to load posts:", error);
+      console.error("[Home] Error loading data:", error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const loadRepresentativeLocationImage = async (lat: number, lng: number) => {
+    const params = new URLSearchParams({
+      mapX: String(lng),
+      mapY: String(lat),
+      radius: "5000",
+      numOfRows: "20",
+    });
+
+    const response = await fetch(`/api/tour/location?${params.toString()}`);
+    if (!response.ok) return;
+
+    const data = await response.json();
+    const items: TourLocationItem[] = Array.isArray(data.items) ? data.items : [];
+    const representative = items.find((item) => item.thumbnail_url || item.image_url);
+
+    if (representative?.thumbnail_url || representative?.image_url) {
+      setLocationHeroImage(representative.thumbnail_url || representative.image_url || VERIFIED_LOCATION_FALLBACK_IMAGE);
+      setLocationHeroTitle(representative.title || "");
+    }
+  };
+
+  const handleVerifyLocation = async () => {
+    setIsLocating(true);
+    try {
+      await fetchLocation();
+
+      const locationState = useLocationStore.getState();
+      const verifiedPlaceName = getVerifiedPlaceName(locationState.address, locationState.regionName);
+
+      if (!verifiedPlaceName || locationState.error) {
+        setIsLocationVerified(false);
+        setMiniPlaceName("");
+        alert("위치 인증으로 장소명을 확인하지 못했습니다. 장소 이름을 직접 입력해주세요.");
+        return;
+      }
+
+      setIsLocationVerified(true);
+      setMiniPlaceName(verifiedPlaceName);
+    } catch (error) {
+      console.error("[Home] Location verification failed:", error);
+      alert("위치 정보를 가져오는 데 실패했습니다. GPS 권한을 확인해 주세요.");
+    } finally {
+      setIsLocating(false);
     }
   };
 
   useEffect(() => {
-    loadPosts();
-    const sub = subscribePosts(loadPosts);
-    return () => {
-      void sub.unsubscribe();
-    };
-  }, [regionName]);
+    if (!isLocationVerified) return;
+    void loadRepresentativeLocationImage(userLat, userLng);
+  }, [isLocationVerified, userLat, userLng]);
+
+  const handleMiniSubmit = async () => {
+    const placeName = miniPlaceName.trim();
+    if (!placeName) {
+      alert("장소 이름을 입력해주세요.");
+      return;
+    }
+    setIsSubmittingMini(true);
+    try {
+      const finalUserId = userId || getPersistentUserId();
+      const nextStatusColor =
+        miniStatus === "여유" ? "text-emerald-500" : miniStatus === "보통" ? "text-amber-500" : "text-rose-500";
+      const locationState = useLocationStore.getState();
+      const hasVerifiedCoords =
+        isLocationVerified &&
+        Number.isFinite(locationState.latitude) &&
+        Number.isFinite(locationState.longitude);
+
+      await postLiveStatus({
+        place_name: placeName,
+        category: "기타",
+        status: miniStatus,
+        status_color: nextStatusColor,
+        is_request: false,
+        verified_count: isLocationVerified ? 1 : 0,
+        latitude: hasVerifiedCoords ? locationState.latitude : undefined,
+        longitude: hasVerifiedCoords ? locationState.longitude : undefined,
+        message: miniMessage.trim(),
+        user_id: finalUserId,
+      });
+
+      const todayStr = new Date().toDateString();
+      localStorage.setItem(`shared_today_${todayStr}`, "true");
+      setHasSubmittedToday(true);
+      await loadData();
+      alert("상황 공유가 등록되었습니다!");
+    } catch (error) {
+      console.error("[Home] Mini submit failed:", error);
+      alert("등록 중 오류가 발생했습니다.");
+    } finally {
+      setIsSubmittingMini(false);
+    }
+  };
 
   useEffect(() => {
-    const syncMemories = () => setMemories(getAlbumMemories());
-    const syncRecentPlaces = () => setRecentPlaces(getRecentMapPlaces());
-
-    syncMemories();
-    syncRecentPlaces();
-
-    const unsubscribeMemories = subscribeAlbumMemories(syncMemories);
-    const unsubscribeRecentPlaces = subscribeRecentMapPlaces(syncRecentPlaces);
+    loadData();
+    const statusSub = subscribeLiveUpdates(loadData);
+    const timeTimer = setInterval(() => setNow(Date.now()), 30000);
 
     return () => {
-      unsubscribeMemories();
-      unsubscribeRecentPlaces();
+      statusSub.unsubscribe();
+      clearInterval(timeTimer);
     };
   }, []);
 
-  const mapHubItems = useMemo(() => {
-    const favorites = memories
-      .filter((memory) => memory.favorite || memory.type === "place")
-      .filter((memory) => memory.latitude && memory.longitude)
-      .slice(0, 3)
-      .map((memory) => ({
-        id: `memory-${memory.id}`,
-        title: memory.title,
-        subtitle: memory.address || memory.locationLabel || "기록한 장소",
-        href: buildMapHref(memory.title, memory.address || memory.locationLabel, memory.latitude, memory.longitude),
-        icon: "favorite" as const,
-      }));
-
-    const recents = recentPlaces.slice(0, 3).map((place) => ({
-      id: `recent-${place.id}`,
-      title: place.title,
-      subtitle: place.address || "최근 검색",
-      href: buildMapHref(place.title, place.address, place.latitude, place.longitude),
-      icon: "recent" as const,
-    }));
-
-    return [...favorites, ...recents]
-      .filter((item, index, array) => array.findIndex((other) => other.href === item.href) === index)
-      .slice(0, 3);
-  }, [memories, recentPlaces]);
-
-  const handleSaveDiscovery = (item: (typeof DISCOVERY_CARDS)[number]) => {
-    saveAlbumMemory({
-      sourceId: item.id,
-      type: "place",
-      title: item.place,
-      subtitle: item.type,
-      description: item.summary,
-      locationLabel: item.place,
-      address: item.address,
-      latitude: item.lat,
-      longitude: item.lng,
-      category: item.category,
-      statusLabel: item.status,
+  // 1. 🔥 내 주변 상태 요약 (반경 2km) -> HeroSection에 전달됨
+  const neighborhoodSummary = useMemo(() => {
+    const nearbyItems = liveStatuses.filter((item) => {
+      if (!item.latitude || !item.longitude) return false;
+      const dLat = (item.latitude - userLat) * (Math.PI / 180);
+      const dLon = (item.longitude - userLng) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(userLat * (Math.PI / 180)) *
+        Math.cos(item.latitude * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const dist = 6371 * c; // Distance in km
+      return dist <= 2.0;
     });
-    setMemories(getAlbumMemories());
+
+    const activeNearby = nearbyItems.filter((item) => isLiveStatusActive(item, now));
+    const crowdedCount = activeNearby.filter((item) => normalizeStatus(item.status) === "혼잡").length;
+    const normalCount = activeNearby.filter((item) => normalizeStatus(item.status) === "보통").length;
+    const pleasantCount = activeNearby.filter((item) => normalizeStatus(item.status) === "여유").length;
+
+    return {
+      total: activeNearby.length,
+      crowded: crowdedCount,
+      normal: normalCount,
+      pleasant: pleasantCount
+    };
+  }, [liveStatuses, userLat, userLng, now]);
+
+  // 2. ⚡ 지금 올라오는 상황 (실시간 상황판) -> HeroSection에 전달됨
+  const liveTickerUpdates = useMemo(() => {
+    return liveStatuses
+      .slice()
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 6);
+  }, [liveStatuses]);
+
+  // 3. 카드 2 용 최신 실시간 리포트 (답변/검증 카드용)
+  // 가장 최신의 active 상태이면서 is_request가 아닌 일반 제보 리포트 1개를 가져옵니다.
+  const latestActiveReport = useMemo(() => {
+    return liveStatuses.find((item) => isLiveStatusActive(item, now) && !item.is_request) || null;
+  }, [liveStatuses, now]);
+
+  // API 호출 핸들러: 최신 상태 '맞아요' 검증
+  const handleVerifyStatus = async (statusId: string) => {
+    const finalUserId = userId || getPersistentUserId();
+    try {
+      const success = await verifyStatusWithTrust(statusId, finalUserId);
+      if (success) {
+        await loadData();
+        alert("확인이 반영되었습니다!");
+      } else {
+        alert("이미 확인하셨거나 처리 중 문제가 생겼습니다.");
+      }
+    } catch (error) {
+      console.error("[Home] Verify failed:", error);
+      alert("이미 확인하셨거나 오류가 발생했습니다.");
+    }
   };
 
-  const handleRequestDiscovery = (item: (typeof DISCOVERY_CARDS)[number]) => {
-    requireAuth({
-      type: "bottomSheet",
-      content: "liveCreate",
-      data: {
-        mode: "request",
-        defaultPlaceName: item.place,
-        address: item.address,
-        latitude: item.lat,
-        longitude: item.lng,
+  // API 호출 핸들러: 최신 상태 '달라요' 갱신
+  const handleDisagreeStatus = (current: LiveStatus) => {
+    const defaultStatus = normalizeStatus(current.status) === "여유" ? "보통" : "여유";
+
+    openBottomSheet("liveReply", {
+      mode: "disagree",
+      defaultStatus,
+      onSubmit: async ({ selectedStatus, replyText }: { selectedStatus: string; replyText: string }) => {
+        const nextStatusColor =
+          selectedStatus === "여유" ? "text-emerald-500" : selectedStatus === "보통" ? "text-amber-500" : "text-rose-500";
+
+        const finalUserId = userId || getPersistentUserId();
+
+        await postLiveStatus({
+          place_name: current.place_name,
+          category: current.category || "동네생활",
+          status: selectedStatus,
+          status_color: nextStatusColor,
+          is_request: false,
+          verified_count: 1,
+          latitude: current.latitude,
+          longitude: current.longitude,
+          message: replyText,
+          user_id: finalUserId,
+        });
+
+        loadData();
       },
     });
   };
 
   return (
     <div className="min-h-screen bg-background pb-32 text-foreground">
-      <HeroSection />
-      <LiveBoardTickerv2 />
+      {/* 자개 무늬 배너 헤더 */}
+      <HeroSection neighborhoodSummary={neighborhoodSummary} liveTickerUpdates={liveTickerUpdates} />
 
-      <QuickActionStrip
-        onRequest={() => openBottomSheet("recordHub", { defaultTab: "request" })}
-      />
-
-      <section className="pt-8">
-        <div className="px-6">
-          <SectionHeading
-            eyebrow="Today Discovery"
-            title="오늘 바로 판단할 곳"
-            description="공식 일정과 현장 분위기를 함께 보고 움직일 곳을 고르세요."
-          />
-        </div>
-
-        <div className="no-scrollbar mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2">
-          {DISCOVERY_CARDS.map((item) => (
-            <DiscoveryCard
-              key={item.id}
-              item={item}
-              onSave={() => handleSaveDiscovery(item)}
-              onRequest={() => handleRequestDiscovery(item)}
-            />
-          ))}
-        </div>
+      {/* 1. 상단 타이틀 영역 */}
+      <section className="mx-auto max-w-md px-5 pt-5 pb-1 md:max-w-[1120px] md:px-6">
+        <h1 className="text-[24px] font-black leading-tight tracking-tight text-foreground">
+          지금{" "}
+          <span className="bg-gradient-to-r from-secondary to-accent bg-clip-text text-transparent">여기는?</span>
+        </h1>
       </section>
 
-      <div className="mt-8">
-        <OfficialEventSection />
-      </div>
-
-      <section className="px-6 pt-8">
-        <SectionHeading
-          eyebrow="Next Stop"
-          title="다시 볼 장소"
-          description="최근 검색하거나 저장한 장소를 빠르게 이어서 확인하세요."
-        />
-
-        {mapHubItems.length > 0 ? (
-          <div className="mt-4 space-y-2">
-            {mapHubItems.map((item) => (
-              <Link key={item.id} href={item.href} className="flex items-center gap-3 rounded-2xl border border-border bg-card-bg px-3.5 py-3 shadow-sm transition-colors hover:bg-foreground/5">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-foreground/5 text-secondary">
-                  {item.icon === "favorite" ? <Heart size={16} fill="currentColor" /> : <Clock3 size={16} />}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14px] font-black">{item.title}</span>
-                  <span className="mt-0.5 block truncate text-[11px] font-bold text-foreground/45">{item.subtitle}</span>
-                </span>
-                <ArrowRight size={15} className="shrink-0 text-foreground/25" />
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-4 rounded-2xl border border-dashed border-border bg-nav-bg/60 px-4 py-4">
-            <p className="text-[13px] font-black text-foreground/65">아직 다시 볼 장소가 없어요.</p>
-            <p className="mt-1 text-[12px] font-medium text-foreground/45">소식에서 가볼 곳을 찾거나 지도에서 장소를 검색하면 여기에 쌓입니다.</p>
-          </div>
-        )}
-
-        <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
-          <Link href="/map" className="inline-flex items-center justify-center rounded-2xl bg-foreground px-5 py-3 text-[13px] font-black text-background">
-            지금 상태 확인하기
-            <ArrowRight size={16} className="ml-2" />
-          </Link>
-          <button
-            onClick={() => openBottomSheet("recordHub", { defaultTab: "request" })}
-            className="inline-flex items-center justify-center rounded-2xl border border-border px-5 py-3 text-[13px] font-black text-foreground/70"
-          >
-            현장 공유 요청
-          </button>
+      {loading ? (
+        <div className="flex h-48 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-secondary/20 border-t-secondary" />
         </div>
-      </section>
+      ) : (
+        <div className="mx-auto mt-3 grid max-w-md grid-cols-1 gap-4 px-5 md:max-w-[1120px] md:grid-cols-2 md:px-6">
 
-      <section className="px-6 pb-4 pt-9">
-        <div className="flex items-end justify-between gap-4">
-          <SectionHeading
-            eyebrow="Community Feed"
-            title="가볼 이유 찾기"
-            description="동네 사람들이 남긴 짧은 이유와 반응입니다."
-          />
-          <Link
-            href="/news"
-            className="mb-0.5 flex shrink-0 items-center text-[12px] font-black text-secondary hover:underline"
-          >
-            전체보기 <ArrowRight size={14} className="ml-1" />
-          </Link>
-        </div>
+          {/* 카드 1: 내가 있는 곳의 상황 남기기 (위치 인증 및 미니 폼 내장형) */}
+          {hasSubmittedToday ? (
+            /* [상태 3] 제보 완료 후 */
+            <article className="w-full overflow-hidden rounded-[22px] border border-border bg-card-bg shadow-sm transition-all hover:shadow-md">
+              <div
+                className="relative h-28 bg-cover bg-center"
+                style={{
+                  backgroundImage: `url('${locationHeroImage}')`
+                }}
+              >
+                <div className="absolute inset-0 bg-black/35" />
+                {locationHeroTitle && (
+                  <div className="absolute bottom-3.5 left-3.5 max-w-[58%] truncate rounded-full bg-black/35 px-3 py-1.5 text-[11px] font-black text-white backdrop-blur-md">
+                    {locationHeroTitle}
+                  </div>
+                )}
+                <div className="absolute left-3.5 top-3.5 flex flex-wrap gap-2">
+                  <span className="max-w-[180px] truncate rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-foreground shadow-sm">
+                    {miniPlaceName.trim() || "공유 완료"}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-50/90 text-emerald-700 px-3 py-1.5 text-[11px] font-black backdrop-blur-md shadow-sm">
+                    제보 완료
+                  </span>
+                </div>
+                <div className="absolute bottom-3.5 right-3.5">
+                  <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 px-3.5 py-1.5 text-[11px] font-black shadow-sm">
+                    인증 완료
+                  </span>
+                </div>
+              </div>
 
-        <div className="mt-5 flex items-center justify-end">
-          <div className="flex shrink-0 rounded-xl bg-foreground/5 p-1">
-            <button onClick={() => setViewMode("list")} className={`rounded-lg p-1.5 ${viewMode === "list" ? "bg-card-bg text-secondary shadow-sm" : "text-foreground/40"}`} aria-label="목록 보기">
-              <List size={16} />
-            </button>
-            <button onClick={() => setViewMode("grid")} className={`rounded-lg p-1.5 ${viewMode === "grid" ? "bg-card-bg text-secondary shadow-sm" : "text-foreground/40"}`} aria-label="격자 보기">
-              <LayoutGrid size={16} />
-            </button>
-          </div>
-        </div>
+              <div className="p-3.5">
+                <div>
+                  <h3 className="text-[17px] font-black leading-snug text-foreground break-keep">
+                    오늘의 현장 제보를 완료했습니다! 🎉
+                  </h3>
+                  <p className="mt-1 text-[12px] font-bold text-foreground/45">정자동 부근</p>
 
-        <div className={`mt-5 ${viewMode === "grid" ? "grid grid-cols-2 gap-4" : "space-y-4"}`}>
-          {isLoading ? (
-            [1, 2, 3, 4].map((i) => <div key={i} className="h-32 animate-pulse rounded-[24px] bg-foreground/5" />)
-          ) : posts.length > 0 ? (
-            posts.map((post) => <FeedItem key={post.id} post={post} onClick={() => openBottomSheet("postDetail", { ...post })} />)
+                  <p className="mt-4 text-[13px] font-medium leading-relaxed text-foreground/60 break-keep">
+                    작성해주신 제보가 이웃들에게 실시간으로 공유되고 있습니다. 쾌적한 동네 생활을 위해 함께 참여해 주셔서 대단히 감사합니다.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    <span className="rounded-full border border-gray-100 bg-gray-50/50 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                      #제보_완료
+                    </span>
+                    <span className="rounded-full border border-gray-100 bg-gray-50/50 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                      #동네_히어로
+                    </span>
+                    <span className="rounded-full border border-gray-100 bg-gray-50/50 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                      #정보_나눔
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => setHasSubmittedToday(false)}
+                    className="w-20 text-left text-[14px] font-black text-foreground hover:opacity-80 transition-all cursor-pointer bg-transparent border-0"
+                  >
+                    추가 제보
+                  </button>
+                  <Link
+                    href="/map"
+                    className="flex-1 max-w-[150px] mx-auto text-center bg-[#a17a55] text-white text-[14px] font-black py-2.5 px-5 rounded-[20px] shadow-sm hover:bg-[#8e6946] active:scale-95 transition-all"
+                  >
+                    지도 보기
+                  </Link>
+                  <Link
+                    href="/me"
+                    className="w-20 text-right text-[14px] font-black text-foreground hover:opacity-80 transition-all"
+                  >
+                    내역 보기
+                  </Link>
+                </div>
+              </div>
+            </article>
+          ) : !isLocationVerified ? (
+            /* [상태 1] 위치 인증 전 */
+            <article className="w-full overflow-hidden rounded-[22px] border border-border bg-card-bg shadow-sm transition-all hover:shadow-md">
+              <div
+                className="relative h-32 bg-cover bg-center"
+                style={{
+                  backgroundImage: `url('${LOCATION_PROMPT_IMAGE}')`
+                }}
+              >
+                <div className="absolute inset-0 bg-black/35" />
+                <div className="absolute left-3.5 top-3.5 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-foreground shadow-sm">
+                    궁금해요?
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-amber-50/90 text-amber-700 px-3 py-1.5 text-[11px] font-black backdrop-blur-md shadow-sm">
+                    인증 대기
+                  </span>
+                </div>
+                <div className="absolute bottom-3.5 right-3.5">
+                  <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 text-amber-700 px-3.5 py-1.5 text-[11px] font-black shadow-sm animate-pulse">
+                    직접 입력 가능
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="inline-flex max-w-full items-center gap-1.5 rounded-[18px] bg-secondary/10 px-3 py-1.5 text-[11px] font-black leading-snug text-secondary">
+                      <Compass size={12} className="shrink-0 animate-spin-slow" />
+                      <span>지금 바로 장소를 입력하고 상황을 공유해 봐요.</span>
+                    </p>
+                  </div>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+                    <ArrowDown size={18} className="animate-bounce" />
+                  </div>
+                </div>
+
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <div className="mb-1 flex items-center justify-between">
+                      <label className="text-[11px] font-black text-foreground/45">장소 이름</label>
+                      <span className="text-[10px] font-black text-amber-600">미인증 시 직접 입력</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={miniPlaceName}
+                      onChange={(e) => setMiniPlaceName(e.target.value)}
+                      placeholder="어디에 계신가요? (예: 행궁 광장)"
+                      className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-[14px] font-medium text-foreground shadow-inner focus:border-accent focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <span className="text-[11px] font-black text-foreground/45">혼잡도</span>
+                    <div className="mt-1.5 grid grid-cols-3 gap-2">
+                      {["여유", "보통", "혼잡"].map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() => setMiniStatus(status)}
+                          className={`rounded-xl border py-2 text-center text-[12px] font-black transition-all ${miniStatus === status
+                            ? status === "여유"
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-700 shadow-sm"
+                              : status === "혼잡"
+                                ? "border-rose-300 bg-rose-50 text-rose-700 shadow-sm"
+                                : "border-amber-300 bg-amber-50 text-amber-700 shadow-sm"
+                            : "border-border bg-background/70 text-foreground/45 hover:bg-background"
+                            }`}
+                        >
+                          {status}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-black text-foreground/45 mb-1">상황 한 줄 요약</label>
+                    <input
+                      type="text"
+                      value={miniMessage}
+                      onChange={(e) => setMiniMessage(e.target.value)}
+                      placeholder="현재 상황은 어떤가요? (예: 대기 없음)"
+                      className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-[14px] font-medium text-foreground shadow-inner focus:border-accent focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-[1fr_1.15fr] gap-2">
+                  <button
+                    onClick={handleVerifyLocation}
+                    disabled={isLocating || isSubmittingMini}
+                    className="rounded-[20px] border border-secondary/20 bg-secondary/10 px-3 py-2.5 text-[12px] font-black text-secondary transition-all active:scale-95 disabled:opacity-60"
+                  >
+                    {isLocating ? "인증 중..." : "위치 인증"}
+                  </button>
+                  <button
+                    onClick={handleMiniSubmit}
+                    disabled={!canSubmitMini}
+                    className="flex items-center justify-center rounded-[20px] bg-[#a17a55] px-4 py-2.5 text-[14px] font-black text-white shadow-sm transition-all hover:bg-[#8e6946] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {isSubmittingMini ? "등록 중..." : "제보 완료"}
+                    {!isSubmittingMini && <ArrowRight size={16} className="ml-2" />}
+                  </button>
+                </div>
+              </div>
+            </article>
           ) : (
-            <div className="rounded-[28px] border-2 border-dashed border-foreground/5 py-16 text-center text-[13px] font-black text-foreground/25">
-              아직 올라온 동네 소식이 없습니다.
-            </div>
+            /* [상태 2] 위치 인증 완료 (미니 제보 폼 내장형) */
+            <article className="w-full overflow-hidden rounded-[22px] border border-border bg-card-bg shadow-sm transition-all hover:shadow-md">
+              <div
+                className="relative h-32 bg-cover bg-center"
+                style={{
+                  backgroundImage: `url('${locationHeroImage}')`
+                }}
+              >
+                <div className="absolute inset-0 bg-black/35" />
+                <div className="absolute left-3.5 top-3.5 flex flex-wrap gap-2">
+                  <span className="max-w-[180px] truncate rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-foreground shadow-sm">
+                    {miniPlaceName.trim() || verifiedPlaceDisplay || "장소 입력 필요"}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-50/90 text-emerald-700 px-3 py-1.5 text-[11px] font-black backdrop-blur-md shadow-sm">
+                    위치 인증됨
+                  </span>
+                </div>
+                <div className="absolute bottom-3.5 right-3.5">
+                  <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 px-3.5 py-1.5 text-[11px] font-black shadow-sm">
+                    GPS 수신 정상
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] font-black text-foreground/45 mb-1">장소 이름</label>
+                    <input
+                      type="text"
+                      value={miniPlaceName}
+                      onChange={(e) => setMiniPlaceName(e.target.value)}
+                      placeholder="어디에 계신가요? (예: 행궁 광장)"
+                      className="w-full px-3.5 py-2.5 text-[14px] font-medium rounded-xl border border-border bg-background focus:outline-none focus:border-accent text-foreground shadow-inner"
+                    />
+                    {verifiedAddressText && (
+                      <p className="ml-1 mt-1 text-[10px] text-foreground/40">
+                        인증 위치: {verifiedAddressText}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-foreground/45 mb-1">혼잡도 상태</label>
+                    <div className="flex gap-2">
+                      {["여유", "보통", "혼잡"].map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() => setMiniStatus(status)}
+                          className={`flex-1 py-2.5 text-xs font-bold rounded-xl border transition-all ${miniStatus === status
+                            ? status === "여유"
+                              ? "bg-emerald-50 border-emerald-300 text-emerald-700 font-extrabold shadow-sm"
+                              : status === "혼잡"
+                                ? "bg-rose-50 border-rose-300 text-rose-700 font-extrabold shadow-sm"
+                                : "bg-amber-50 border-amber-300 text-amber-700 font-extrabold shadow-sm"
+                            : "border-border bg-background/50 text-foreground/50 hover:bg-background"
+                            }`}
+                        >
+                          {status}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-foreground/45 mb-1">상황 한 줄 요약</label>
+                    <input
+                      type="text"
+                      value={miniMessage}
+                      onChange={(e) => setMiniMessage(e.target.value)}
+                      placeholder="현재 상황은 어떤가요? (예: 대기 없음)"
+                      className="w-full px-3.5 py-2.5 text-[14px] font-medium rounded-xl border border-border bg-background focus:outline-none focus:border-accent text-foreground shadow-inner"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => setIsLocationVerified(false)}
+                    className="w-20 text-left text-[14px] font-black text-foreground hover:opacity-80 transition-all cursor-pointer bg-transparent border-0"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleMiniSubmit}
+                    disabled={!canSubmitMini}
+                    className="flex-1 max-w-[150px] mx-auto text-center bg-[#a17a55] text-white text-[14px] font-black py-2.5 px-5 rounded-[20px] shadow-sm hover:bg-[#8e6946] active:scale-95 transition-all disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {isSubmittingMini ? "등록 중..." : "제보 완료"}
+                  </button>
+                  <span className="w-20 text-right text-[14px] font-black text-foreground/30 select-none">
+                    상태
+                  </span>
+                </div>
+              </div>
+            </article>
           )}
+
+          {/* 카드 2: 다른 사람이 올린 최신 상태에 바로 답변해주기 */}
+          {latestActiveReport ? (
+            <article className="w-full overflow-hidden rounded-[22px] border border-border bg-card-bg shadow-sm transition-all hover:shadow-md">
+              <div
+                className="relative h-32 bg-cover bg-center"
+                style={{
+                  backgroundImage: "url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=900')"
+                }}
+              >
+                <div className="absolute inset-0 bg-black/35" />
+                <div className="absolute left-3.5 top-3.5 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-foreground shadow-sm">
+                    팩트체크
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-black/35 px-3 py-1.5 text-[11px] font-black text-white backdrop-blur-md">
+                    <Radio size={11} className="mr-1 text-white animate-pulse" />
+                    실시간
+                  </span>
+                </div>
+                <div className="absolute bottom-3.5 right-3.5">
+                  <span className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[11px] font-black shadow-sm ${normalizeStatus(latestActiveReport.status) === "혼잡"
+                    ? "bg-[#fff5f5] border-[#ffc9c9] text-[#fa5252]"
+                    : normalizeStatus(latestActiveReport.status) === "여유"
+                      ? "bg-[#e6fcf5] border-[#c3fae8] text-[#099268]"
+                      : "bg-[#fff9db] border-[#ffe066] text-[#f08c00]"
+                    }`}>
+                    {normalizeStatus(latestActiveReport.status)} · {formatUpdatedAgo(latestActiveReport.created_at)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div>
+                  <p className="inline-flex max-w-full items-center gap-1.5 rounded-[18px] bg-secondary/10 px-3 py-1.5 text-[11px] font-black leading-snug text-secondary">
+                    <Compass size={12} className="shrink-0 animate-spin-slow" />
+                    <span>{latestActiveReport.place_name}, 지금 가도 정말 {normalizeStatus(latestActiveReport.status)}한가요?</span>
+                  </p>
+
+                  <p className="mt-4 text-[13px] font-medium leading-relaxed text-foreground/60 break-keep">
+                    &quot;{latestActiveReport.message || "새로운 현장 상황 정보가 올라왔습니다. 현장 정보가 실제와 맞는지 지금 바로 답변해 주세요."}&quot;
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    <span className="rounded-full border border-gray-100 bg-gray-50/50 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                      #현장_검증
+                    </span>
+                    <span className="rounded-full border border-gray-100 bg-gray-50/50 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                      #팩트_체크
+                    </span>
+                    <span className="rounded-full border border-gray-100 bg-gray-50/50 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                      #혼잡도_확인
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => handleVerifyStatus(latestActiveReport.id)}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-[20px] border border-border bg-white px-3 py-2.5 text-[13px] font-black text-foreground shadow-sm transition-all hover:bg-foreground/5 active:scale-95"
+                  >
+                    <CircleCheck size={15} />
+                    맞아요
+                  </button>
+                  <button
+                    onClick={() => handleDisagreeStatus(latestActiveReport)}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-[20px] bg-rose-500 px-3 py-2.5 text-[13px] font-black text-white shadow-sm transition-all hover:bg-rose-600 active:scale-95"
+                  >
+                    <CircleX size={15} />
+                    달라요
+                  </button>
+                  <Link
+                    href={`/map?lat=${latestActiveReport.latitude}&lng=${latestActiveReport.longitude}&statusId=${latestActiveReport.id}&title=${encodeURIComponent(latestActiveReport.place_name)}`}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-[20px] bg-[#a17a55] px-3 py-2.5 text-[13px] font-black text-white shadow-sm transition-all hover:bg-[#8e6946] active:scale-95"
+                  >
+                    상태현황
+                    <ArrowRight size={15} />
+                  </Link>
+                </div>
+              </div>
+            </article>
+          ) : (
+            /* Fallback Card: 최신 리포트가 없을 시 (스타필드/화성행궁 야간개장 예시) */
+            <article className="w-full overflow-hidden rounded-[22px] border border-border bg-card-bg shadow-sm transition-all hover:shadow-md">
+              <div
+                className="relative h-32 bg-cover bg-center"
+                style={{
+                  backgroundImage: "url('https://www.suwon.go.kr/webcontent/ckeditor/2026/5/4/d88dc018-7cb8-429f-a49c-478f47654b43.jpg')"
+                }}
+              >
+                <div className="absolute inset-0 bg-black/35" />
+                <div className="absolute left-3.5 top-3.5 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-foreground shadow-sm">
+                    공식+질문
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-black/35 px-3 py-1.5 text-[11px] font-black text-white backdrop-blur-md">
+                    <PartyPopper size={11} className="mr-1 text-white" />
+                    행사
+                  </span>
+                </div>
+                <div className="absolute bottom-3.5 right-3.5">
+                  <span className="shrink-0 rounded-full border border-[#ffc9c9] bg-[#fff5f5] text-[#fa5252] px-3.5 py-1.5 text-[11px] font-black shadow-sm">
+                    혼잡 · 5분 전
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div>
+                  <h3 className="text-[17px] font-black leading-snug text-foreground break-keep">
+                    화성행궁 야간개장, 지금 가도 줄이 길까요?
+                  </h3>
+                  <p className="mt-1 text-[12px] font-bold text-foreground/45">수원 화성행궁</p>
+
+                  <p className="mt-4 text-[13px] font-medium leading-relaxed text-foreground/60 break-keep">
+                    공식 행사는 진행 중이고, 현장 공유 기준 입장 대기와 사진 명소 주변이 붐비는 편이에요.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    <span className="rounded-full border border-gray-100 bg-gray-50/50 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                      #대기_있음
+                    </span>
+                    <span className="rounded-full border border-gray-100 bg-gray-50/50 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                      #사진_명소
+                    </span>
+                    <span className="rounded-full border border-gray-100 bg-gray-50/50 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                      #야간_행사
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => openBottomSheet("recordHub", { defaultTab: "record" })}
+                    className="w-20 text-left text-[14px] font-black text-foreground hover:opacity-80 transition-all cursor-pointer bg-transparent border-0"
+                  >
+                    기록
+                  </button>
+                  <button
+                    onClick={() => openBottomSheet("recordHub", { defaultTab: "request" })}
+                    className="flex-1 max-w-[150px] mx-auto text-center bg-[#a17a55] text-white text-[14px] font-black py-2.5 px-5 rounded-[20px] shadow-sm hover:bg-[#8e6946] active:scale-95 transition-all"
+                  >
+                    요청
+                  </button>
+                  <Link
+                    href={`/map?lat=37.2811&lng=127.0135&title=${encodeURIComponent("수원 화성행궁")}`}
+                    className="w-20 text-right text-[14px] font-black text-foreground hover:opacity-80 transition-all"
+                  >
+                    상태
+                  </Link>
+                </div>
+              </div>
+            </article>
+          )}
+
         </div>
-      </section>
+      )}
     </div>
   );
-}
-
-function QuickActionStrip({ onRequest }: { onRequest: () => void }) {
-  return (
-    <section className="px-6 pt-6">
-      <div className="grid grid-cols-3 gap-2">
-        <Link href="/news" className="flex min-h-[92px] flex-col justify-between rounded-2xl border border-border bg-card-bg p-3 shadow-sm transition-transform active:scale-[0.98]">
-          <Search size={18} className="text-accent" />
-          <span>
-            <span className="block text-[13px] font-black text-foreground">발견</span>
-            <span className="mt-0.5 block text-[10px] font-bold text-foreground/42">오늘의 이유</span>
-          </span>
-        </Link>
-        <Link href="/map" className="flex min-h-[92px] flex-col justify-between rounded-2xl border border-border bg-card-bg p-3 shadow-sm transition-transform active:scale-[0.98]">
-          <MapPinned size={18} className="text-secondary" />
-          <span>
-            <span className="block text-[13px] font-black text-foreground">상태</span>
-            <span className="mt-0.5 block text-[10px] font-bold text-foreground/42">지도 라이브</span>
-          </span>
-        </Link>
-        <button onClick={onRequest} className="flex min-h-[92px] flex-col justify-between rounded-2xl border border-border bg-foreground p-3 text-left text-background shadow-sm transition-transform active:scale-[0.98]">
-          <MessageSquare size={18} />
-          <span>
-            <span className="block text-[13px] font-black">요청</span>
-            <span className="mt-0.5 block text-[10px] font-bold text-background/60">현장 질문</span>
-          </span>
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function SectionHeading({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow: string;
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-secondary">{eyebrow}</p>
-      <h2 className="mt-1.5 text-[22px] font-black leading-tight text-foreground">{title}</h2>
-      {description && <p className="mt-1.5 text-[12px] font-semibold leading-relaxed text-foreground/45">{description}</p>}
-    </div>
-  );
-}
-
-function buildMapHref(title: string, address?: string, latitude?: number, longitude?: number) {
-  if (!latitude || !longitude) return "/map";
-  const params = new URLSearchParams({ lat: String(latitude), lng: String(longitude), title, address: address || "" });
-  return `/map?${params.toString()}`;
-}
-
-function DiscoveryCard({
-  item,
-  onSave,
-  onRequest,
-}: {
-  item: (typeof DISCOVERY_CARDS)[number];
-  onSave: () => void;
-  onRequest: () => void;
-}) {
-  const mapHref = buildMapHref(item.place, item.address, item.lat, item.lng);
-
-  return (
-    <article className="w-[312px] shrink-0 snap-start overflow-hidden rounded-[26px] border border-border bg-card-bg shadow-sm">
-      <div
-        className="relative h-36 bg-cover bg-center"
-        style={{ backgroundImage: `url(${item.imageUrl})` }}
-      >
-        <div className="absolute inset-0 bg-black/25" />
-        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-          <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black text-foreground shadow-sm">{item.type}</span>
-          <span className="inline-flex items-center rounded-full bg-black/35 px-2.5 py-1 text-[10px] font-black text-white backdrop-blur-md">
-            {item.category === "행사" && <PartyPopper size={10} className="mr-1 text-white" />}
-            {item.category === "카페" && <Coffee size={10} className="mr-1 text-white" />}
-            {item.category === "산책" && <Trees size={10} className="mr-1 text-white" />}
-            {item.category}
-          </span>
-        </div>
-        <div className="absolute bottom-3 right-3">
-          <StatusBadge status={item.status} updated={item.updated} />
-        </div>
-      </div>
-
-      <div className="p-4">
-        <h3 className="text-[17px] font-black leading-tight text-foreground">{item.title}</h3>
-        <p className="mt-1 text-[12px] font-bold text-foreground/45">{item.place}</p>
-
-        <p className="mt-3 line-clamp-2 text-[13px] font-medium leading-relaxed text-foreground/62">{item.summary}</p>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          {item.tags.map((tag) => (
-            <span key={tag} className="rounded-full border border-border bg-background/60 px-2.5 py-1 text-[11px] font-bold text-foreground/55">
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <button onClick={onSave} className="rounded-2xl bg-foreground/5 px-2 py-3 text-[12px] font-black text-foreground">
-            기록
-          </button>
-          <button onClick={onRequest} className="rounded-2xl bg-accent px-2 py-3 text-[12px] font-black text-white shadow-sm">
-            요청
-          </button>
-          <Link href={mapHref} className="inline-flex items-center justify-center rounded-2xl bg-foreground px-2 py-3 text-[12px] font-black text-background shadow-sm">
-            상태
-          </Link>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function StatusBadge({ status, updated }: { status: DiscoveryStatus; updated: string }) {
-  const styles: Record<DiscoveryStatus, string> = {
-    혼잡: "bg-rose-50 text-rose-700 border-rose-200",
-    보통: "bg-amber-50 text-amber-700 border-amber-200",
-    여유: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    요청: "bg-sky-50 text-sky-700 border-sky-200",
-  };
-
-  return (
-    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-black shadow-sm ${styles[status]}`}>
-      {status} · {updated}
-    </span>
-  );
-}
-
-function FeedItem({ post, onClick }: { post: Post; onClick: () => void }) {
-  const trust = getTrustLevel(post.score || 0.5);
-
-  return (
-    <motion.article whileHover={{ y: -3 }} className="flex cursor-pointer flex-col rounded-[24px] border border-border bg-card-bg p-5 shadow-sm" onClick={onClick}>
-      <div className="mb-3 flex items-center justify-between">
-        <div className={`flex items-center rounded-full px-2 py-0.5 text-[9px] font-black ${trust.color}`}>
-          {trust.icon}
-          <span className="ml-1">{trust.label}</span>
-        </div>
-        <span className="text-[10px] font-bold text-foreground/40">{new Date(post.created_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</span>
-      </div>
-
-      <h3 className="mb-2 line-clamp-2 text-[15px] font-black leading-tight">{post.title || post.content}</h3>
-      <p className="line-clamp-2 text-[12px] leading-relaxed text-foreground/55">{post.content}</p>
-
-      <div className="mt-4 flex items-center gap-3 text-[10px] font-bold text-foreground/40">
-        <span className="flex items-center">
-          <TrendingUp size={10} className="mr-0.5 text-secondary" /> {post.likes_count}
-        </span>
-        <span className="flex items-center">
-          <MessageSquare size={10} className="mr-0.5 text-secondary" /> {post.comments_count}
-        </span>
-        <span className="flex-1 truncate text-right text-[9px] text-foreground/28">#{post.category}</span>
-      </div>
-    </motion.article>
-  );
-}
-
-function getTrustLevel(score: number) {
-  if (score >= 0.8) {
-    return { label: "신뢰 높음", color: "bg-sky-500/10 text-sky-600", icon: <ShieldCheck size={10} /> };
-  }
-
-  if (score >= 0.5) {
-    return { label: "보통 신뢰", color: "bg-emerald-500/10 text-emerald-600", icon: <Star size={10} /> };
-  }
-
-  return { label: "확인 필요", color: "bg-amber-500/10 text-amber-600", icon: <ShieldCheck size={10} /> };
 }

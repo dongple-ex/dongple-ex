@@ -7,6 +7,7 @@ import BottomNavV2 from "@/components/layout/v2/BottomNavV2";
 export default function NavigationWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin");
+  const isHome = pathname === "/";
 
   if (isAdmin) {
     return <>{children}</>;
@@ -16,7 +17,7 @@ export default function NavigationWrapper({ children }: { children: React.ReactN
   const hideHeader = pathname === '/' || pathname === '/map';
 
   return (
-    <div className="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto min-h-screen bg-background shadow-sm flex flex-col relative">
+    <div className={`${isHome ? "max-w-md md:max-w-[1200px]" : "max-w-md md:max-w-2xl lg:max-w-4xl"} mx-auto min-h-screen bg-background shadow-sm flex flex-col relative`}>
       {!hideHeader && <Header />}
       <main className="flex-1 overflow-y-auto pb-28">
         {children}

@@ -115,7 +115,7 @@ export default function Header({
             )}
             
             <button 
-              onClick={() => isAuthenticated ? router.push("/album") : openBottomSheet("authPrompt")}
+              onClick={() => isAuthenticated ? router.push("/me") : openBottomSheet("authPrompt")}
               className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-nav-bg transition-all active:scale-90"
             >
               {isAuthenticated && profile?.avatar_url ? (
