@@ -42,10 +42,14 @@ export default function HeroSection({ neighborhoodSummary, liveTickerUpdates }: 
         animate={{ opacity: 1, y: 0 }}
         className="relative z-10 mx-auto flex min-h-[360px] max-w-md flex-col justify-center px-5 pb-10 pt-8 text-white sm:min-h-[400px] md:min-h-[440px] md:max-w-[1120px] md:justify-between md:px-6 md:pb-9 md:pt-8 lg:min-h-[500px]"
       >
-        {/* 서비스 타이틀 배지 */}
-        <div className="mb-5 inline-flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 shadow-lg shadow-black/15 backdrop-blur-md md:px-4 md:py-2">
-          <Compass size={11} className="text-secondary animate-spin-slow" />
-          <span className="text-[10px] font-black tracking-tight text-white/90 md:text-[12px]">내발문자 라이브 대시보드</span>
+        {/* 서비스 타이틀 */}
+        <div className="mb-5">
+          <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 shadow-lg shadow-black/15 backdrop-blur-md md:px-4 md:py-2">
+            <Compass size={11} className="text-secondary animate-spin-slow" />
+            <span className="text-[10px] font-black tracking-tight text-white/90 md:text-[12px]">동플 라이브 대시보드</span>
+          </div>
+          <h1 className="mt-4 text-[42px] font-black leading-none text-white md:text-[60px]">동플</h1>
+          <p className="mt-2 text-[15px] font-bold text-white/78 md:text-[18px]">우리 동네 순간을 기록하자</p>
         </div>
 
         {/* 좌우 카드 레이아웃 */}
