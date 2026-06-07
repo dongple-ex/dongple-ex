@@ -110,8 +110,12 @@ export default function Home() {
 
   // 위치 인증 및 미니 제보 관련 상태
   const [isLocationVerified, setIsLocationVerified] = useState(false);
-  const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
+  const [hasSubmittedToday, setHasSubmittedToday] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(`shared_today_${new Date().toDateString()}`) === "true";
+  });
   const [miniPlaceName, setMiniPlaceName] = useState("");
+  const [verifiedOriginalName, setVerifiedOriginalName] = useState(""); // 인증 당시 장소명 기록
   const [miniStatus, setMiniStatus] = useState("보통");
   const [miniMessage, setMiniMessage] = useState("");
   const [isLocating, setIsLocating] = useState(false);
@@ -168,20 +172,34 @@ export default function Home() {
       const locationState = useLocationStore.getState();
       const verifiedPlaceName = getVerifiedPlaceName(locationState.address, locationState.regionName);
 
-      if (!verifiedPlaceName || locationState.error) {
+      if (!verifiedPlaceName) {
         setIsLocationVerified(false);
         setMiniPlaceName("");
+        setVerifiedOriginalName("");
         alert("위치 인증으로 장소명을 확인하지 못했습니다. 장소 이름을 직접 입력해주세요.");
         return;
       }
 
       setIsLocationVerified(true);
       setMiniPlaceName(verifiedPlaceName);
+      setVerifiedOriginalName(verifiedPlaceName); // 원본 저장
     } catch (error) {
       console.error("[Home] Location verification failed:", error);
-      alert("위치 정보를 가져오는 데 실패했습니다. GPS 권한을 확인해 주세요.");
+      setIsLocationVerified(false);
+      setVerifiedOriginalName("");
+      const errorMsg = error instanceof Error ? error.message : "위치 정보를 가져오는 데 실패했습니다.";
+      alert(`${errorMsg} GPS 권한을 확인해 주세요.`);
     } finally {
       setIsLocating(false);
+    }
+  };
+
+  // 장소명이 인증 당시와 다르게 수정되면 verified 상태를 해제
+  const handlePlaceNameChange = (value: string) => {
+    setMiniPlaceName(value);
+    if (isLocationVerified && verifiedOriginalName && value.trim() !== verifiedOriginalName) {
+      setIsLocationVerified(false);
+      setVerifiedOriginalName("");
     }
   };
 
@@ -510,7 +528,7 @@ export default function Home() {
                     <input
                       type="text"
                       value={miniPlaceName}
-                      onChange={(e) => setMiniPlaceName(e.target.value)}
+                      onChange={(e) => handlePlaceNameChange(e.target.value)}
                       placeholder="어디에 계신가요? (예: 행궁 광장)"
                       className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-[14px] font-medium text-foreground shadow-inner focus:border-accent focus:outline-none"
                     />
@@ -602,7 +620,7 @@ export default function Home() {
                     <input
                       type="text"
                       value={miniPlaceName}
-                      onChange={(e) => setMiniPlaceName(e.target.value)}
+                      onChange={(e) => handlePlaceNameChange(e.target.value)}
                       placeholder="어디에 계신가요? (예: 행궁 광장)"
                       className="w-full px-3.5 py-2.5 text-[14px] font-medium rounded-xl border border-border bg-background focus:outline-none focus:border-accent text-foreground shadow-inner"
                     />
