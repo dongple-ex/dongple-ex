@@ -42,11 +42,12 @@ export const useLocationStore = create<LocationState>((set) => ({
         set({ isLoading: true, error: null });
         
         if (typeof window === 'undefined' || !navigator.geolocation) {
-            set({ error: "Geolocation is not supported", isLoading: false });
-            return;
+            const msg = "Geolocation is not supported";
+            set({ error: msg, isLoading: false });
+            throw new Error(msg);
         }
 
-        return new Promise((resolve) => {
+        return new Promise<void>((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
                     const { latitude, longitude } = position.coords;
@@ -61,8 +62,9 @@ export const useLocationStore = create<LocationState>((set) => ({
                         });
                         resolve();
                     } catch {
-                        set({ error: "Failed to fetch address", isLoading: false });
-                        resolve();
+                        const msg = "Failed to fetch address";
+                        set({ error: msg, isLoading: false });
+                        reject(new Error(msg));
                     }
                 },
                 (err) => {
@@ -72,7 +74,7 @@ export const useLocationStore = create<LocationState>((set) => ({
                     else if (err.code === 3) errorMsg = "요청 시간이 초과되었습니다.";
                     
                     set({ error: errorMsg, isLoading: false });
-                    resolve();
+                    reject(new Error(errorMsg));
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );

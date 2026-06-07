@@ -8,7 +8,14 @@ import {
   CircleX,
   PartyPopper,
   Radio,
-  Compass
+  Compass,
+
+  Sun,
+  CloudRain,
+  Snowflake,
+  CloudSun,
+  CloudFog,
+  Clock
 } from "lucide-react";
 import Link from "next/link";
 
@@ -27,9 +34,42 @@ import {
   postLiveStatus,
   LiveStatus
 } from "@/services/statusService";
+import { getVillageWeather, WeatherData } from "@/services/api";
 
-const LOCATION_PROMPT_IMAGE =
-  "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=900&auto=format&fit=crop";
+// Weather icon component mapping
+function WeatherIcon({ condition, size = 36 }: { condition?: string; size?: number }) {
+  const cls = "drop-shadow-lg";
+  switch (condition) {
+    case "비": return <CloudRain size={size} className={cls} />;
+    case "눈": return <Snowflake size={size} className={cls} />;
+    case "구름많음": return <CloudSun size={size} className={cls} />;
+    case "흐림": return <CloudFog size={size} className={cls} />;
+    default: return <Sun size={size} className={cls} />;
+  }
+}
+
+// Time-of-day gradient background
+function getTimeGradient(hour: number) {
+  if (hour >= 6 && hour < 9) return "from-amber-400 via-orange-300 to-yellow-200"; // 아침
+  if (hour >= 9 && hour < 12) return "from-sky-400 via-blue-300 to-cyan-200"; // 오전
+  if (hour >= 12 && hour < 15) return "from-blue-400 via-sky-300 to-cyan-200"; // 낮
+  if (hour >= 15 && hour < 18) return "from-orange-400 via-amber-300 to-yellow-200"; // 오후
+  if (hour >= 18 && hour < 21) return "from-indigo-500 via-purple-400 to-pink-300"; // 저녁
+  return "from-slate-800 via-indigo-900 to-slate-900"; // 밤
+}
+
+function getTimeGreeting(hour: number) {
+  if (hour >= 5 && hour < 9) return "좋은 아침이에요 🌅";
+  if (hour >= 9 && hour < 12) return "활기찬 오전이에요 ☀️";
+  if (hour >= 12 && hour < 14) return "점심 시간이에요 🍚";
+  if (hour >= 14 && hour < 18) return "따뜻한 오후에요 🌤️";
+  if (hour >= 18 && hour < 21) return "편안한 저녁이에요 🌇";
+  return "고요한 밤이에요 🌙";
+}
+
+function isNightTime(hour: number) {
+  return hour >= 21 || hour < 6;
+}
 const VERIFIED_LOCATION_FALLBACK_IMAGE =
   "https://www.suwon.go.kr/webcontent/ckeditor/2026/5/4/d88dc018-7cb8-429f-a49c-478f47654b43.jpg";
 
@@ -70,14 +110,20 @@ export default function Home() {
 
   // 위치 인증 및 미니 제보 관련 상태
   const [isLocationVerified, setIsLocationVerified] = useState(false);
-  const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
+  const [hasSubmittedToday, setHasSubmittedToday] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(`shared_today_${new Date().toDateString()}`) === "true";
+  });
   const [miniPlaceName, setMiniPlaceName] = useState("");
+  const [verifiedOriginalName, setVerifiedOriginalName] = useState(""); // 인증 당시 장소명 기록
   const [miniStatus, setMiniStatus] = useState("보통");
   const [miniMessage, setMiniMessage] = useState("");
   const [isLocating, setIsLocating] = useState(false);
   const [isSubmittingMini, setIsSubmittingMini] = useState(false);
   const [locationHeroImage, setLocationHeroImage] = useState(VERIFIED_LOCATION_FALLBACK_IMAGE);
   const [locationHeroTitle, setLocationHeroTitle] = useState("");
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Default coordinates fallback: Suwon Hwaseong area
   const userLat = storeLat || 37.2995;
@@ -126,20 +172,34 @@ export default function Home() {
       const locationState = useLocationStore.getState();
       const verifiedPlaceName = getVerifiedPlaceName(locationState.address, locationState.regionName);
 
-      if (!verifiedPlaceName || locationState.error) {
+      if (!verifiedPlaceName) {
         setIsLocationVerified(false);
         setMiniPlaceName("");
+        setVerifiedOriginalName("");
         alert("위치 인증으로 장소명을 확인하지 못했습니다. 장소 이름을 직접 입력해주세요.");
         return;
       }
 
       setIsLocationVerified(true);
       setMiniPlaceName(verifiedPlaceName);
+      setVerifiedOriginalName(verifiedPlaceName); // 원본 저장
     } catch (error) {
       console.error("[Home] Location verification failed:", error);
-      alert("위치 정보를 가져오는 데 실패했습니다. GPS 권한을 확인해 주세요.");
+      setIsLocationVerified(false);
+      setVerifiedOriginalName("");
+      const errorMsg = error instanceof Error ? error.message : "위치 정보를 가져오는 데 실패했습니다.";
+      alert(`${errorMsg} GPS 권한을 확인해 주세요.`);
     } finally {
       setIsLocating(false);
+    }
+  };
+
+  // 장소명이 인증 당시와 다르게 수정되면 verified 상태를 해제
+  const handlePlaceNameChange = (value: string) => {
+    setMiniPlaceName(value);
+    if (isLocationVerified && verifiedOriginalName && value.trim() !== verifiedOriginalName) {
+      setIsLocationVerified(false);
+      setVerifiedOriginalName("");
     }
   };
 
@@ -196,9 +256,16 @@ export default function Home() {
     const statusSub = subscribeLiveUpdates(loadData);
     const timeTimer = setInterval(() => setNow(Date.now()), 30000);
 
+    // Clock update every second
+    const clockTimer = setInterval(() => setCurrentTime(new Date()), 1000);
+
+    // Fetch weather
+    getVillageWeather(userLat, userLng).then(setWeather).catch(console.error);
+
     return () => {
       statusSub.unsubscribe();
       clearInterval(timeTimer);
+      clearInterval(clockTimer);
     };
   }, []);
 
@@ -394,24 +461,47 @@ export default function Home() {
           ) : !isLocationVerified ? (
             /* [상태 1] 위치 인증 전 */
             <article className="w-full overflow-hidden rounded-[22px] border border-border bg-card-bg shadow-sm transition-all hover:shadow-md">
+              {/* 날씨 + 시간 위젯 (기존 Unsplash 이미지 대체) */}
               <div
-                className="relative h-32 bg-cover bg-center"
-                style={{
-                  backgroundImage: `url('${LOCATION_PROMPT_IMAGE}')`
-                }}
+                className={`relative h-32 bg-gradient-to-br ${getTimeGradient(currentTime.getHours())} overflow-hidden transition-all duration-1000`}
               >
-                <div className="absolute inset-0 bg-black/35" />
+                {/* 배경 장식 원형 */}
+                <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10 blur-sm" />
+                <div className="absolute -left-4 -bottom-4 h-20 w-20 rounded-full bg-white/8 blur-sm" />
+
+                {/* 좌측 상단: 배지들 */}
                 <div className="absolute left-3.5 top-3.5 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-[#e9ecef] px-3 py-1.5 text-[11px] font-black text-[#17201b] shadow-sm">
+                  <span className="rounded-full bg-white/20 backdrop-blur-md px-3 py-1.5 text-[11px] font-black text-white shadow-sm">
                     궁금해요?
                   </span>
-                  <span className="inline-flex items-center rounded-full bg-amber-50/90 text-amber-700 px-3 py-1.5 text-[11px] font-black backdrop-blur-md shadow-sm">
+                  <span className="inline-flex items-center rounded-full bg-white/15 backdrop-blur-md text-white/90 px-3 py-1.5 text-[11px] font-black shadow-sm">
                     인증 대기
                   </span>
                 </div>
-                <div className="absolute bottom-3.5 right-3.5">
-                  <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 text-amber-700 px-3.5 py-1.5 text-[11px] font-black shadow-sm animate-pulse">
-                    직접 입력 가능
+
+                {/* 우측: 날씨 아이콘 + 온도 */}
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5">
+                  <div className={`${isNightTime(currentTime.getHours()) ? "text-yellow-200" : "text-white"} transition-colors`}>
+                    <WeatherIcon condition={weather?.condition} size={34} />
+                  </div>
+                  <span className="text-[20px] font-black text-white drop-shadow-md leading-none">
+                    {weather?.temp || "--°"}
+                  </span>
+                  <span className="text-[10px] font-bold text-white/70">
+                    {weather?.condition || "로딩 중"}
+                  </span>
+                </div>
+
+                {/* 좌측 하단: 시간 + 인사말 */}
+                <div className="absolute left-3.5 bottom-3 flex items-end gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Clock size={12} className="text-white/70" />
+                    <span className="text-[22px] font-black text-white drop-shadow-md leading-none tabular-nums">
+                      {currentTime.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-bold text-white/60 mb-0.5">
+                    {getTimeGreeting(currentTime.getHours())}
                   </span>
                 </div>
               </div>
@@ -438,7 +528,7 @@ export default function Home() {
                     <input
                       type="text"
                       value={miniPlaceName}
-                      onChange={(e) => setMiniPlaceName(e.target.value)}
+                      onChange={(e) => handlePlaceNameChange(e.target.value)}
                       placeholder="어디에 계신가요? (예: 행궁 광장)"
                       className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-[14px] font-medium text-foreground shadow-inner focus:border-accent focus:outline-none"
                     />
@@ -530,7 +620,7 @@ export default function Home() {
                     <input
                       type="text"
                       value={miniPlaceName}
-                      onChange={(e) => setMiniPlaceName(e.target.value)}
+                      onChange={(e) => handlePlaceNameChange(e.target.value)}
                       placeholder="어디에 계신가요? (예: 행궁 광장)"
                       className="w-full px-3.5 py-2.5 text-[14px] font-medium rounded-xl border border-border bg-background focus:outline-none focus:border-accent text-foreground shadow-inner"
                     />
