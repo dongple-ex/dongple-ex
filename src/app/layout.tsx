@@ -11,10 +11,9 @@ import NotificationInitializer from "@/features/notifications/components/Notific
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "내발문자 | 발견하고 기록하는 동네 생활 지도",
-  description:
-    "동네의 행사, 장소, 현장 상태를 빠르게 확인하고 나중에 다시 가고 싶은 곳을 기록하는 생활 지도 서비스입니다.",
-  keywords: ["내발문자", "동네 소식", "현장 상태", "장소 기록", "생활 지도"],
+  title: "동플 | 우리 동네 순간을 기록하자",
+  description: "우리 동네 순간을 기록하자. 동네의 행사, 장소, 현장 상황을 공유하는 서비스입니다.",
+  keywords: ["동플", "내발문자", "동네 소식", "현장 상태", "장소 기록", "생활 지도"],
   metadataBase: new URL("https://dongple.kr"),
   icons: {
     icon: [{ url: "/logo_s.png", type: "image/png" }],
@@ -25,16 +24,16 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "내발문자",
-    description: "발견한 장소와 지금의 현장 상태를 함께 저장하는 동네 생활 지도.",
+    title: "동플",
+    description: "우리 동네 순간을 기록하자.",
     url: "https://dongple.kr",
-    siteName: "내발문자",
+    siteName: "동플",
     images: [
       {
         url: "/logo.png",
         width: 1200,
         height: 630,
-        alt: "내발문자 서비스 이미지",
+        alt: "동플 서비스 이미지",
       },
     ],
     locale: "ko_KR",
@@ -42,8 +41,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "내발문자",
-    description: "동네 소식, 지도, 기록을 한 번에 확인하세요.",
+    title: "동플",
+    description: "우리 동네 순간을 기록하자.",
     images: ["/logo.png"],
   },
 };

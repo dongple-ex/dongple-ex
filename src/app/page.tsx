@@ -368,10 +368,10 @@ export default function Home() {
 
       {/* 1. 상단 타이틀 영역 */}
       <section className="mx-auto max-w-md px-5 pt-5 pb-1 md:max-w-[1120px] md:px-6">
-        <h1 className="text-[24px] font-black leading-tight tracking-tight text-foreground">
+        <h2 className="text-[24px] font-black leading-tight tracking-tight text-foreground">
           지금{" "}
           <span className="bg-gradient-to-r from-secondary to-accent bg-clip-text text-transparent">여기는?</span>
-        </h1>
+        </h2>
       </section>
 
       {loading ? (
