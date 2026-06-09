@@ -6,6 +6,7 @@ import KakaoScript from "@/components/map/KakaoScript";
 import NavigationWrapper from "@/components/layout/NavigationWrapper";
 import ThemeProvider from "@/components/ui/ThemeProvider";
 import InterestPlaceNotificationWatcher from "@/features/notifications/components/InterestPlaceNotificationWatcher";
+import NearbyActionNotificationWatcher from "@/features/notifications/components/NearbyActionNotificationWatcher";
 import NotificationInitializer from "@/features/notifications/components/NotificationInitializer";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <NotificationInitializer />
           <InterestPlaceNotificationWatcher />
+          <NearbyActionNotificationWatcher />
           <GlobalModalProvider>
             <NavigationWrapper>{children}</NavigationWrapper>
           </GlobalModalProvider>

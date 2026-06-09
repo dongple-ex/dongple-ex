@@ -199,7 +199,7 @@ export default function MapBottomSheet({
                             : "flex-1 bg-foreground/5 text-[13px] text-foreground/60 hover:bg-foreground/10"
                         }`}
                       >
-                        {card.is_request ? "내가 알려주기" : "새 상태 공유"}
+                        {card.is_request ? "현장 답하기" : "상황이 달라요"}
                       </button>
                     </div>
                   </motion.div>

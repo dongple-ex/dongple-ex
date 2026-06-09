@@ -34,7 +34,7 @@ import {
   postLiveStatus,
   LiveStatus
 } from "@/services/statusService";
-import { getVillageWeather, WeatherData } from "@/services/api";
+import { getNearestPlace, getVillageWeather, WeatherData } from "@/services/api";
 
 // Weather icon component mapping
 function WeatherIcon({ condition, size = 36 }: { condition?: string; size?: number }) {
@@ -83,7 +83,7 @@ function sanitizeLocationText(value?: string | null) {
   const trimmed = value?.trim().replace(/\s+/g, " ");
   if (!trimmed) return "";
 
-  const invalidHints = ["내 주변", "서비스 로드 중", "주소 정보 없음", "위치 확인", "Geolocation", "Failed"];
+  const invalidHints = ["내 주변", "서비스 로드 중", "주소 정보 없음", "위치 확인", "현재 위치", "Geolocation", "Failed"];
   if (invalidHints.some((hint) => trimmed.includes(hint))) return "";
 
   return trimmed;
@@ -97,6 +97,10 @@ function getVerifiedPlaceName(address?: string | null, regionName?: string | nul
   }
 
   return sanitizeLocationText(address);
+}
+
+function getVerifiedLocationLabel(address?: string | null, regionName?: string | null, nearestTitle?: string | null) {
+  return sanitizeLocationText(nearestTitle) || getVerifiedPlaceName(address, regionName);
 }
 
 export default function Home() {
@@ -170,9 +174,20 @@ export default function Home() {
       await fetchLocation();
 
       const locationState = useLocationStore.getState();
-      const verifiedPlaceName = getVerifiedPlaceName(locationState.address, locationState.regionName);
+      const hasVerifiedCoords =
+        locationState.hasGpsFix &&
+        Number.isFinite(locationState.gpsLatitude) &&
+        Number.isFinite(locationState.gpsLongitude);
+      const nearestPlace = hasVerifiedCoords
+        ? await getNearestPlace(Number(locationState.gpsLatitude), Number(locationState.gpsLongitude))
+        : null;
+      const verifiedPlaceName = getVerifiedLocationLabel(
+        locationState.address,
+        locationState.regionName,
+        nearestPlace?.title,
+      );
 
-      if (!verifiedPlaceName) {
+      if (!verifiedPlaceName || !hasVerifiedCoords) {
         setIsLocationVerified(false);
         setMiniPlaceName("");
         setVerifiedOriginalName("");
@@ -259,15 +274,16 @@ export default function Home() {
     // Clock update every second
     const clockTimer = setInterval(() => setCurrentTime(new Date()), 1000);
 
-    // Fetch weather
-    getVillageWeather(userLat, userLng).then(setWeather).catch(console.error);
-
     return () => {
       statusSub.unsubscribe();
       clearInterval(timeTimer);
       clearInterval(clockTimer);
     };
   }, []);
+
+  useEffect(() => {
+    getVillageWeather(userLat, userLng).then(setWeather).catch(console.error);
+  }, [userLat, userLng]);
 
   // 1. 🔥 내 주변 상태 요약 (반경 2km) -> HeroSection에 전달됨
   const neighborhoodSummary = useMemo(() => {
