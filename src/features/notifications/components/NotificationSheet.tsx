@@ -3,6 +3,7 @@
 import { BellOff, CheckCheck, MapPinned, Megaphone, MessageCircle, ShieldCheck, TrafficCone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/store/authStore";
+import { getNearbyActionLabel } from "@/lib/nearbyActionNotifications";
 import { useNotificationStore } from "@/lib/store/notificationStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import type { NotificationItem, NotificationType } from "@/services/notificationService";
@@ -40,6 +41,7 @@ function getIconClass(type: NotificationType) {
 
 function NotificationRow({ item, onSelect }: { item: NotificationItem; onSelect: (item: NotificationItem) => void }) {
   const Icon = getNotificationIcon(item.type);
+  const actionLabel = getNearbyActionLabel(item);
 
   return (
     <button
@@ -64,6 +66,11 @@ function NotificationRow({ item, onSelect }: { item: NotificationItem; onSelect:
           <p className="mt-1 line-clamp-2 text-[12px] font-medium leading-relaxed text-foreground/55">
             {item.content}
           </p>
+          {actionLabel && (
+            <span className="mt-2 inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-[11px] font-black text-secondary">
+              {actionLabel}
+            </span>
+          )}
         </div>
       </div>
     </button>

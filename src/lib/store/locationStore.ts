@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { getAddressFromCoords, AddressResult } from '@/services/api';
 
+export type LocationSource = "default" | "gps" | "manual";
+
 interface LocationState {
     latitude: number;
     longitude: number;
@@ -8,7 +10,19 @@ interface LocationState {
     regionName: string;
     isLoading: boolean;
     error: string | null;
-    setLocation: (lat: number, lng: number, address: string, regionName: string) => void;
+    hasGpsFix: boolean;
+    locationSource: LocationSource;
+    gpsLatitude: number | null;
+    gpsLongitude: number | null;
+    accuracy: number | null;
+    receivedAt: string | null;
+    setLocation: (
+        lat: number,
+        lng: number,
+        address: string,
+        regionName: string,
+        options?: { source?: LocationSource; accuracy?: number | null },
+    ) => void;
     fetchLocation: () => Promise<void>;
 }
 
@@ -20,8 +34,14 @@ export const useLocationStore = create<LocationState>((set) => ({
     regionName: "수원시 정자동",
     isLoading: false,
     error: null,
+    hasGpsFix: false,
+    locationSource: "default",
+    gpsLatitude: null,
+    gpsLongitude: null,
+    accuracy: null,
+    receivedAt: null,
 
-    setLocation: (lat, lng, address, regionName) => {
+    setLocation: (lat, lng, address, regionName, options = {}) => {
         // 좌표 유효성 검사 (WGS84 범위 내)
         const isValid = isFinite(lat) && isFinite(lng) && lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132;
         
@@ -30,11 +50,24 @@ export const useLocationStore = create<LocationState>((set) => ({
             return;
         }
 
+        const source = options.source || "manual";
+        const isGps = source === "gps";
+
         set({ 
             latitude: lat, 
             longitude: lng, 
             address, 
-            regionName 
+            regionName,
+            locationSource: source,
+            ...(isGps
+                ? {
+                    hasGpsFix: true,
+                    gpsLatitude: lat,
+                    gpsLongitude: lng,
+                    accuracy: options.accuracy ?? null,
+                    receivedAt: new Date().toISOString(),
+                }
+                : {}),
         });
     },
 
@@ -50,7 +83,7 @@ export const useLocationStore = create<LocationState>((set) => ({
         return new Promise<void>((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
-                    const { latitude, longitude } = position.coords;
+                    const { latitude, longitude, accuracy } = position.coords;
                     try {
                         const result: AddressResult = await getAddressFromCoords(latitude, longitude);
                         set({ 
@@ -58,12 +91,26 @@ export const useLocationStore = create<LocationState>((set) => ({
                             longitude, 
                             address: result.fullAddress,
                             regionName: result.regionName,
+                            hasGpsFix: true,
+                            locationSource: "gps",
+                            gpsLatitude: latitude,
+                            gpsLongitude: longitude,
+                            accuracy: Number.isFinite(accuracy) ? accuracy : null,
+                            receivedAt: new Date().toISOString(),
                             isLoading: false 
                         });
                         resolve();
                     } catch {
                         const msg = "Failed to fetch address";
-                        set({ error: msg, isLoading: false });
+                        set({
+                            error: msg,
+                            hasGpsFix: false,
+                            gpsLatitude: null,
+                            gpsLongitude: null,
+                            accuracy: null,
+                            receivedAt: null,
+                            isLoading: false,
+                        });
                         reject(new Error(msg));
                     }
                 },
@@ -73,7 +120,15 @@ export const useLocationStore = create<LocationState>((set) => ({
                     else if (err.code === 2) errorMsg = "위치를 찾을 수 없습니다.";
                     else if (err.code === 3) errorMsg = "요청 시간이 초과되었습니다.";
                     
-                    set({ error: errorMsg, isLoading: false });
+                    set({
+                        error: errorMsg,
+                        hasGpsFix: false,
+                        gpsLatitude: null,
+                        gpsLongitude: null,
+                        accuracy: null,
+                        receivedAt: null,
+                        isLoading: false,
+                    });
                     reject(new Error(errorMsg));
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
