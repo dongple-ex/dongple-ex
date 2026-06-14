@@ -7,22 +7,21 @@ import BottomNavV2 from "@/components/layout/v2/BottomNavV2";
 export default function NavigationWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin");
-  const isHome = pathname === "/";
 
   if (isAdmin) {
     return <>{children}</>;
   }
   
-  // 헤더를 숨겨야 하는 경로 (홈 V2와 지도는 자체 플로팅 헤더 활용)
-  const hideHeader = pathname === '/' || pathname === '/map';
+  // 헤더를 숨겨야 하는 경로 (대문, 홈 V2, 지도는 각각 자체 혹은 불필요한 환경)
+  const hideHeader = pathname === '/' || pathname === '/home' || pathname === '/map';
 
   return (
-    <div className={`${isHome ? "max-w-md md:max-w-[1200px]" : "max-w-md md:max-w-2xl lg:max-w-4xl"} mx-auto min-h-screen bg-background shadow-sm flex flex-col relative`}>
+    <div className="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto min-h-screen bg-background shadow-sm flex flex-col relative">
       {!hideHeader && <Header />}
       <main className="flex-1 overflow-y-auto pb-28">
         {children}
       </main>
-      <BottomNavV2 />
+      {pathname !== '/' && <BottomNavV2 />}
     </div>
   );
 }
