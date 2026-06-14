@@ -14,7 +14,7 @@ export default function BottomNavV2() {
   const unreadCount = useNotificationStore((state) => state.unreadCount);
 
   const navItems = [
-    { icon: Home, label: "홈", path: "/" },
+    { icon: Home, label: "홈", path: "/home" },
     { icon: LayoutList, label: "소식", path: "/news" },
     { icon: Plus, label: "기록", isCenter: true },
     { icon: MapPinned, label: "지도", path: "/map" },
