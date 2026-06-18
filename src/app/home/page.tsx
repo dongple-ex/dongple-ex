@@ -789,29 +789,88 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-3 gap-2">
-                  <button
+                {/* 1초 피드백 유도 가이드라인 */}
+                <div className="mt-4 mb-2 flex items-center justify-between rounded-xl bg-accent/5 border border-accent/15 px-3 py-2">
+                  <div className="flex items-center gap-1.5 text-accent">
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+                    </span>
+                    <span className="text-[11px] font-black tracking-tight leading-none">
+                      이 정보가 지금도 맞나요? 1초 만에 알려주기
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-extrabold text-accent/60 uppercase tracking-wider">Fact Check</span>
+                </div>
+
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    animate={{
+                      boxShadow: isReportNearby 
+                        ? [
+                            "0 0 0 0 rgba(16, 185, 129, 0.4)",
+                            "0 0 16px 4px rgba(16, 185, 129, 0.2)",
+                            "0 0 0 0 rgba(16, 185, 129, 0.4)"
+                          ]
+                        : [
+                            "0 0 0 0 rgba(0, 0, 0, 0)",
+                            "0 0 10px 1px rgba(16, 185, 129, 0.15)",
+                            "0 0 0 0 rgba(0, 0, 0, 0)"
+                          ]
+                    }}
+                    transition={{
+                      boxShadow: {
+                        repeat: Infinity,
+                        duration: 2,
+                        ease: "easeInOut"
+                      }
+                    }}
                     onClick={() => handleVerifyStatus(latestActiveReport.id)}
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-[20px] border px-3 py-2.5 text-[13px] font-black text-[#17201b] shadow-sm transition-all hover:bg-white/90 active:scale-95 ${
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-[20px] border px-3 py-2.5 text-[13px] font-black text-[#17201b] shadow-sm transition-all hover:bg-white/90 active:scale-95 cursor-pointer ${
                       isReportNearby 
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-[0_0_12px_rgba(34,197,94,0.3)] animate-pulse"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-extrabold"
                         : "border-border bg-white"
                     }`}
                   >
-                    <CircleCheck size={15} />
+                    <CircleCheck size={15} className="text-emerald-500" />
                     맞아요
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    animate={{
+                      boxShadow: isReportNearby 
+                        ? [
+                            "0 0 0 0 rgba(244, 63, 94, 0.4)",
+                            "0 0 16px 4px rgba(244, 63, 94, 0.2)",
+                            "0 0 0 0 rgba(244, 63, 94, 0.4)"
+                          ]
+                        : [
+                            "0 0 0 0 rgba(0, 0, 0, 0)",
+                            "0 0 10px 1px rgba(244, 63, 94, 0.15)",
+                            "0 0 0 0 rgba(0, 0, 0, 0)"
+                          ]
+                    }}
+                    transition={{
+                      boxShadow: {
+                        repeat: Infinity,
+                        duration: 2,
+                        ease: "easeInOut",
+                        delay: 0.5
+                      }
+                    }}
                     onClick={() => handleDisagreeStatus(latestActiveReport)}
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-[20px] px-3 py-2.5 text-[13px] font-black text-white shadow-sm transition-all active:scale-95 ${
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-[20px] px-3 py-2.5 text-[13px] font-black text-white shadow-sm transition-all active:scale-95 cursor-pointer ${
                       isReportNearby 
-                        ? "bg-rose-500 hover:bg-rose-600 shadow-[0_0_12px_rgba(244,63,94,0.3)] animate-pulse" 
+                        ? "bg-rose-500 hover:bg-rose-600 font-extrabold" 
                         : "bg-rose-500 hover:bg-rose-600"
                     }`}
                   >
-                    <CircleX size={15} />
+                    <CircleX size={15} className="text-white" />
                     달라요
-                  </button>
+                  </motion.button>
                   <Link
                     href={`/map?lat=${latestActiveReport.latitude}&lng=${latestActiveReport.longitude}&statusId=${latestActiveReport.id}&title=${encodeURIComponent(latestActiveReport.place_name)}`}
                     className="inline-flex items-center justify-center gap-1.5 rounded-[20px] bg-[#a17a55] px-3 py-2.5 text-[13px] font-black text-white shadow-sm transition-all hover:bg-[#8e6946] active:scale-95"

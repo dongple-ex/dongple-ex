@@ -178,29 +178,68 @@ export default function MapBottomSheet({
 
                     <div className="flex gap-2.5">
                       {!card.is_request && !isExpired && (
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.03, y: -2 }}
+                          whileTap={{ scale: 0.97 }}
+                          animate={{
+                            boxShadow: [
+                              "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+                              "0 4px 12px 2px rgba(31, 138, 91, 0.2)",
+                              "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)"
+                            ]
+                          }}
+                          transition={{
+                            boxShadow: {
+                              repeat: Infinity,
+                              duration: 2,
+                              ease: "easeInOut"
+                            }
+                          }}
                           onClick={(e) => {
                             e.stopPropagation();
                             onVerify(card.id);
                           }}
-                          className="flex-1 rounded-[20px] bg-foreground py-4 text-[14px] font-black text-background shadow-lg shadow-foreground/10 transition-all hover:scale-[1.02] active:scale-95"
+                          className="flex-1 rounded-[20px] bg-foreground py-4 text-[14px] font-black text-background shadow-lg transition-all cursor-pointer"
                         >
                           맞아요
-                        </button>
+                        </motion.button>
                       )}
-                      <button
+                      <motion.button
+                        whileHover={{ scale: 1.03, y: -2 }}
+                        whileTap={{ scale: 0.97 }}
+                        animate={{
+                          boxShadow: card.is_request
+                            ? [
+                                "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+                                "0 4px 12px 2px rgba(46, 125, 50, 0.2)",
+                                "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)"
+                              ]
+                            : [
+                                "0 0 0 0 rgba(0,0,0,0)",
+                                "0 4px 10px 1px rgba(244, 63, 94, 0.15)",
+                                "0 0 0 0 rgba(0,0,0,0)"
+                              ]
+                        }}
+                        transition={{
+                          boxShadow: {
+                            repeat: Infinity,
+                            duration: 2,
+                            ease: "easeInOut",
+                            delay: 0.5
+                          }
+                        }}
                         onClick={(e) => {
                           e.stopPropagation();
                           onOpenCreate("share", card.latitude, card.longitude, undefined, card.place_name);
                         }}
-                        className={`rounded-[20px] py-4 font-black transition-all ${
+                        className={`rounded-[20px] py-4 font-black transition-all cursor-pointer ${
                           card.is_request 
-                            ? "flex-1 bg-secondary text-white text-[14px] shadow-lg shadow-secondary/20 hover:scale-[1.02] active:scale-95" 
+                            ? "flex-1 bg-secondary text-white text-[14px] shadow-lg" 
                             : "flex-1 bg-foreground/5 text-[13px] text-foreground/60 hover:bg-foreground/10"
                         }`}
                       >
                         {card.is_request ? "현장 답하기" : "상황이 달라요"}
-                      </button>
+                      </motion.button>
                     </div>
                   </motion.div>
                 )}

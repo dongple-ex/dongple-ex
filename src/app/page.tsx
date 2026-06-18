@@ -59,7 +59,7 @@ export default function GatewayPage() {
         animate="visible"
         className="my-auto grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto w-full z-10 pt-10 pb-10"
       >
-        {/* 기존 동플 (클래식) 카드 */}
+        {/* 간편모드 카드 */}
         <motion.div variants={itemVariants}>
           <a
             href="https://dongple.vercel.app"
@@ -75,8 +75,8 @@ export default function GatewayPage() {
             </div>
 
             <h2 className="text-2xl font-black text-slate-100 flex items-center gap-2">
-              동플 클래식
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/10">Classic</span>
+              간편모드
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/10">간편</span>
             </h2>
             
             <p className="mt-3 text-[14px] font-semibold leading-relaxed text-slate-400 group-hover:text-slate-300 transition-colors">
@@ -84,7 +84,7 @@ export default function GatewayPage() {
             </p>
 
             <div className="mt-8 flex items-center justify-between text-amber-400 text-[13px] font-black pt-4 border-t border-slate-800/40 group-hover:border-amber-500/20 transition-colors">
-              <span>클래식 모드 바로가기</span>
+              <span>간편모드 바로가기</span>
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/10 group-hover:translate-x-1.5 transition-transform">
                 <ArrowRight size={14} />
               </div>
@@ -92,7 +92,7 @@ export default function GatewayPage() {
           </a>
         </motion.div>
 
-        {/* 동플 EX (익스플로러) 카드 */}
+        {/* 일반모드 카드 */}
         <motion.div variants={itemVariants}>
           <Link
             href="/home"
@@ -106,8 +106,8 @@ export default function GatewayPage() {
             </div>
 
             <h2 className="text-2xl font-black text-slate-100 flex items-center gap-2">
-              동플 EX
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/10">Premium</span>
+              일반모드
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/10">일반</span>
             </h2>
 
             <p className="mt-3 text-[14px] font-semibold leading-relaxed text-slate-400 group-hover:text-slate-300 transition-colors">
@@ -115,7 +115,7 @@ export default function GatewayPage() {
             </p>
 
             <div className="mt-8 flex items-center justify-between text-emerald-400 text-[13px] font-black pt-4 border-t border-slate-800/40 group-hover:border-emerald-500/20 transition-colors">
-              <span>동플 EX 시작하기</span>
+              <span>일반모드 시작하기</span>
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 group-hover:translate-x-1.5 transition-transform">
                 <ArrowRight size={14} />
               </div>
